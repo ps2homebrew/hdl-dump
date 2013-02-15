@@ -1,6 +1,6 @@
 /*
  * osal_win32.c
- * $Id: osal_win32.c,v 1.9 2004/08/20 12:35:17 b081 Exp $
+ * $Id: osal_win32.c,v 1.10 2004/09/12 17:25:27 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -513,7 +513,7 @@ osal_dlist_free (osal_dlist_t *dlist)
 /**************************************************************/
 int /* RET_OK, RET_BAD_FORMAT, RET_BAD_DEVICE */
 osal_map_device_name (const char *input,
-		      char output [30])
+		      char output [MAX_PATH])
 {
   if (memcmp (input, "hdd", 3) == 0)
     {

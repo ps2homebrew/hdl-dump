@@ -1,6 +1,6 @@
 /*
  * progress.h
- * $Id: progress.h,v 1.5 2004/08/15 16:44:19 b081 Exp $
+ * $Id: progress.h,v 1.6 2004/09/12 17:25:27 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -28,8 +28,24 @@
 #include <time.h>
 
 
-/* the shorter that is, the faster it will respond to the changes */
+/*
+ * the shorter that is, the faster it will respond to the changes,
+ * however it will be more inacurate
+ */
 #define PG_HIST_SIZE 128
+
+
+/* high-resolution timers support */
+#if defined (_BUILD_WIN32)
+typedef clock_t highres_time_t;
+#  define HIGHRES_TO_SEC CLOCKS_PER_SEC
+#endif
+
+#if defined (_BUILD_UNIX)
+#  include "sys/time.h"
+typedef struct timeval highres_time_t;
+#  define HIGHRES_TO_SEC 1000000 /* microseconds */
+#endif
 
 
 typedef struct progress_type progress_t;
@@ -40,7 +56,7 @@ typedef int (*progress_cb_t) (progress_t *);
 /* TODO: check overflow with big files */
 struct progress_type
 { /* "private" */
-  clock_t start_, elapsed_; /* in clocks */
+  bigint_t start_, elapsed_;  /* highres_time_val */
   bigint_t offset_; /* of the current block, absolute */
   progress_cb_t progress_cb_;
   int last_elapsed_; /* last time when the estimated has been calculated */
@@ -49,7 +65,7 @@ struct progress_type
   struct hist_t
   { 
     size_t how_much;
-    clock_t when;
+    bigint_t when; /* highres_time_val */
   } history_ [PG_HIST_SIZE];
   size_t hist_pos_;
   bigint_t hist_sum_; /* = select sum (how_much) from history_ */
@@ -59,7 +75,7 @@ struct progress_type
 
   /* "public" */
   bigint_t total, curr; /* in bytes */
-  long avg_bps, curr_bps; /* average and current bytes per seconds (since the begining) */
+  long avg_bps, curr_bps; /* avg and curr bps (since the begining) */
   int pc_completed; /* in % */
   int elapsed, estimated, remaining; /* in seconds or -1 */
   char elapsed_text [20], estimated_text [20], remaining_text [20];

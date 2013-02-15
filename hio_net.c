@@ -1,6 +1,6 @@
 /*
  * hio_net.c - TCP/IP networking access to PS2 HDD
- * $Id: hio_net.c,v 1.4 2004/08/20 12:35:17 b081 Exp $
+ * $Id: hio_net.c,v 1.5 2004/09/12 17:25:26 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -104,7 +104,7 @@ query (SOCKET s,
   result = send (s, (const char*) cmd, cmd_length, 0);
   if (result == cmd_length)
     { /* command successfully sent */
-      result = recv (s, (char*) cmd, NET_IO_CMD_LEN, 0);
+      result = recv_exact (s, (char*) cmd, NET_IO_CMD_LEN, 0);
       if (result == NET_IO_CMD_LEN)
 	{ /* response successfully received */
 	  *response = get_ulong (cmd + 12);
@@ -363,6 +363,20 @@ hio_net_probe (const char *path,
 					sizeof (sa)) == 0 ? RET_OK : RET_ERR;
 		      if (result == RET_OK)
 			{ /* socket connected */
+#if defined (_BUILD_WIN32) && 0
+			  /* alter Nagle algorithm; testing purposes only */
+			  /* inject Rez, 196246KB
+			   * real    5m19.347s
+			   * user    0m0.020s
+			   * sys     0m0.020s
+			   */
+			  BOOL value = 0;
+			  if (setsockopt (s, IPPROTO_TCP, TCP_NODELAY,
+					  (void*) &value, sizeof (value)) == 0)
+			    printf ("setsockopt ok\n");
+			  else
+			    printf ("setsockopt failed\n");
+#endif
 			  *hio = net_alloc (s);
 			  if (*hio != NULL)
 			    ; /* success */

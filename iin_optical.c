@@ -1,6 +1,6 @@
 /*
  * iin_optical.c
- * $Id: iin_optical.c,v 1.6 2004/08/20 12:35:17 b081 Exp $
+ * $Id: iin_optical.c,v 1.7 2004/09/12 17:25:27 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -160,7 +160,7 @@ iin_optical_probe_path (const char *path,
 	path [4] == ':' &&
 	path [5] == '\0')))
     { /* "cd?:" or "cd??:" matched */
-      char device_name [20];
+      char device_name [MAX_PATH];
       int result = osal_map_device_name (path, device_name);
       if (result == OSAL_OK)
 	{

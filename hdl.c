@@ -1,6 +1,6 @@
 /*
  * hdl.c
- * $Id: hdl.c,v 1.8 2004/08/20 12:35:17 b081 Exp $
+ * $Id: hdl.c,v 1.9 2004/09/12 17:25:26 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -87,6 +87,7 @@ prepare_main (const char *game_name,
   const ps2_partition_header_t *part;
 
   /* read icon */
+  part = NULL;
   result = read_file ("./icon.bin", &icon, &icon_length);
   if (result == OSAL_OK)
     for (i=0; i<table->part_count; ++i)
@@ -371,9 +372,10 @@ inject_data (const char *path,
   const ps2_partition_header_t *part;
   char *buffer = osal_alloc (4 _MB);
 
+  part = NULL;
   if (buffer != NULL)
     {
-      part = NULL;
+      result = RET_NOT_FOUND;
       for (i=0; i<table->part_count; ++i)
 	if (table->parts [i].header.start == starting_partition_sector)
 	  { /* locate starting partition index */
@@ -382,8 +384,6 @@ inject_data (const char *path,
 	    result = part->checksum == apa_partition_checksum (part) ? RET_OK : RET_BAD_APA;
 	    break;
 	  }
-      if (part == NULL) /* not found */
-	result = RET_NOT_FOUND;
     }
   else
     result = RET_NO_MEM;
