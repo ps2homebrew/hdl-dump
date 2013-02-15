@@ -1,6 +1,6 @@
 /*
  * net_io.h
- * $Id: net_io.h,v 1.5 2004/12/04 10:20:52 b081 Exp $
+ * $Id: net_io.h,v 1.6 2005/07/10 21:06:48 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -27,6 +27,7 @@
 #include "config.h"
 #include <stddef.h>
 
+C_START
 
 #define NET_HIO_SERVER_PORT 0x8081  /* port where server would listen */
 
@@ -68,5 +69,7 @@ void rle_expand (const unsigned char *input,
 		 u_int32_t ilength,
 		 unsigned char *output,
 		 u_int32_t *olength);
+
+C_END
 
 #endif /* _NET_IO_H defined? */

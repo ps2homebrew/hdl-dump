@@ -1,6 +1,6 @@
 /*
  * ps2_hdd.h
- * $Id: ps2_hdd.h,v 1.4 2004/12/04 10:20:52 b081 Exp $
+ * $Id: ps2_hdd.h,v 1.5 2005/07/10 21:06:48 bobi Exp $
  *
  * borrowed from ps2fdisk
  */
@@ -9,6 +9,8 @@
 #define _PS2_HDD_H
 
 #include "config.h"
+
+C_START
 
 /* Various PS2 partition constants */
 #define PS2_PARTITION_MAGIC	"APA"	/* "APA\0" */
@@ -72,5 +74,7 @@ typedef struct ps2_partition_header_type
     u_int32_t length;/* Sector count */
   } subs [PS2_PART_MAXSUB];
 } ps2_partition_header_t;
+
+C_END
 
 #endif /* _PS2_HDD_H defined? */

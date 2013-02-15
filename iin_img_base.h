@@ -1,6 +1,6 @@
 /*
  * iin_img_base.h
- * $Id: iin_img_base.h,v 1.5 2004/12/04 10:20:52 b081 Exp $
+ * $Id: iin_img_base.h,v 1.6 2005/07/10 21:06:48 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -24,9 +24,11 @@
 #if !defined (_IIN_IMG_BASE_H)
 #define _IIN_IMG_BASE_H
 
+#include "config.h"
 #include "iin.h"
 #include "osal.h"
 
+C_START
 
 typedef struct iin_img_base_type iin_img_base_t;
 
@@ -46,5 +48,6 @@ int img_base_add_part (iin_img_base_t *img_base,
 void img_base_add_gap (iin_img_base_t *img_base,
 		       u_int32_t length_s);
 
+C_END
 
 #endif /* _IIN_IMG_BASE_H defined? */

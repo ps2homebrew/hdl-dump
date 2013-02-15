@@ -1,6 +1,6 @@
 /*
  * byteseq.h
- * $Id: byteseq.h,v 1.2 2004/12/04 10:20:53 b081 Exp $
+ * $Id: byteseq.h,v 1.3 2005/07/10 21:06:48 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -26,11 +26,14 @@
 
 #include "config.h"
 
+C_START
 
 u_int32_t get_u32 (const void *buffer);
 void set_u32 (void *buffer, u_int32_t val);
 
 u_int16_t get_u16 (const void *buffer);
 void set_u16 (void *buffer, u_int16_t val);
+
+C_END
 
 #endif /* _BYTESEQ_H defined? */

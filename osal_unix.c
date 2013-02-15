@@ -1,6 +1,6 @@
 /*
  * osal_unix.c
- * $Id: osal_unix.c,v 1.4 2004/12/04 10:20:52 b081 Exp $
+ * $Id: osal_unix.c,v 1.5 2005/07/10 21:06:48 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -28,6 +28,9 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#if defined (__APPLE__) /* patch for MacOS X + external USB HDD box by G.S. */
+#  include <sys/disk.h>
+#endif
 #include <fcntl.h>
 #include "retcodes.h"
 #include "osal.h"
@@ -151,6 +154,18 @@ osal_get_estimated_device_size (osal_handle_t handle,
 	  if (curr >= 0)
 	    {
 	      off64_t size = lseek64 (handle.desc, 0, SEEK_END);
+#if defined (__APPLE__) /* patch for MacOS X + external USB HDD box by G.S. */
+	      if (size == 0)
+		{
+		  u_int32_t blocksize;
+		  u_int64_t blockcount;
+		  if (ioctl (handle.desc, DKIOCGETBLOCKSIZE, &blocksize) < 0)
+		    return (OSAL_ERR);
+		  if (ioctl (handle.desc, DKIOCGETBLOCKCOUNT, &blockcount) < 0)
+		    return (OSAL_ERR);
+		  size = blockcount * blocksize;
+		}
+#endif
 	      if (size >= 0)
 		{
 		  *size_in_bytes = size;

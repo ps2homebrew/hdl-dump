@@ -1,6 +1,6 @@
 /*
  * isofs.h
- * $Id: isofs.h,v 1.5 2005/05/06 14:50:35 b081 Exp $
+ * $Id: isofs.h,v 1.6 2005/07/10 21:06:48 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -24,11 +24,16 @@
 #if !defined (_ISOFS_H)
 #define _ISOFS_H
 
+#include "config.h"
 #include "iin.h"
+
+C_START
 
 int isofs_get_ps_cdvd_details (iin_t *iin,
 			       char volume_id [32 + 1],
 			       char signature [12 + 1],
 			       u_int64_t *layer_pvd);
+
+C_END
 
 #endif /* _ISOFS_H defined? */

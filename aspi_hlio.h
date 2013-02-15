@@ -1,6 +1,6 @@
 /*
  * aspi_hlio.h - ASPI high-level I/O
- * $Id: aspi_hlio.h,v 1.5 2005/05/06 14:50:34 b081 Exp $
+ * $Id: aspi_hlio.h,v 1.6 2005/07/10 21:06:48 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -27,6 +27,7 @@
 #include <stddef.h>
 #include "config.h"
 
+C_START
 
 typedef struct scsi_device_type scsi_device_t;
 typedef struct scsi_devices_list_type scsi_devices_list_t;
@@ -81,5 +82,6 @@ const char* aspi_get_last_error_msg (void);
 const char* aspi_get_error_msg (unsigned long aspi_error_code);
 void aspi_dispose_error_msg (char *msg);
 
+C_END
 
 #endif /* _ASPI_HLIO_H defined? */

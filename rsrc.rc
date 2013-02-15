@@ -1,6 +1,6 @@
 /* -*-c-*-
  * rsrc.rc
- * $Id: rsrc.rc,v 1.7 2004/12/04 10:20:52 b081 Exp $
+ * $Id: rsrc.rc,v 1.8 2005/07/10 21:06:48 bobi Exp $
  */
 
 
@@ -40,7 +40,7 @@ BEGIN
       VALUE "FileDescription", "hdl_dump - Windows-based game installer for HD Loader\0"
       VALUE "FileVersion", "\0"
       VALUE "InternalName", "hdl_dump\0"
-      VALUE "LegalCopyright", "© 2004 Wizard of 0z\0"
+      VALUE "LegalCopyright", "© 2004, 2005 Wizard of 0z\0"
       VALUE "LegalTrademarks",
             "Credits goes for Sony and the creators of HD Loader. "
             "Remember guys, you're the one, that opened Pandora's box.\0"

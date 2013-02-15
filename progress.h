@@ -1,6 +1,6 @@
 /*
  * progress.h
- * $Id: progress.h,v 1.7 2004/12/04 10:20:52 b081 Exp $
+ * $Id: progress.h,v 1.8 2005/07/10 21:06:48 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -27,6 +27,7 @@
 #include "config.h"
 #include <time.h>
 
+C_START
 
 /*
  * the shorter that is, the faster it will respond to the changes,
@@ -36,12 +37,12 @@
 
 
 /* high-resolution timers support */
-#if defined (_BUILD_WIN32)
+#if defined (_BUILD_WIN32) && !defined (_BUILD_WINE)
 typedef clock_t highres_time_t;
 #  define HIGHRES_TO_SEC CLOCKS_PER_SEC
 #endif
 
-#if defined (_BUILD_UNIX)
+#if defined (_BUILD_UNIX) || defined (_BUILD_WINE)
 #  include "sys/time.h"
 typedef struct timeval highres_time_t;
 #  define HIGHRES_TO_SEC 1000000 /* microseconds */
@@ -51,7 +52,7 @@ typedef struct timeval highres_time_t;
 typedef struct progress_type progress_t;
 
 /* returns 0 to continue, other to interrupt */
-typedef int (*progress_cb_t) (progress_t *);
+typedef int (*progress_cb_t) (progress_t *, void *);
 
 /* TODO: check overflow with big files */
 struct progress_type
@@ -59,6 +60,7 @@ struct progress_type
   u_int64_t start_, elapsed_;  /* highres_time_val */
   u_int64_t offset_; /* of the current block, absolute */
   progress_cb_t progress_cb_;
+  void *progress_data_;
   int last_elapsed_; /* last time when the estimated has been calculated */
 
   /* history/histogram to track current speed */
@@ -82,7 +84,8 @@ struct progress_type
 };
 
 
-progress_t* pgs_alloc (progress_cb_t progress_cb);
+progress_t* pgs_alloc (progress_cb_t progress_cb,
+		       void *data);
 
 void pgs_free (progress_t *pgs);
 
@@ -94,5 +97,6 @@ void pgs_chunk_complete (progress_t *pgs);
 int pgs_update (progress_t *pgs,
 		u_int64_t curr);
 
+C_END
 
 #endif /* _PROGRESS_H defined? */

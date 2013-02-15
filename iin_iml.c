@@ -1,6 +1,6 @@
 /*
  * iin_iml.c
- * $Id: iin_iml.c,v 1.6 2004/12/04 10:20:52 b081 Exp $
+ * $Id: iin_iml.c,v 1.7 2005/07/10 21:06:48 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -284,7 +284,8 @@ build_file_list (const char *iml_path,
 
 /**************************************************************/
 int
-iin_iml_probe_path (const char *path,
+iin_iml_probe_path (const dict_t *config,
+		    const char *path,
 		    iin_t **iin)
 {
   iml_files_t *list;

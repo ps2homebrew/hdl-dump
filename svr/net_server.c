@@ -1,6 +1,6 @@
 /*
  * svr/net_server.c
- * $Id: net_server.c,v 1.6 2004/12/04 10:28:43 b081 Exp $
+ * $Id: net_server.c,v 1.7 2005/07/10 21:06:48 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -142,7 +142,7 @@ handle_client (int s,
   int game_over = 0;
 
   /* this buffer is aligned @ sector size */
-  sect_data = (unsigned char*) (((long) &unaligned_buffer [0]) & ~(HDD_SECTOR_SIZE - 1));
+  sect_data = (unsigned char*) (((long) &unaligned_buffer [HDD_SECTOR_SIZE - 1]) & ~(HDD_SECTOR_SIZE - 1));
 
   do
     {
@@ -161,9 +161,11 @@ handle_client (int s,
 		result = hio->stat (hio, &size_in_kb);
 		if (result == RET_OK)
 		  /* success */
-		  result = respond (s, command, sector, num_sect, size_in_kb, NULL);
+		  result = respond (s, command, sector, num_sect,
+				    size_in_kb, NULL);
 		else
-		  result = respond (s, command, sector, num_sect, (unsigned long) -1, NULL);
+		  result = respond (s, command, sector, num_sect,
+				    (unsigned long) -1, NULL);
 		if (result != RET_OK)
 		  game_over = 1; /* if data cannot be send disconnect client */
 		break;
@@ -172,7 +174,8 @@ handle_client (int s,
 	    case CMD_HIO_READ:
 	      { /* read sector(s) */
 		u_int32_t bytes_read;
-		result = hio->read (hio, sector, num_sect, sect_data, &bytes_read);
+		result = hio->read (hio, sector, num_sect, sect_data,
+				    &bytes_read);
 		if (result == RET_OK)
 		  {
 		    size_t sectors_read = bytes_read / HDD_SECTOR_SIZE;
@@ -195,11 +198,12 @@ handle_client (int s,
 		int compressed_data = (num_sect & 0xffffff00) != 0;
 
 		if (command == CMD_HIO_WRITE_QACK)
-		  /* send back dummy ACK before receiving & decompressing data */
+		  /* send back dummy ACK before recv & decompressing data */
 		  result = respond (s, command, sector, num_sect, 0, NULL);
 
 		if (compressed_data)
-		  { /* accept compressed data into a temp buffer and expand to target one */
+		  { /* accept compressed data into a temp buffer
+		       and expand to target one */
 		    size_t bytes = num_sect >> 8;
 		    result = recv_exact (s, (char*) compressed, bytes, 0);
 		    if (result == RET_OK)
@@ -211,7 +215,8 @@ handle_client (int s,
 		      }
 		  }
 		else /* accept RAW (uncompressed) data */
-		  result = recv_exact (s, (char*) sect_data, num_sect * HDD_SECTOR_SIZE, 0);
+		  result = recv_exact (s, (char*) sect_data,
+				       num_sect * HDD_SECTOR_SIZE, 0);
 
 		if (result == RET_OK)
 		  {
@@ -234,7 +239,8 @@ handle_client (int s,
 			command == CMD_HIO_WRITE)
 		      /* send back real ACK */
 		      result = respond (s, command, sector, num_sect,
-					result == RET_OK ? sectors_written : (unsigned long) -1,
+					(result == RET_OK ? sectors_written :
+					 (unsigned long) -1),
 					NULL);
 		    if (result != RET_OK)
 		      game_over = 1; /* disconnect client on error */
@@ -249,7 +255,8 @@ handle_client (int s,
 	      { /* get TCP_NODELAY sock option */
 	      	unsigned long ret;
 	      	unsigned int len = sizeof (ret);
-		result = getsockopt (s, IPPROTO_TCP, TCP_NODELAY, (void*) &ret, (void*) &len);
+		result = getsockopt (s, IPPROTO_TCP, TCP_NODELAY,
+				     (void*) &ret, (void*) &len);
 		if (result != 0 || len != sizeof (ret))
 		  ret = -2;
 		result = respond (s, command, sector, num_sect, ret, NULL);
@@ -259,7 +266,8 @@ handle_client (int s,
 	    case CMD_HIO_S_TCPNODELAY:
 	      { /* set TCP_NODELAY sock option */
 		unsigned long ret = setsockopt (s, IPPROTO_TCP, TCP_NODELAY,
-						(void*) &sector, sizeof (sector));
+						(void*) &sector,
+						sizeof (sector));
 		result = respond (s, command, sector, num_sect, ret, NULL);
 		break;
 	      }

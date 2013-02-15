@@ -1,6 +1,6 @@
 /*
  * hio_net.h - TCP/IP networking access to PS2 HDD
- * $Id: hio_net.h,v 1.3 2004/12/04 10:20:52 b081 Exp $
+ * $Id: hio_net.h,v 1.4 2005/07/10 21:06:48 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -24,12 +24,17 @@
 #if !defined (_HIO_NET_H)
 #define _HIO_NET_H
 
+#include "config.h"
 #include "hio.h"
 
+C_START
 
-/* accepts paths of the following form: "a.b.c.d", where a.b.c.d is a valid IP address */
-int hio_net_probe (const char *path,
+/* accepts paths of the following form: "a.b.c.d",
+   where a.b.c.d is a valid IP address */
+int hio_net_probe (const dict_t *config,
+		   const char *path,
 		   hio_t **hio);
 
+C_END
 
 #endif /* _HIO_NET_H defined? */

@@ -1,6 +1,6 @@
 /*
  * hdl.c
- * $Id: hdl.c,v 1.12 2005/05/06 14:50:34 b081 Exp $
+ * $Id: hdl.c,v 1.13 2005/07/10 21:06:48 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -117,7 +117,7 @@ prepare_main (const hdl_game_t *details,
   if (result == OSAL_OK) {
     if (index != (u_int32_t) -1)
       {
-	unsigned long *tmp;
+	u_int32_t *tmp;
 	u_int32_t offset;
 	u_int32_t size_remaining_in_kb;
 	u_int32_t partition_usable_size_in_kb;
@@ -145,7 +145,7 @@ prepare_main (const hdl_game_t *details,
 	 *         |  |  |  |  +--+--+--+- same as =>   +--+--+--+- BE, icon length in bytes
 	 *         +--+--+--+- part offset relative to 0x1000
 	 */
-	tmp = (unsigned long*) (buffer_4m + 0x001010);
+	tmp = (u_int32_t*) (buffer_4m + 0x001010);
 	set_u32 (tmp++, 0x0200);
 	set_u32 (tmp++, strlen (HDL_HDR1));
 	set_u32 (tmp++, 0x0400);
@@ -196,7 +196,7 @@ prepare_main (const hdl_game_t *details,
 	 *1010a0: 00 00 00 00 00 00 00 00  00 00 00 00 53 43 45 53  ............SCES
 	 *1010b0: 5f 35 30 33 2e 36 30 00  00 00 00 00 00 00 00 00  _503.60.........
 	 */
-	buffer_4m [0x1010a8] = details->compat_flags;
+	set_u16 (buffer_4m + 0x1010a8, details->compat_flags);
 	memcpy (buffer_4m + 0x1010ac, details->startup, strlen (details->startup));
 
 	/*
@@ -216,10 +216,10 @@ prepare_main (const hdl_game_t *details,
 	 */
 
 	/* that is aerial acrobatics :-) */
-	*(u_int32_t *)(&buffer_4m [0x1010e8]) = details->layer_break;
+	set_u32 (buffer_4m + 0x1010e8, details->layer_break);
 	buffer_4m [0x1010ec] = details->is_dvd ? 0x14 : 0x12;
 	buffer_4m [0x1010f0] = (u_int8_t) (get_u32 (&part->nsub) + 1);
-	tmp = (unsigned long*) (buffer_4m + 0x1010f5);
+	tmp = (u_int32_t*) (buffer_4m + 0x1010f5);
 
 	partition_usable_size_in_kb = (get_u32 (&part->length) - 0x2000) / 2; /* 2 sectors == 1K */
 	partition_data_len_in_kb =
@@ -292,14 +292,15 @@ hdl_pname (const char *name,
 
 /**************************************************************/
 int
-hdl_extract (const char *device_name,
+hdl_extract (const dict_t *config,
+	     const char *device_name,
 	     const char *game_name,
 	     const char *output_file,
 	     progress_t *pgs)
 {
   apa_partition_table_t *table;
 
-  int result = apa_ptable_read (device_name, &table);
+  int result = apa_ptable_read (config, device_name, &table);
   if (result == RET_OK)
     {
       u_int32_t partition_index;
@@ -307,7 +308,7 @@ hdl_extract (const char *device_name,
       if (result == RET_NOT_FOUND)
 	{ /* assume it is `game_name' and not a partition name */
 	  char partition_id [PS2_PART_IDMAX + 8];
-	  result = hdl_lookup_partition (device_name, game_name, partition_id);
+	  result = hdl_lookup_partition (config, device_name, game_name, partition_id);
 	  if (result == RET_OK)
 	    result = apa_find_partition (table, partition_id, &partition_index);
 	}
@@ -319,7 +320,7 @@ hdl_extract (const char *device_name,
 	  if (buffer != NULL)
 	    {
 	      hio_t *hio;
-	      result = hio_probe (device_name, &hio);
+	      result = hio_probe (config, device_name, &hio);
 	      if (result == OSAL_OK)
 		{
 		  u_int32_t len;
@@ -400,7 +401,8 @@ hdl_extract (const char *device_name,
 
 /**************************************************************/
 static int
-inject_data (hio_t *hio,
+inject_data (const dict_t *config,
+	     hio_t *hio,
 	     const apa_partition_table_t *table,
 	     u_int32_t starting_partition_sector,
 	     iin_t *iin,
@@ -494,7 +496,7 @@ inject_data (hio_t *hio,
 
 	  /* finally: commit partition table */
 	  if (result == OSAL_OK)
-	    result = apa_commit_ex (hio, table);
+	    result = apa_commit_ex (config, hio, table);
 	}
     }
 
@@ -507,13 +509,14 @@ inject_data (hio_t *hio,
 
 /**************************************************************/
 int
-hdl_inject (hio_t *hio,
+hdl_inject (const dict_t *config,
+	    hio_t *hio,
 	    iin_t *iin,
 	    hdl_game_t *details,
 	    progress_t *pgs)
 {
   apa_partition_table_t *table = NULL;
-  int result = apa_ptable_read_ex (hio, &table);
+  int result = apa_ptable_read_ex (config, hio, &table);
   if (result == OSAL_OK)
     {
       u_int32_t sector_size, num_sectors;
@@ -527,14 +530,16 @@ hdl_inject (hio_t *hio,
 
 	  if (details->partition_name [0] == '\0')
 	    {
-	      if (strcmp (PARTITION_NAMING, "toxic_os") == 0)
+	      if (strcmp (dict_lookup (config, CONFIG_PARTITION_NAMING),
+			  CONFIG_PARTITION_NAMING_TOXICOS) == 0)
 		/* Toxic OS partition naming: "PP.HDL.STARTUP" */
 		hdl_pname (details->startup, details->partition_name);
-	      else if (strcmp (PARTITION_NAMING, "standard") == 0)
+	      else if (strcmp (dict_lookup (config, CONFIG_PARTITION_NAMING),
+			       CONFIG_PARTITION_NAMING_STANDARD) == 0)
 		/* HD Loader partition naming: "PP.HDL.Game name" */
 		hdl_pname (details->name, details->partition_name);
 	      else
-		/* default to standard if unknown option */
+		/* revert to standard when unknown */
 		hdl_pname (details->name, details->partition_name);
 	    }
 
@@ -542,13 +547,8 @@ hdl_inject (hio_t *hio,
 				       &new_partition_start, 0); /* order by size desc */
 	  if (result == RET_OK)
 	    {
-	      result = inject_data (hio,
-				    table,
-				    new_partition_start,
-				    iin,
-				    size_in_kb,
-				    details,
-				    pgs);
+	      result = inject_data (config, hio, table, new_partition_start,
+				    iin, size_in_kb, details, pgs);
 	    }
 	}
     }
@@ -604,13 +604,14 @@ hdl_ginfo_read (hio_t *hio,
 
 /**************************************************************/
 int
-hdl_glist_read (hio_t *hio,
+hdl_glist_read (const dict_t *config,
+		hio_t *hio,
 		hdl_games_list_t **glist)
 {
   apa_partition_table_t *ptable;
   int result;
 
-  result = apa_ptable_read_ex (hio, &ptable);
+  result = apa_ptable_read_ex (config, hio, &ptable);
   if (result == RET_OK)
     {
       u_int32_t i, count = 0;
@@ -670,31 +671,44 @@ hdl_glist_free (hdl_games_list_t *glist)
 
 /**************************************************************/
 int
-hdl_lookup_partition (const char *device_name,
+hdl_lookup_partition_ex (const dict_t *config,
+			 hio_t *hio,
+			 const char *game_name,
+			 char partition_id [PS2_PART_IDMAX + 1])
+{
+  hdl_games_list_t *games = NULL;
+  int result = hdl_glist_read (config, hio, &games);
+  if (result == RET_OK)
+    {
+      int i, found = 0;
+      for (i=0; i<games->count; ++i)
+	if (caseless_compare (game_name, games->games [i].name))
+	  { /* found */
+	    strcpy (partition_id, games->games [i].partition_name);
+	    found = 1;
+	    break;
+	  }
+      if (!found)
+	result = RET_NOT_FOUND;
+
+      hdl_glist_free (games);
+    }
+  return (result);
+}
+
+
+/**************************************************************/
+int
+hdl_lookup_partition (const dict_t *config,
+		      const char *device_name,
 		      const char *game_name,
 		      char partition_id [PS2_PART_IDMAX + 1])
 {
   hio_t *hio = NULL;
-  int result = hio_probe (device_name, &hio);
+  int result = hio_probe (config, device_name, &hio);
   if (result == RET_OK)
     {
-      hdl_games_list_t *games = NULL;
-      result = hdl_glist_read (hio, &games);
-      if (result == RET_OK)
-	{
-	  int i, found = 0;
-	  for (i=0; i<games->count; ++i)
-	    if (caseless_compare (game_name, games->games [i].name))
-	      { /* found */
-		strcpy (partition_id, games->games [i].partition_name);
-		found = 1;
-		break;
-	      }
-	  if (!found)
-	    result = RET_NOT_FOUND;
-
-	  hdl_glist_free (games);
-	}
+      result = hdl_lookup_partition_ex (config, hio, game_name, partition_id);
       hio->close (hio);
     }
   return (result);

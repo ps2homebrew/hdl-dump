@@ -1,0 +1,6 @@
+#!/bin/sh
+
+# /usr/lib/wine/wine.bin winedbg.exe -cd /home/bobi/p/hdl_dump/gui/ -fullname --gdb /home/bobi/p/hdl_dump/gui/hdl_dumb.exe.so ...
+
+cd ~/p/hdl_dump/gui
+winedbg --gdb ./hdl_dumb.exe.so

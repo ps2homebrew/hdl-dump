@@ -1,6 +1,6 @@
-*
+/*
  * gui_main.c
- * $Id: gui_main.c,v 1.6 2005/05/06 14:50:35 b081 Exp $
+ * $Id: gui_main.c,v 1.7 2005/07/10 21:06:48 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -36,6 +36,9 @@
 #include "../isofs.h"
 #include "../iin.h"
 #include "../hio.h"
+#include "../hio_probe.h"
+#include "../dict.h"
+#include "../common.h"
 
 
 /*
@@ -50,18 +53,23 @@
 #endif
 
 
-HINSTANCE inst;
-osal_dlist_t *hard_drives_ = NULL;
-osal_dlist_t *optical_drives_ = NULL;
-HWND progress_dlg;
-int interrupted;
+static HINSTANCE inst;
+static osal_dlist_t *hard_drives_ = NULL;
+static osal_dlist_t *optical_drives_ = NULL;
+static HWND progress_dlg;
+static int interrupted;
 
-HIMAGELIST iml = NULL;
+static HIMAGELIST iml = NULL;
 
-char config_file_ [MAX_PATH + 1];
+static hdl_games_list_t *games_ = NULL;
+static hio_t *hio_ = NULL;
+static dict_t *config_ = NULL;
 
-hdl_games_list_t *games_ = NULL;
-hio_t *hio_ = NULL;
+static const DWORD MODE_IDC[] =
+  {
+    IDC_MODE1, IDC_MODE2, IDC_MODE3, IDC_MODE4,
+    IDC_MODE5, IDC_MODE6, IDC_MODE7, IDC_MODE8
+  };
 
 
 /**************************************************************/
@@ -173,7 +181,7 @@ dlg_init_contents_list (HWND dlg)
   HWND lvw = GetDlgItem (dlg, IDC_CONTENTS);
   LVCOLUMN col;
   RECT rc;
-  int total_w;
+  int total_w, name_pc, flags_pc, size_pc;
 
   /* set-up icons for the games list */
   iml = ImageList_Create (15, 15, ILC_COLOR4 | ILC_MASK, 4, 4);
@@ -194,13 +202,10 @@ dlg_init_contents_list (HWND dlg)
       ListView_SetImageList (lvw, iml, LVSIL_SMALL);
     }
 
-  /*
   ListView_SetExtendedListViewStyle (lvw,
 				     ListView_GetExtendedListViewStyle (lvw) |
 				     LVS_EX_FULLROWSELECT |
-				     LVS_EX_GRIDLINES |
-				     LVS_EX_LABELTIP);
-  */
+				     LVS_EX_GRIDLINES);
 
   GetWindowRect (lvw, &rc);
   total_w = rc.right - rc.left - 25; /* 25 is approx. scroll width */
@@ -208,21 +213,25 @@ dlg_init_contents_list (HWND dlg)
   memset (&col, 0, sizeof (LVCOLUMN));
   col.mask = LVCF_FMT | LVCF_WIDTH | LVCF_TEXT;
 
+  flags_pc = 10 + 2 * MAX_FLAGS;
+  size_pc = 20;
+  name_pc = 100 - flags_pc - size_pc;
+
   /* partition name */
   col.fmt = LVCFMT_LEFT;
-  col.cx = (total_w * 65) / 100;
+  col.cx = (total_w * name_pc) / 100;
   col.pszText = get_string (IDS_NAME_LBL, 0);
   ListView_InsertColumn (lvw, 0, &col);
 
   /* flags */
   col.fmt = LVCFMT_RIGHT;
-  col.cx = (total_w * 15) / 100;
+  col.cx = (total_w * flags_pc) / 100;
   col.pszText = get_string (IDS_FLAGS_LBL, 0);
   ListView_InsertColumn (lvw, 1, &col);
 
   /* size */
   col.fmt = LVCFMT_RIGHT;
-  col.cx = (total_w * 20) / 100;
+  col.cx = (total_w * size_pc) / 100;
   col.pszText = get_string (IDS_SIZE_LBL, 0);
   ListView_InsertColumn (lvw, 2, &col);
 }
@@ -236,6 +245,7 @@ dlg_switch_operation (HWND dlg)
 
   int inject_show = !inject_mode ? SW_HIDE : SW_SHOW;
   int examine_show = inject_mode ? SW_HIDE : SW_SHOW;
+  size_t i;
 
   ShowWindow (GetDlgItem (dlg, IDC_SOURCE_LBL), inject_show);
 
@@ -259,9 +269,8 @@ dlg_switch_operation (HWND dlg)
   ShowWindow (GetDlgItem (dlg, IDC_SIGNATURE), inject_show);
 
   ShowWindow (GetDlgItem (dlg, IDC_FLAGS_LBL), inject_show);
-  ShowWindow (GetDlgItem (dlg, IDC_MODE1), inject_show);
-  ShowWindow (GetDlgItem (dlg, IDC_MODE2), inject_show);
-  ShowWindow (GetDlgItem (dlg, IDC_MODE3), inject_show);
+  for (i = 0; i < MAX_FLAGS; ++i)
+    ShowWindow (GetDlgItem (dlg, MODE_IDC[i]), inject_show && MAX_FLAGS > i);
 
   SetWindowText (GetDlgItem (dlg, IDC_ACTION),
 		 get_string (inject_show ? IDS_INSTALL_LBL : IDS_DELETE_LBL, 0));
@@ -373,10 +382,10 @@ dlg_refresh_hdd_info (HWND dlg)
   dlg_get_target (dlg, hdd);
   if (hdd [0] != '\0')
     {
-      result = hio_probe (hdd, &hio_);
+      result = hio_probe (config_, hdd, &hio_);
       if (result == RET_OK)
 	{
-	  result = hdl_glist_read (hio_, &games_);
+	  result = hdl_glist_read (config_, hio_, &games_);
 	  if (result == RET_OK)
 	    { /* show free space info */
 	      char details [100];
@@ -395,6 +404,7 @@ dlg_refresh_hdd_info (HWND dlg)
 		  const hdl_game_info_t *game = &games_->games [i];
 		  int index;
 		  LVITEM lv;
+		  size_t j;
 
 		  lv.mask = LVIF_TEXT | LVIF_IMAGE;
 		  lv.iItem = count;
@@ -405,12 +415,15 @@ dlg_refresh_hdd_info (HWND dlg)
 		  index = ListView_InsertItem (lvw, &lv);
 
 		  details [0] = details [1] = '\0';
-		  if (game->compat_flags & 0x01)
-		    strcat (details, "+1");
-		  if (game->compat_flags & 0x02)
-		    strcat (details, "+2");
-		  if (game->compat_flags & 0x04)
-		    strcat (details, "+3");
+		  for (j = 0; j < MAX_FLAGS; ++j)
+		    { /* build compatibility flags text */
+		      if (game->compat_flags & (1 << j))
+			{
+			  char tmp[10];
+			  sprintf (tmp, "+%u", j + 1);
+			  strcat (details, tmp);
+			}
+		    }
 		  ListView_SetItemText (lvw, index, 1, details + 1);
 
 		  sprintf (details, "%ld MB", game->total_size_in_kb / 1024);
@@ -423,7 +436,7 @@ dlg_refresh_hdd_info (HWND dlg)
 	      if (IsDlgButtonChecked (dlg, IDC_PS2HDD_NETWORK) == BST_CHECKED)
 		{
 		  EnableWindow (GetDlgItem (dlg, IDC_NET_U2LINK), FALSE);
-		  WritePrivateProfileString ("defaults", "ip", hdd, config_file_);
+		  dict_put (config_, CONFIG_LAST_IP, hdd);
 		}
 	    } /* games list loaded? */
 	} /* hio_probe? */
@@ -448,10 +461,31 @@ void
 fill_name_and_signature (HWND dlg,
 			 iin_t *iin)
 {
-  char volume_id [32 + 1], signature [12 + 1];
-  int result = isofs_get_ps_cdvd_details (iin, volume_id, signature);
+  char volume_id [HDL_GAME_NAME_MAX + 1], signature [12 + 1];
+  u_int64_t layer_break;
+  int result = isofs_get_ps_cdvd_details (iin, volume_id,
+					  signature, &layer_break);
   if (result == OSAL_OK)
-    { /* automatically fill game name and signature */
+    { /* automatically fill game name and startup file */
+      if (strlen (signature) > 0)
+	{
+	  compat_flags_t flags;
+	  result = ddb_lookup (config_, signature, volume_id, &flags);
+	  if (result == RET_OK)
+	    {
+	      size_t i;
+	      for (i = 0; i < MAX_FLAGS; ++i)
+		CheckDlgButton (dlg, MODE_IDC[i], (flags & (1 << i) ?
+						   BST_CHECKED : BST_UNCHECKED));
+	    }
+	  else if (result == RET_DDB_INCOMPATIBLE)
+	    { /* marked as incompatible; warn */
+	      MessageBox (dlg, get_string (IDS_INCOMPATIBLE_GAME, 0),
+			  get_string (IDS_INCOMPATIBLE_GAME_TITLE, 1),
+			  MB_OK | MB_ICONWARNING);
+	    }
+	}
+
       if (strlen (volume_id) > 0)
 	SetWindowText (GetDlgItem (dlg, IDC_GAMENAME), volume_id);
       if (strlen (signature) > 0)
@@ -475,7 +509,7 @@ show_source_info (HWND dlg)
   if (strlen (source) > 0)
     {
       iin_t *iin;
-      result = iin_probe (source, &iin);
+      result = iin_probe (config_, source, &iin);
       if (result == OSAL_OK)
 	{
 	  u_int32_t sector_size, num_sectors;
@@ -597,7 +631,7 @@ progress_dlg_proc (HWND dlg,
 
 /**************************************************************/
 int
-progress_cb (progress_t *pgs)
+progress_cb (progress_t *pgs, void *data)
 {
   HWND progress_ind_wnd = GetDlgItem (progress_dlg, IDC_PROGRESS);
   HWND elapsed_wnd = GetDlgItem (progress_dlg, IDC_ELAPSED);
@@ -653,7 +687,7 @@ progress_cb (progress_t *pgs)
 progress_t*
 get_progress (HWND dlg)
 {
-  progress_t *pgs = pgs_alloc (&progress_cb);
+  progress_t *pgs = pgs_alloc (&progress_cb, NULL);
   if (pgs != NULL)
     {
       progress_dlg = CreateDialog (inst, MAKEINTRESOURCE (IDD_PROGRESS_DLG),
@@ -708,22 +742,24 @@ install (HWND dlg)
       strlen (source) > 0)
     {
       iin_t *iin;
-      int result = iin_probe (source, &iin);
+      int result = iin_probe (config_, source, &iin);
       if (result == RET_OK)
 	{
 	  progress_t *pgs;
 	  hdl_game_t game;
+	  size_t i;
 
 	  memset (&game, 0, sizeof (hdl_game_t));
 	  strcpy (game.name, game_name);
 	  strcpy (game.startup, signature);
-	  game.compat_flags = ((IsDlgButtonChecked (dlg, IDC_MODE1) == BST_CHECKED ? 0x01 : 0x00) |
-			       (IsDlgButtonChecked (dlg, IDC_MODE2) == BST_CHECKED ? 0x02 : 0x00) |
-			       (IsDlgButtonChecked (dlg, IDC_MODE3) == BST_CHECKED ? 0x04 : 0x00));
+	  game.compat_flags = 0;
+	  for (i = 0; i < MAX_FLAGS; ++i)
+	    game.compat_flags |= (IsDlgButtonChecked (dlg, MODE_IDC[i]) == BST_CHECKED ? 1 << i : 0);
 	  game.is_dvd = input_is_dvd;
+	  game.layer_break = 0; /* unsupported w/o ASPI */
 
 	  pgs = get_progress (dlg);
-	  result = hdl_inject (hio_, iin, &game, pgs);
+	  result = hdl_inject (config_, hio_, iin, &game, pgs);
 	  dispose_progress (pgs);
 
 	  iin->close (iin);
@@ -748,7 +784,7 @@ delete (HWND dlg)
   if (device [0] != '\0')
     {
       apa_partition_table_t *ptable;
-      int result = apa_ptable_read_ex (hio_, &ptable);
+      int result = apa_ptable_read_ex (config_, hio_, &ptable);
       if (result == RET_OK)
 	{
 	  /* TODO: re-read games_ */
@@ -777,7 +813,7 @@ delete (HWND dlg)
 		    }
 		}
 	      if (result == RET_OK)
-		result = apa_commit_ex (hio_, ptable);
+		result = apa_commit_ex (config_, hio_, ptable);
 	    } /* confirmation */
 	  apa_ptable_free (ptable);
 	} /* ptable_read */
@@ -811,13 +847,11 @@ dlg_init (HWND dlg)
     SetClassLong (dlg, GCL_HICON, (LONG) icon);
 
   { /* set-up default/last IP address */
-    char tmp [20];
+    const char *ip_tmp = dict_lookup (config_, CONFIG_LAST_IP);
     DWORD ip;
-    if (GetPrivateProfileString ("defaults", "ip", "192.168.0.10",
-				 tmp, sizeof (tmp), config_file_) > 0)
-      ip = ntohl (inet_addr (tmp)); /* cast to host byte order */
-    else
-      ip = DEFAULT_IP;
+    if (ip_tmp == NULL)
+      ip_tmp = "192.168.0.10";
+    ip = ntohl (inet_addr (ip_tmp)); /* cast to host byte order */
     SendMessage (GetDlgItem (dlg, IDC_PS2IP), IPM_SETADDRESS, 0, ip);
   }
 
@@ -927,7 +961,8 @@ main_dlg_proc (HWND dlg,
 	      break;
 
 	    case IDC_ACTION:
-	      install_or_delete (dlg);
+	      if (hio_ != NULL)
+		install_or_delete (dlg);
 	      break;
 
 	    case IDCANCEL:
@@ -993,14 +1028,35 @@ WinMain (HINSTANCE curr_inst,
   int result;
   INITCOMMONCONTROLSEX iccx;
 
-  if (GetModuleFileName (NULL, config_file_, sizeof (config_file_) - 5) > 0)
-    { /* get last successful networked server */
-      char *p = strrchr (config_file_, '.');
-      if (p != NULL) *p = '\0';
-      strcat (config_file_, ".conf");
+  /* read and resave config file */
+  char config_file[256], disc_database[256];
+  char *profile = getenv ("USERPROFILE");
+  if (profile != NULL)
+    { /* put it in user profile this time; share configuration with hdl_dump */
+      strcpy (config_file, profile);
+      strcat (config_file, "\\Application Data\\hdl_dump.conf");
+      strcpy (disc_database, profile);
+      strcat (disc_database, "\\Application Data\\hdl_dump.list");
     }
   else
-    strcpy (config_file_, "hdl_dumb.conf");
+    { /* no USERPROFILE with winelib/wine */
+      strcpy (config_file, "./hdl_dump.conf");
+      strcpy (disc_database, "./hdl_dump.list");
+    }
+  config_ = dict_alloc ();
+  if (config_ != NULL)
+    { /* initialize defaults */
+      dict_put_flag (config_, CONFIG_LIMIT_TO_28BIT_FLAG, 1);
+      dict_put_flag (config_, CONFIG_ENABLE_ASPI_FLAG, 0);
+      dict_put (config_, CONFIG_PARTITION_NAMING,
+		CONFIG_PARTITION_NAMING_TOXICOS);
+      dict_put_flag (config_, CONFIG_USE_COMPRESSION_FLAG, 1);
+      dict_put (config_, CONFIG_LAST_IP, "192.168.0.10");
+      dict_put (config_, CONFIG_DISC_DATABASE_FILE, disc_database);
+
+      dict_restore (config_, config_file);
+      dict_store (config_, config_file);
+    }
 
   /* that way of common controls init should work fine with Windows 2000 */
   iccx.dwSize = sizeof (iccx);
@@ -1015,6 +1071,9 @@ WinMain (HINSTANCE curr_inst,
 
   if (hio_ != NULL)
     hio_->close (hio_);
+
+  dict_store (config_, config_file);
+  dict_free (config_);
 
   return (0);
 }

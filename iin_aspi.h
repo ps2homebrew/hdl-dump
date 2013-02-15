@@ -1,6 +1,6 @@
 /*
  * iin_aspi.h
- * $Id: iin_aspi.h,v 1.4 2004/12/04 10:20:52 b081 Exp $
+ * $Id: iin_aspi.h,v 1.5 2005/07/10 21:06:48 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -24,13 +24,17 @@
 #if !defined (_IIN_ASPI_H)
 #define _IIN_ASPI_H
 
-
+#include "config.h"
 #include "iin.h"
+
+C_START
 
 /* would accept "cd0:2:0" */
 int
-iin_aspi_probe_path (const char *path,
+iin_aspi_probe_path (const dict_t *config,
+		     const char *path,
 		     iin_t **iin);
 
+C_END
 
 #endif /* _IIN_ASPI_H defined? */

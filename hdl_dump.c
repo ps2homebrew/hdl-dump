@@ -1,6 +1,6 @@
 /*
  * hdl_dump.c
- * $Id: hdl_dump.c,v 1.15 2005/05/06 14:50:35 b081 Exp $
+ * $Id: hdl_dump.c,v 1.16 2005/07/10 21:06:48 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -43,9 +43,8 @@
 #include "aligned.h"
 #include "hio_probe.h"
 #include "net_io.h"
-#if defined (_WITH_ASPI)
-#  include "aspi_hlio.h"
-#endif
+#include "dict.h"
+#include "aspi_hlio.h"
 
 
 /* command names */
@@ -77,6 +76,7 @@
 #define CMD_HDL_EXTRACT "extract"
 #define CMD_HDL_INJECT_CD "inject_cd"
 #define CMD_HDL_INJECT_DVD "inject_dvd"
+#define CMD_HDL_INSTALL "install"
 #define CMD_CDVD_INFO "cdvd_info"
 #if defined (INCLUDE_READ_TEST_CMD)
 #  define CMD_READ_TEST "read_test"
@@ -90,9 +90,6 @@
 #endif
 
 
-#define MAX_FLAGS 6
-
-
 /**************************************************************/
 static void
 show_apa_toc (const apa_partition_table_t *table)
@@ -101,12 +98,12 @@ show_apa_toc (const apa_partition_table_t *table)
 
   for (i=0; i<table->part_count; ++i)
     {
-      const ps2_partition_header_t *part = &table->parts [i].header;
+      const ps2_partition_header_t *part = &table->parts[i].header;
 	  
       fprintf (stdout, "%06lx00%c%c %5luMB ",
 	       (unsigned long) (get_u32 (&part->start) >> 8),
-	       table->parts [i].existing ? '.' : '*',
-	       table->parts [i].modified ? '*' : ':',
+	       table->parts[i].existing ? '.' : '*',
+	       table->parts[i].modified ? '*' : ':',
 	       (unsigned long) (get_u32 (&part->length) / 2048));
       if (get_u32 (&part->main) == 0)
 	fprintf (stdout, "%4x [%-*s]\n",
@@ -141,7 +138,7 @@ show_apa_map (const apa_partition_table_t *table)
 		 (unsigned int) ((i / ((GIGS_PER_ROW * 1024) / 128)) *
 				 GIGS_PER_ROW));
 
-      fputc (map [i], stdout);
+      fputc (map[i], stdout);
       if ((count & 0x07) == 0x07)
 	fputc (' ', stdout);
 
@@ -162,10 +159,11 @@ show_apa_map (const apa_partition_table_t *table)
 
 /**************************************************************/
 static int
-show_toc (const char *device_name)
+show_toc (const dict_t *config,
+	  const char *device_name)
 {
   apa_partition_table_t *table;
-  int result = apa_ptable_read (device_name, &table);
+  int result = apa_ptable_read (config, device_name, &table);
   if (result == RET_OK)
     {
       show_apa_toc (table);
@@ -177,14 +175,15 @@ show_toc (const char *device_name)
 
 /**************************************************************/
 static int
-show_hdl_toc (const char *device_name)
+show_hdl_toc (const dict_t *config,
+	      const char *device_name)
 {
   hio_t *hio;
-  int result = hio_probe (device_name, &hio);
+  int result = hio_probe (config, device_name, &hio);
   if (result == RET_OK)
     {
       hdl_games_list_t *glist;
-      result = hdl_glist_read (hio, &glist);
+      result = hdl_glist_read (config, hio, &glist);
       if (result == RET_OK)
 	{
 	  u_int32_t i, j;
@@ -194,7 +193,7 @@ show_hdl_toc (const char *device_name)
 	  for (i=0; i<glist->count; ++i)
 	    {
 	      const hdl_game_info_t *game = glist->games + i;
-	      char compat_flags [MAX_FLAGS * 2 + 1] = { 0 };
+	      char compat_flags[MAX_FLAGS * 2 + 1] = { 0 };
 	      for (j=0; j<MAX_FLAGS; ++j)
 		if (game->compat_flags & (1 << j))
 		  {
@@ -256,7 +255,7 @@ show_hdl_game_info (const char *device_name,
 	  result = apa_find_partition (table, game_name, &partition_index);
 	  if (result == RET_NOT_FOUND)
 	    { /* use heuristics - look among the HD Loader partitions */
-	      char tmp [100];
+	      char tmp[100];
 	      strcpy (tmp, "PP.HDL.");
 	      strcat (tmp, game_name);
 	      result = apa_find_partition (table, tmp, &partition_index);
@@ -270,21 +269,21 @@ show_hdl_game_info (const char *device_name,
 		{
 		  u_int32_t len;
 		  result = hio->read (hio,
-				      get_u32 (&table->parts [partition_index].header.start),
+				      get_u32 (&table->parts[partition_index].header.start),
 				      (4 _MB) / HDD_SECTOR_SIZE, buffer, &len);
 		  if (result == OSAL_OK)
 		    {
 		      const char *signature = (char*) buffer + 0x001010ac;
 		      const char *hdl_name = (char*) buffer + 0x00101008;
-		      u_int32_t type = buffer [0x001010ec];
-		      u_int32_t num_parts = buffer [0x001010f0];
+		      u_int32_t type = buffer[0x001010ec];
+		      u_int32_t num_parts = buffer[0x001010f0];
 		      const u_int32_t *data = (u_int32_t*) (buffer + 0x001010f5);
 		      u_int32_t i;
 
-		      if (buffer [0x00101000] == 0xed &&
-			  buffer [0x00101001] == 0xfe &&
-			  buffer [0x00101002] == 0xad &&
-			  buffer [0x00101003] == 0xde)
+		      if (buffer[0x00101000] == 0xed &&
+			  buffer[0x00101001] == 0xfe &&
+			  buffer[0x00101002] == 0xad &&
+			  buffer[0x00101003] == 0xde)
 			{ /* 0xdeadfeed magic found */
 			  u_int64_t total_size = 0;
 
@@ -295,14 +294,14 @@ show_hdl_game_info (const char *device_name,
 
 			  fprintf (stdout, "%s: [%s], %s\n",
 				   signature, hdl_name, (type == 0x14 ? "DVD" : "CD"));
-			  if (buffer [0x1010a8] != 0)
+			  if (buffer[0x1010a8] != 0)
 			    {
-			      char compat_flags [6 + 1] = { "" };
-			      if (buffer [0x1010a8] & 0x01)
+			      char compat_flags[6 + 1] = { "" };
+			      if (buffer[0x1010a8] & 0x01)
 				strcat (compat_flags, "+1");
-			      if (buffer [0x1010a8] & 0x02)
+			      if (buffer[0x1010a8] & 0x02)
 				strcat (compat_flags, "+2");
-			      if (buffer [0x1010a8] & 0x04)
+			      if (buffer[0x1010a8] & 0x04)
 				strcat (compat_flags, "+3");
 			      fprintf (stdout, "compatibility flags: %s\n",
 				       compat_flags + 1);
@@ -371,24 +370,25 @@ show_apa_cut_out_for_inject (const char *device_name,
 
 /**************************************************************/
 static int
-delete_partition (const char *device_name,
+delete_partition (const dict_t *config,
+		  const char *device_name,
 		  const char *name)
 {
   apa_partition_table_t *table;
-  int result = apa_ptable_read (device_name, &table);
+  int result = apa_ptable_read (config, device_name, &table);
   if (result == RET_OK)
     {
       result = apa_delete_partition (table, name);
       if (result == RET_NOT_FOUND)
 	{ /* assume `name' is game name, instead of partition name */
-	  char partition_id [PS2_PART_IDMAX + 1];
-	  result = hdl_lookup_partition (device_name, name, partition_id);
+	  char partition_id[PS2_PART_IDMAX + 1];
+	  result = hdl_lookup_partition (config, device_name, name, partition_id);
 	  if (result == RET_OK)
 	    result = apa_delete_partition (table, partition_id);
 	}
 
       if (result == RET_OK)
-	result = apa_commit (device_name, table);
+	result = apa_commit (config, device_name, table);
 
       apa_ptable_free (table);
     }
@@ -490,7 +490,7 @@ zero_device (const char *device_name)
 
 /**************************************************************/
 static int
-query_devices (void)
+query_devices (const dict_t *config)
 {
   osal_dlist_t *hard_drives;
   osal_dlist_t *optical_drives;
@@ -507,7 +507,8 @@ query_devices (void)
 	  fprintf (stdout, "\t%s ", dev->name);
 	  if (dev->status == 0)
 	    {
-	      fprintf (stdout, "%lu MB", (unsigned long) (dev->capacity / 1024) / 1024);
+	      fprintf (stdout, "%lu MB",
+		       (unsigned long) (dev->capacity / 1024) / 1024);
 	      if (dev->is_ps2 == RET_OK)
 		fprintf (stdout, ", formatted Playstation 2 HDD\n");
 	      else
@@ -550,51 +551,57 @@ query_devices (void)
       osal_dlist_free (hard_drives);
     }
 
-#if defined (_WITH_ASPI)
-  if (aspi_load () == RET_OK)
-    {
-      scsi_devices_list_t *dlist;
-      result = aspi_scan_scsi_bus (&dlist);
-      if (result == RET_OK)
+#if defined (BUILD_WINDOWS)
+  if (dict_get_flag (config, CONFIG_ENABLE_ASPI_FLAG, 0))
+    { /* ASPI support is enabled/disabled via config file, now */
+      if (aspi_load () == RET_OK)
 	{
-	  u_int32_t i;
-
-	  fprintf (stdout, "\nDrives via ASPI:\n");
-	  for (i=0; i<dlist->used; ++i)
+	  scsi_devices_list_t *dlist;
+	  result = aspi_scan_scsi_bus (&dlist);
+	  if (result == RET_OK)
 	    {
-	      switch (dlist->device [i].type)
-		{
-		case 0x00: /* HDD most likely */
-		  printf ("\thdd%d:%d:%d ",
-			  dlist->device [i].host,
-			  dlist->device [i].scsi_id,
-			  dlist->device [i].lun);
-		  break;
+	      u_int32_t i;
 
-		case 0x05: /* MMC device */
-		  printf ("\tcd%d:%d:%d  ",
-			  dlist->device [i].host,
-			  dlist->device [i].scsi_id,
-			  dlist->device [i].lun);
-		  break;
+	      fprintf (stdout, "\nOptical drives via ASPI:\n");
+	      for (i=0; i<dlist->used; ++i)
+		{
+		  if (dlist->device[i].type == 0x05)
+		    { /* MMC device */
+		      printf ("\tcd%d:%d:%d  ",
+			      dlist->device[i].host,
+			      dlist->device[i].scsi_id,
+			      dlist->device[i].lun);
+
+		      if (dlist->device[i].name[0] != '\0')
+			printf ("(%s):  ", dlist->device[i].name);
+		      
+		      if (dlist->device[i].size_in_sectors != -1 &&
+			  dlist->device[i].sector_size != -1)
+			printf ("%lu MB\n",
+				(unsigned long) (((u_int64_t) dlist->device[i].size_in_sectors *
+						  dlist->device[i].sector_size) / (1024 * 1024)));
+		      else
+			{
+#if 1 /* used to be not really meaningful */
+			  const char *error = aspi_get_error_msg (dlist->device[i].status);
+			  printf ("%s\n", error);
+			  aspi_dispose_error_msg ((char*) error);
+#else
+			  printf ("Stat failed.\n");
+#endif
+			}
+		    }
 		}
-	      if (dlist->device [i].size_in_sectors != -1 &&
-		  dlist->device [i].sector_size != -1)
-		printf ("%lu MB\n",
-			(unsigned long) (((u_int64_t) dlist->device [i].size_in_sectors *
-					  dlist->device [i].sector_size) / (1024 * 1024)));
-	      else
-		printf ("Stat failed.\n");
+	      aspi_dlist_free (dlist);
 	    }
-	  aspi_dlist_free (dlist);
+	  else
+	    fprintf (stderr, "\nError scanning SCSI bus.\n");
+	  aspi_unload ();
 	}
       else
-	fprintf (stderr, "\nError scanning SCSI bus.\n");
-      aspi_unload ();
+	fprintf (stderr, "\nUnable to initialize ASPI.\n");
     }
-  else
-    fprintf (stderr, "\nUnable to initialize ASPI.\n");
-#endif /* _WITH_ASPI */
+#endif /* BUILD_WINDOWS defined? */
 
   return (result);
 }
@@ -602,14 +609,15 @@ query_devices (void)
 
 /**************************************************************/
 static int
-cdvd_info (const char *path)
+cdvd_info (const dict_t *config,
+	   const char *path)
 {
   iin_t *iin;
-  int result = iin_probe (path, &iin);
+  int result = iin_probe (config, path, &iin);
   if (result == OSAL_OK)
     {
-      char volume_id [32 + 1];
-      char signature [12 + 1];
+      char volume_id[32 + 1];
+      char signature[12 + 1];
       u_int32_t num_sectors, sector_size;
       u_int64_t layer_pvd;
       result = iin->stat (iin, &sector_size, &num_sectors);
@@ -670,7 +678,8 @@ read_test (const char *path,
 /**************************************************************/
 #if defined (INCLUDE_COMPARE_IIN_CMD)
 static int
-compare_iin (const char *path1,
+compare_iin (const dict_t *config,
+	     const char *path1,
 	     const char *path2,
 	     progress_t *pgs)
 {
@@ -678,10 +687,10 @@ compare_iin (const char *path1,
   int different = 0;
   int longer_file = 0;
 
-  int result = iin_probe (path1, &iin1);
+  int result = iin_probe (config, path1, &iin1);
   if (result == OSAL_OK)
     {
-      result = iin_probe (path2, &iin2);
+      result = iin_probe (config, path2, &iin2);
       if (result == OSAL_OK)
 	{
 	  u_int32_t len1, len2;
@@ -779,7 +788,8 @@ compare_iin (const char *path1,
 
 /**************************************************************/
 int
-inject (const char *output,
+inject (const dict_t *config,
+	const char *output,
 	const char *name,
 	const char *input,
 	const char *startup, /* or NULL */
@@ -792,16 +802,16 @@ inject (const char *output,
   iin_t *iin = NULL;
   hio_t *hio = NULL;
 
-  result = iin_probe (input, &iin);
+  result = iin_probe (config, input, &iin);
   if (result == RET_OK)
-    result = hio_probe (output, &hio);
+    result = hio_probe (config, output, &hio);
   if (result == RET_OK)
     {
-      char volume_id [32 + 1], signature [12 + 1];
+      char volume_id[32 + 1], signature[12 + 1];
       u_int64_t layer_pvd;
       memset (&game, 0, sizeof (hdl_game_t));
       memcpy (game.name, name, sizeof (game.name) - 1);
-      game.name [sizeof (game.name) - 1] = '\0';
+      game.name[sizeof (game.name) - 1] = '\0';
       result = isofs_get_ps_cdvd_details (iin, volume_id, signature, &layer_pvd);
       if (result == RET_OK)
 	{
@@ -813,7 +823,7 @@ inject (const char *output,
       if (startup != NULL)
 	{ /* use given startup file */
 	  memcpy (game.startup, startup, sizeof (game.startup) - 1);
-	  game.startup [sizeof (game.startup) - 1] = '\0';
+	  game.startup[sizeof (game.startup) - 1] = '\0';
 	  if (result == RET_NOT_PS_CDVD)
 	    /* ... and ignore possible `not a PS2 CD/DVD' error */
 	    result = RET_OK;
@@ -827,7 +837,7 @@ inject (const char *output,
       game.is_dvd = is_dvd;
 
       if (result == RET_OK)
-	result = hdl_inject (hio, iin, &game, pgs);
+	result = hdl_inject (config, hio, iin, &game, pgs);
     }
 
   if (hio != NULL)
@@ -841,10 +851,71 @@ inject (const char *output,
 
 /**************************************************************/
 static int
-remote_poweroff (const char *ip)
+install (const dict_t *config,
+	 const char *output,
+	 const char *input,
+	 progress_t *pgs)
+{
+  hdl_game_t game;
+  iin_t *iin = NULL;
+  hio_t *hio = NULL;
+  int result;
+  u_int32_t sector_size, num_sectors;
+
+  result = iin_probe (config, input, &iin);
+  if (result == RET_OK)
+    result = iin->stat (iin, &sector_size, &num_sectors);
+  if (result == RET_OK)
+    result = hio_probe (config, output, &hio);
+  if (result == RET_OK)
+    {
+      char volume_id[32 + 1], signature[12 + 1];
+      u_int64_t layer_pvd;
+      char name[HDL_GAME_NAME_MAX + 1];
+      compat_flags_t flags;
+      int incompatible;
+
+      result = isofs_get_ps_cdvd_details (iin, volume_id, signature, &layer_pvd);
+      if (result == RET_OK)
+	result = ddb_lookup (config, signature, name, &flags);
+
+      incompatible = result == RET_DDB_INCOMPATIBLE;
+      if (incompatible)
+	result = RET_OK;
+
+      if (result == RET_OK)
+	{
+	  memset (&game, 0, sizeof (hdl_game_t));
+	  strcpy (game.name, name);
+	  if (layer_pvd != 0)
+	    game.layer_break = (u_int32_t) layer_pvd - 16;
+	  else
+	    game.layer_break = 0;
+	  strcpy (game.startup, signature);
+	  game.compat_flags = flags;
+	  /* TODO: the following math (assumption) might be incorrect */
+	  game.is_dvd = ((u_int64_t) sector_size * num_sectors) > (750 _MB);
+
+	  result = hdl_inject (config, hio, iin, &game, pgs);
+	}
+      result = (result == RET_OK && incompatible ? RET_DDB_INCOMPATIBLE : result);
+    }
+
+  if (hio != NULL)
+    hio->close (hio);
+  if (iin != NULL)
+    iin->close (iin);
+
+  return (result);
+}
+
+/**************************************************************/
+static int
+remote_poweroff (const dict_t *config,
+		 const char *ip)
 {
   hio_t *hio;
-  int result = hio_probe (ip, &hio);
+  int result = hio_probe (config, ip, &hio);
   if (result == RET_OK)
     {
       result = hio->poweroff (hio);
@@ -855,65 +926,8 @@ remote_poweroff (const char *ip)
 
 
 /**************************************************************/
-static unsigned char
-parse_compat_flags (const char *flags)
-{
-  unsigned char result = 0;
-  if (flags != NULL)
-    {
-      size_t len = strlen (flags), i;
-      if (flags[0] == '0' && flags[1] == 'x')
-	{ /* hex: 0x... */
-	  unsigned long retval = strtoul (flags, NULL, 0);
-	  if (retval < (1 << MAX_FLAGS))
-	    result = (unsigned char) retval;
-	  else
-	    /* out-of-range */
-	    result = (unsigned char) -1;
-	}
-      else if (flags[0] == '+' && (len % 2) == 0)
-	{ /* +1, +1+2, +2+3, ... */
-	  for (i=0; i<len/2; ++i)
-	    {
-	      if (flags [i * 2 + 0] == '+')
-		{
-		  int flag = flags [i * 2 + 1] - '0';
-		  if (flag >= 1 && flag <= MAX_FLAGS)
-		    { /* support up to MAX_FLAGS flags */
-		      int bit = 1 << (flag - 1);
-		      if ((result & bit) == 0)
-			result |= bit;
-		      else
-			{ /* flag used twice */
-			  result = (unsigned char) -1;
-			  break;
-			}
-		    }
-		  else
-		    { /* not in [1..MAX_FLAGS] */
-		      result = (unsigned char) -1;
-		      break;
-		    }
-		}
-	      else
-		{ /* pair doesn't start with a plus */
-		  result = (unsigned char) -1;
-		  break;
-		}
-	    }
-	}
-      else
-	{ /* don't know how to handle those flags */
-	  result = (unsigned char) -1;
-	}
-    }
-  return (result);
-}
-
-
-/**************************************************************/
 static int
-progress_cb (progress_t *pgs)
+progress_cb (progress_t *pgs, void *data)
 {
   static time_t last_flush = 0;
   time_t now = time (NULL);
@@ -944,7 +958,7 @@ get_progress (void)
 #if 0
   return (NULL);
 #else
-  progress_t *pgs = pgs_alloc (&progress_cb);
+  progress_t *pgs = pgs_alloc (&progress_cb, NULL);
   return (pgs);
 #endif
 }
@@ -963,7 +977,7 @@ show_usage_and_exit (const char *app_path,
     const char *description;
     const char *example1, *example2;
     int dangerous;
-  } help [] =
+  } help[] =
     {
       { CMD_QUERY, NULL,
 	"Displays a list of all hard- and optical drives.",
@@ -1036,6 +1050,10 @@ show_usage_and_exit (const char *app_path,
 	"`+#[+#[+#]]' or `0xNN', for example `+1', `+2+3', `0x01', `0x03', etc.",
 	"192.168.0.10 \"Gran Turismo 3\" cd0:",
 	"hdd1: \"Gran Turismo 3\" c:\\gt3.iso SCES_xxx.xx +2+3", 1 },
+      { CMD_HDL_INSTALL, "target source",
+	"Creates a new HD Loader partition from a source, that has an entry\n"
+	"in compatibility list.",
+	"192.168.0.10 cd0:", "hdd1: c:\\gt3.iso", 1 },
       { CMD_CDVD_INFO, "iin_input",
 	"Displays signature (startup file), volume label and data size\n"
 	"for a CD-/DVD-drive or image file.",
@@ -1170,7 +1188,7 @@ show_usage_and_exit (const char *app_path,
 
 void
 map_device_name_or_exit (const char *input,
-			 char output [MAX_PATH])
+			 char output[MAX_PATH])
 {
   int result = osal_map_device_name (input, output);
   switch (result)
@@ -1294,13 +1312,25 @@ handle_result_and_exit (int result,
       fprintf (stderr, "Unable to limit HDD size to 128GB - data behind 128GB mark.\n");
       exit (100 + RET_CROSS_128GB);
 
-#if defined (_WITH_ASPI)
+#if defined (BUILD_WINDOWS)
     case RET_ASPI_ERROR:
-      fprintf (stderr, "ASPI error: 0x%08x (SRB/Sense/ASC/ASCQ) %s\n",
+      fprintf (stderr, "ASPI error: 0x%08lx (SRB/Sense/ASC/ASCQ) %s\n",
 	       aspi_get_last_error_code (),
 	       aspi_get_last_error_msg ());
       exit (100 + RET_ASPI_ERROR);
 #endif
+
+    case RET_NO_DISC_DB:
+      fprintf (stderr, "Disc database file could not be found.\n");
+      exit (100 + RET_NO_DISC_DB);
+
+    case RET_NO_DDBENTRY:
+      fprintf (stderr, "There is no entry for that game in the disc database.\n");
+      exit (100 + RET_NO_DDBENTRY);
+
+    case RET_DDB_INCOMPATIBLE:
+      fprintf (stderr, "Game is incompatible, according to disc database.\n");
+      exit (100 + RET_DDB_INCOMPATIBLE);
 
     default:
       fprintf (stderr, "%s: don't know what the error is: %d.\n", device, result);
@@ -1309,53 +1339,115 @@ handle_result_and_exit (int result,
 }
 
 
-int
-main (int argc, char *argv [])
+#if defined (_DEBUG)
+void
+test (void)
 {
-  /*
-  go_aspi ();
-  return (0);
-  */
+  dict_t *dict = dict_alloc ();
+
+  dict_put (dict, "key1", "value1");
+  dict_put (dict, "key3", "value3");
+  dict_put (dict, "key2", "value2");
+  dict_put (dict, "key2", "value2");
+
+  dict_put (dict, "\n", "\r");
+  dict_put (dict, "1\n", "1\r");
+  dict_put (dict, "\n1", "\r1");
+  dict_put (dict, "1\n1", "1\r1");
+
+  dict_dump (dict);
+
+  dict_store (dict, "dict.txt");
+  dict_free (dict);
+
+  dict = dict_restore (NULL, "dict.txt");
+  dict_store (dict, "dict2.txt");
+  dict_dump (dict);
+  dict_free (dict);
+}
+#endif
+
+
+int
+main (int argc, char *argv[])
+{
+  dict_t *config = NULL;
+  char config_file[256] = { "" };
+
+  /* decide where config file is */
+#if defined (_BUILD_WIN32)
+  char *profile = getenv ("USERPROFILE");
+  if (profile != NULL)
+    {
+      strcpy (config_file, profile);
+      strcat (config_file, "\\Application Data\\hdl_dump.conf");
+    }
+  else
+    strcpy (config_file, "./hdl_dump.conf");
+#elif defined (_BUILD_UNIX)
+  char *home = getenv ("HOME");
+  if (home != NULL)
+    {
+      strcpy (config_file, home);
+      strcat (config_file, "/.hdl_dump.conf");
+    }
+  else
+    strcpy (config_file, "./hdl_dump.conf");
+#endif
+
+  config = dict_alloc ();
+  if (config != NULL)
+    { /* initialize defaults */
+      dict_put_flag (config, CONFIG_LIMIT_TO_28BIT_FLAG, 1);
+      dict_put_flag (config, CONFIG_ENABLE_ASPI_FLAG, 0);
+      dict_put (config, CONFIG_PARTITION_NAMING,
+		CONFIG_PARTITION_NAMING_TOXICOS);
+      dict_put_flag (config, CONFIG_USE_COMPRESSION_FLAG, 1);
+      dict_put (config, CONFIG_DISC_DATABASE_FILE, "./hdl_dump.list");
+
+      dict_restore (config, config_file);
+      dict_store (config, config_file);
+    }
 
   if (argc > 1)
     {
-      const char *command_name = argv [1];
+      const char *command_name = argv[1];
 
       if (caseless_compare (command_name, CMD_QUERY))
 	{ /* show all devices */
-	  handle_result_and_exit (query_devices (), NULL, NULL);
+	  handle_result_and_exit (query_devices (config), NULL, NULL);
 	}
 
 #if defined (INCLUDE_DUMP_CMD)
       else if (caseless_compare (command_name, CMD_DUMP))
 	{ /* dump CD/DVD-ROM to the HDD */
-	  char device_name [MAX_PATH];
+	  char device_name[MAX_PATH];
 
 	  if (argc != 4)
-	    show_usage_and_exit (argv [0], CMD_DUMP);
+	    show_usage_and_exit (argv[0], CMD_DUMP);
 
-	  map_device_name_or_exit (argv [2], device_name);
+	  map_device_name_or_exit (argv[2], device_name);
 
-	  handle_result_and_exit (dump_device (device_name, argv [3], 0, get_progress ()),
-				  argv [2], NULL);
+	  handle_result_and_exit (dump_device (device_name, argv[3], 0, get_progress ()),
+				  argv[2], NULL);
 	}
 #endif /* INCLUDE_DUMP_CMD defined? */
 
 #if defined (INCLUDE_COMPARE_CMD)
       else if (caseless_compare (command_name, CMD_COMPARE))
 	{ /* compare two files or devices or etc. */
-	  char device_name_1 [MAX_PATH];
-	  char device_name_2 [MAX_PATH];
+	  char device_name_1[MAX_PATH];
+	  char device_name_2[MAX_PATH];
 	  int is_device_1 = 0, is_device_2 = 0;
 
 	  if (argc != 4)
-	    show_usage_and_exit (argv [0], CMD_COMPARE);
+	    show_usage_and_exit (argv[0], CMD_COMPARE);
 
-	  is_device_1 = osal_map_device_name (argv [2], device_name_1) == RET_OK ? 1 : 0;
-	  is_device_2 = osal_map_device_name (argv [3], device_name_2) == RET_OK ? 1 : 0;
+	  is_device_1 = osal_map_device_name (argv[2], device_name_1) == RET_OK ? 1 : 0;
+	  is_device_2 = osal_map_device_name (argv[3], device_name_2) == RET_OK ? 1 : 0;
 
-	  handle_result_and_exit (compare (is_device_1 ? device_name_1 : argv [2], is_device_1,
-					   is_device_2 ? device_name_2 : argv [3], is_device_2),
+	  handle_result_and_exit (compare (is_device_1 ? device_name_1 : argv[2], is_device_1,
+					   is_device_2 ? device_name_2 : argv[3], is_device_2),
 				  NULL, NULL);
 	}
 #endif /* INCLUDE_COMPARE_CMD defined? */
@@ -1364,8 +1456,9 @@ main (int argc, char *argv [])
       else if (caseless_compare (command_name, CMD_COMPARE_IIN))
 	{ /* compare two iso inputs */
 	  if (argc != 4)
-	    show_usage_and_exit (argv [0], CMD_COMPARE_IIN);
-	  handle_result_and_exit (compare_iin (argv [2], argv [3], get_progress ()),
+	    show_usage_and_exit (argv[0], CMD_COMPARE_IIN);
+	  handle_result_and_exit (compare_iin (config, argv[2], argv[3],
+					       get_progress ()),
 				  NULL, NULL);
 	}
 #endif /* INCLUDE_COMPARE_IIN_CMD defined? */
@@ -1373,48 +1466,48 @@ main (int argc, char *argv [])
       else if (caseless_compare (command_name, CMD_TOC))
 	{ /* show TOC of a PlayStation 2 HDD */
 	  if (argc != 3)
-	    show_usage_and_exit (argv [0], CMD_TOC);
-	  handle_result_and_exit (show_toc (argv [2]), argv [2], NULL);
+	    show_usage_and_exit (argv[0], CMD_TOC);
+	  handle_result_and_exit (show_toc (config, argv[2]), argv[2], NULL);
 	}
 
       else if (caseless_compare (command_name, CMD_HDL_TOC))
 	{ /* show a TOC of HD Loader games only */
 	  if (argc != 3)
-	    show_usage_and_exit (argv [0], CMD_HDL_TOC);
-	  handle_result_and_exit (show_hdl_toc (argv [2]), argv [2], NULL);
+	    show_usage_and_exit (argv[0], CMD_HDL_TOC);
+	  handle_result_and_exit (show_hdl_toc (config, argv[2]), argv[2], NULL);
 	}
 
 #if defined (INCLUDE_MAP_CMD)
       else if (caseless_compare (command_name, CMD_MAP))
 	{ /* show map of a PlayStation 2 HDD */
 	  if (argc != 3)
-	    show_usage_and_exit (argv [0], CMD_MAP);
+	    show_usage_and_exit (argv[0], CMD_MAP);
 
-	  handle_result_and_exit (show_map (argv [2]), argv [2], NULL);
+	  handle_result_and_exit (show_map (argv[2]), argv[2], NULL);
 	}
 #endif /* INCLUDE_MAP_CMD defined? */
 
       else if (caseless_compare (command_name, CMD_DELETE))
 	{ /* delete partition */
 	  if (argc != 4)
-	    show_usage_and_exit (argv [0], CMD_DELETE);
+	    show_usage_and_exit (argv[0], CMD_DELETE);
 
-	  handle_result_and_exit (delete_partition (argv [2], argv [3]),
-				  argv [2], argv [3]);
+	  handle_result_and_exit (delete_partition (config, argv[2], argv[3]),
+				  argv[2], argv[3]);
 	}
 
 #if defined (INCLUDE_ZERO_CMD)
       else if (caseless_compare (command_name, CMD_ZERO))
 	{ /* zero HDD */
-	  char device_name [MAX_PATH];
+	  char device_name[MAX_PATH];
 
 	  if (argc != 3)
-	    show_usage_and_exit (argv [0], CMD_ZERO);
+	    show_usage_and_exit (argv[0], CMD_ZERO);
 
-	  map_device_name_or_exit (argv [2], device_name);
+	  map_device_name_or_exit (argv[2], device_name);
 
 	  handle_result_and_exit (zero_device (device_name),
-				  argv [2], NULL);
+				  argv[2], NULL);
 	}
 #endif /* INCLUDE_ZERO_CMD defined? */
 
@@ -1422,21 +1515,21 @@ main (int argc, char *argv [])
       else if (caseless_compare (command_name, CMD_HDL_INFO))
 	{ /* show HD Loader game info */
 	  if (argc != 4)
-	    show_usage_and_exit (argv [0], CMD_HDL_INFO);
+	    show_usage_and_exit (argv[0], CMD_HDL_INFO);
 
-	  handle_result_and_exit (show_hdl_game_info (argv [2], argv [3]),
-				  argv [2], argv [3]);
+	  handle_result_and_exit (show_hdl_game_info (argv[2], argv[3]),
+				  argv[2], argv[3]);
 	}
 #endif /* INCLUDE_INFO_CMD defined? */
 
       else if (caseless_compare (command_name, CMD_HDL_EXTRACT))
 	{ /* extract game image from a HD Loader partition */
 	  if (argc != 5)
-	    show_usage_and_exit (argv [0], CMD_HDL_EXTRACT);
+	    show_usage_and_exit (argv[0], CMD_HDL_EXTRACT);
 
-	  handle_result_and_exit (hdl_extract (argv [2], argv [3], argv [4],
-					       get_progress ()),
-				  argv [2], argv [3]);
+	  handle_result_and_exit (hdl_extract (config, argv[2], argv[3],
+					       argv[4], get_progress ()),
+				  argv[2], argv[3]);
 	}
 
       else if (caseless_compare (command_name, CMD_HDL_INJECT_CD) ||
@@ -1447,79 +1540,88 @@ main (int argc, char *argv [])
 	    caseless_compare (command_name, CMD_HDL_INJECT_CD) ? 0 : 1;
 
 	  if (!(argc >= 5 && argc <= 7))
-	    show_usage_and_exit (argv [0], command_name);
+	    show_usage_and_exit (argv[0], command_name);
 
 	  /* parse compatibility flags */
 	  if (argc == 7)
 	    /* startup + compatibility flags */
-	    compat_flags = parse_compat_flags (argv [6]);
+	    compat_flags = parse_compat_flags (argv[6]);
 	  else if (argc == 6 &&
 		   (argv[5][0] == '+' ||
 		    (argv[5][0] == '0' && argv[5][1] == 'x')))
 	    { /* compatibility flags only */
-	      compat_flags = parse_compat_flags (argv [5]);
+	      compat_flags = parse_compat_flags (argv[5]);
 	      have_startup = 0;
 	    }
 	  else if (argc == 5)
 	    /* neither */
 	    have_startup = 0;
-	  if (compat_flags == (unsigned char) -1)
-	    show_usage_and_exit (argv [0], command_name);
+	  if (compat_flags == COMPAT_FLAGS_INVALID)
+	    show_usage_and_exit (argv[0], command_name);
 
-	  handle_result_and_exit (inject (argv [2], argv [3], argv [4],
-					  have_startup ? argv [5] : NULL,
+	  handle_result_and_exit (inject (config, argv[2], argv[3], argv[4],
+					  have_startup ? argv[5] : NULL,
 					  compat_flags, media, get_progress ()),
-				  argv [2], argv [3]);
+				  argv[2], argv[3]);
+	}
+
+      else if (caseless_compare (command_name, CMD_HDL_INSTALL))
+	{
+	  if (argc != 4)
+	    show_usage_and_exit (argv[0], CMD_HDL_INSTALL);
+
+	  handle_result_and_exit (install (config, argv[2], argv[3], get_progress ()),
+				  argv[2], argv[3]);
 	}
 
 #if defined (INCLUDE_CUTOUT_CMD)
       else if (caseless_compare (command_name, CMD_CUTOUT))
 	{ /* calculate and display how to arrange a new HD Loader partition */
-	  char device_name [MAX_PATH];
+	  char device_name[MAX_PATH];
 
 	  if (argc != 4)
-	    show_usage_and_exit (argv [0], CMD_CUTOUT);
+	    show_usage_and_exit (argv[0], CMD_CUTOUT);
 
-	  map_device_name_or_exit (argv [2], device_name);
+	  map_device_name_or_exit (argv[2], device_name);
 
-	  handle_result_and_exit (show_apa_cut_out_for_inject (device_name, atoi (argv [3])),
-				  argv [2], NULL);
+	  handle_result_and_exit (show_apa_cut_out_for_inject (device_name, atoi (argv[3])),
+				  argv[2], NULL);
 	}
 #endif /* INCLUDE_CUTOUT_CMD defined? */
 
       else if (caseless_compare (command_name, CMD_CDVD_INFO))
 	{ /* try to display startup file and volume label for an iin */
 	  if (argc != 3)
-	    show_usage_and_exit (argv [0], CMD_CDVD_INFO);
+	    show_usage_and_exit (argv[0], CMD_CDVD_INFO);
 
-	  handle_result_and_exit (cdvd_info (argv [2]), argv [2], NULL);
+	  handle_result_and_exit (cdvd_info (config, argv[2]), argv[2], NULL);
 	}
 
 #if defined (INCLUDE_READ_TEST_CMD)
       else if (caseless_compare (command_name, CMD_READ_TEST))
 	{
 	  if (argc != 3)
-	    show_usage_and_exit (argv [0], CMD_READ_TEST);
+	    show_usage_and_exit (argv[0], CMD_READ_TEST);
 
-	  handle_result_and_exit (read_test (argv [2], get_progress ()), argv [2], NULL);
+	  handle_result_and_exit (read_test (argv[2], get_progress ()), argv[2], NULL);
 	}
 #endif /* INCLUDE_READ_TEST_CMD defined? */
 
       else if (caseless_compare (command_name, CMD_POWER_OFF))
 	{ /* PS2 power-off */
 	  if (argc != 3)
-	    show_usage_and_exit (argv [0], CMD_POWER_OFF);
+	    show_usage_and_exit (argv[0], CMD_POWER_OFF);
 	  
-	  handle_result_and_exit (remote_poweroff (argv [2]), argv [2], NULL);
+	  handle_result_and_exit (remote_poweroff (config, argv[2]), argv[2], NULL);
 	}
 
 #if defined (INCLUDE_CHECK_CMD)
       else if (caseless_compare (command_name, CMD_CHECK))
 	{ /* attempt to locate and display partition errors */
 	  if (argc != 3)
-	    show_usage_and_exit (argv [0], CMD_CHECK);
+	    show_usage_and_exit (argv[0], CMD_CHECK);
 
-	  handle_result_and_exit (check (argv [2]), argv [2], NULL);
+	  handle_result_and_exit (check (argv[2]), argv[2], NULL);
 	}
 #endif /* INCLUDE_CHECK_CMD defined? */
 
@@ -1527,20 +1629,20 @@ main (int argc, char *argv [])
       else if (caseless_compare (command_name, CMD_INITIALIZE))
 	{ /* prepare a HDD for HD Loader usage */
 	  if (argc != 3)
-	    show_usage_and_exit (argv [0], CMD_INITIALIZE);
+	    show_usage_and_exit (argv[0], CMD_INITIALIZE);
 
-	  handle_result_and_exit (apa_initialize (argv [2]), argv [2], NULL);
+	  handle_result_and_exit (apa_initialize (config, argv[2]), argv[2], NULL);
 	}
 #endif /* INCLUDE_INITIALIZE_CMD defined? */
 
       else
 	{ /* something else... -h perhaps? */
-	  show_usage_and_exit (argv [0], command_name);
+	  show_usage_and_exit (argv[0], command_name);
 	}
     }
   else
     {
-      show_usage_and_exit (argv [0], NULL);
+      show_usage_and_exit (argv[0], NULL);
     }
   return (0); /* please compiler */
 }

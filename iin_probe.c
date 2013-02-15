@@ -1,6 +1,6 @@
 /*
  * iin_probe.c
- * $Id: iin_probe.c,v 1.6 2004/12/04 10:20:52 b081 Exp $
+ * $Id: iin_probe.c,v 1.7 2005/07/10 21:06:48 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -31,37 +31,43 @@
 #include "iin_gi.h"
 #include "iin_iso.h"
 #include "iin_iml.h"
+#include "dict.h"
+#include "config.h"
 #include "retcodes.h"
 
 
 int
-iin_probe (const char *path,
+iin_probe (const dict_t *config,
+	   const char *path,
 	   iin_t **iin)
 {
   int result = RET_NOT_COMPAT;
 
   /* prefix-driven inputs first */
   if (result == RET_NOT_COMPAT)
-    result = iin_optical_probe_path (path, iin);
-#if defined (_BUILD_WIN32) && defined (_WITH_ASPI)
-  if (result == RET_NOT_COMPAT)
-    result = iin_aspi_probe_path (path, iin);
+    result = iin_optical_probe_path (config, path, iin);
+#if defined (BUILD_WINDOWS)
+  if (dict_get_flag (config, CONFIG_ENABLE_ASPI_FLAG, 0))
+    { /* ASPI support enabled */
+      if (result == RET_NOT_COMPAT)
+	result = iin_aspi_probe_path (config, path, iin);
+    }
 #endif
   if (result == RET_NOT_COMPAT)
-    result = iin_hdloader_probe_path (path, iin);
+    result = iin_hdloader_probe_path (config, path, iin);
   if (result == RET_NOT_COMPAT)
-    result = iin_net_probe_path (path, iin);
+    result = iin_net_probe_path (config, path, iin);
 
   /* file-driven inputs next, ordered by accuracy */
   if (result == RET_NOT_COMPAT)
-    result = iin_nero_probe_path (path, iin);
+    result = iin_nero_probe_path (config, path, iin);
   if (result == RET_NOT_COMPAT)
-    result = iin_cdrwin_probe_path (path, iin);
+    result = iin_cdrwin_probe_path (config, path, iin);
   if (result == RET_NOT_COMPAT)
-    result = iin_gi_probe_path (path, iin);
+    result = iin_gi_probe_path (config, path, iin);
   if (result == RET_NOT_COMPAT)
-    result = iin_iso_probe_path (path, iin);
+    result = iin_iso_probe_path (config, path, iin);
   if (result == RET_NOT_COMPAT)
-    result = iin_iml_probe_path (path, iin);
+    result = iin_iml_probe_path (config, path, iin);
   return (result);
 }

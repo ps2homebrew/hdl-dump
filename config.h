@@ -1,6 +1,6 @@
 /*
  * config.h
- * $Id: config.h,v 1.9 2005/05/06 14:50:34 b081 Exp $
+ * $Id: config.h,v 1.10 2005/07/10 21:06:48 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -24,8 +24,9 @@
 #if !defined (_CONFIG_H)
 #define _CONFIG_H
 
-/* MacOS X support patch */
+/* MacOS X support patch; there is more in osal_unix.c */
 #if defined (__APPLE__)
+#  undef _BUILD_UNIX
 #  define _BUILD_UNIX
 #  define lseek64 lseek
 #  define stat64 stat
@@ -41,13 +42,17 @@
 #endif
 
 #if defined (_BUILD_WIN32)
+#  if !defined (_BUILD_WINE)
 typedef unsigned char u_int8_t;
 typedef unsigned short u_int16_t;
 typedef unsigned long u_int32_t;
-#  if defined (_MSC_VER) && defined (_WIN32)
+#    if defined (_MSC_VER) && defined (_WIN32)
 typedef unsigned __int64 u_int64_t; /* Microsoft Visual C/C++ compiler */
-#  else
+#    else
 typedef unsigned long long u_int64_t; /* GNU C/C++ compiler */
+#    endif
+#  else
+#    include <sys/types.h>
 #  endif
 
 #elif defined (_BUILD_UNIX)
@@ -55,9 +60,9 @@ typedef unsigned long long u_int64_t; /* GNU C/C++ compiler */
 
 #elif defined (_BUILD_PS2)
 #  if defined (_EE)
-#    include <tamtypes.h>
+#    include <tamtypes.h> /* EE */
 #  else
-#    include <types.h>
+#    include <types.h> /* IOP */
 #  endif
 typedef  u8  u_int8_t;
 typedef u16 u_int16_t;
@@ -65,6 +70,11 @@ typedef u32 u_int32_t;
 typedef u64 u_int64_t;
 #endif
 
+/* maximum number of compatibility flags (in bits);
+   should fit in the following type */
+#define MAX_FLAGS 8
+typedef unsigned short compat_flags_t;
+static const compat_flags_t COMPAT_FLAGS_INVALID = (compat_flags_t) -1;
 
 /* control whether infrequently-used commands to be built */
 #define INCLUDE_DUMP_CMD
@@ -78,13 +88,23 @@ typedef u64 u_int64_t;
 #undef INCLUDE_CHECK_CMD
 #define INCLUDE_INITIALIZE_CMD
 
+/* option names and values for the config file */
+#define CONFIG_LIMIT_TO_28BIT_FLAG        "limit_to_28bit"
+#define CONFIG_ENABLE_ASPI_FLAG           "enable_aspi"
+#define CONFIG_PARTITION_NAMING           "partition_naming"
+#define CONFIG_PARTITION_NAMING_STANDARD  "standard"
+#define CONFIG_PARTITION_NAMING_TOXICOS   "toxicos"
+#define CONFIG_USE_COMPRESSION_FLAG       "use_compression"
+#define CONFIG_DISC_DATABASE_FILE         "disc_database_file"
+#define CONFIG_LAST_IP                    "last_ip"
 
-/*
- * networking options below:
- * - high-level ACK: none, normal, dummy reverse
- * - local TCP_NODELAY: yes/no
- * - remote TCP_NODELAY: yes/no
- * - remote TCP_ACKNODELAY: yes/no
- */
+
+#if defined (__cplusplus)
+#  define C_START extern "C" {
+#  define C_END } // extern "C"
+#else
+#  define C_START
+#  define C_END
+#endif
 
 #endif /* _CONFIG_H defined? */
