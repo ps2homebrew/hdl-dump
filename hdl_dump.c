@@ -1,6 +1,6 @@
 /*
  * hdl_dump.c
- * $Id: hdl_dump.c,v 1.14 2005/02/17 17:50:25 b081 Exp $
+ * $Id: hdl_dump.c,v 1.15 2005/05/06 14:50:35 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -85,6 +85,12 @@
 #if defined (INCLUDE_CHECK_CMD)
 #  define CMD_CHECK "check"
 #endif
+#if defined (INCLUDE_INITIALIZE_CMD)
+#  define CMD_INITIALIZE "initialize"
+#endif
+
+
+#define MAX_FLAGS 6
 
 
 /**************************************************************/
@@ -181,23 +187,25 @@ show_hdl_toc (const char *device_name)
       result = hdl_glist_read (hio, &glist);
       if (result == RET_OK)
 	{
-	  u_int32_t i;
-	  printf ("%-4s%9s %-5s %-12s %s\n",
-		  "type", "size", "flags", "startup", "name");
+	  u_int32_t i, j;
+	  printf ("%-4s%9s %-*s %-12s %s\n",
+		  "type", "size", MAX_FLAGS * 2 - 1, "flags",
+		  "startup", "name");
 	  for (i=0; i<glist->count; ++i)
 	    {
 	      const hdl_game_info_t *game = glist->games + i;
-	      char compat_flags [6 + 1] = { "\0\0\0\0\0\0" };
-	      if (game->compat_flags & 0x01)
-		strcat (compat_flags, "+1");
-	      if (game->compat_flags & 0x02)
-		strcat (compat_flags, "+2");
-	      if (game->compat_flags & 0x04)
-		strcat (compat_flags, "+3");
-	      printf ("%3s %7luKB %5s %-12s %s\n",
+	      char compat_flags [MAX_FLAGS * 2 + 1] = { 0 };
+	      for (j=0; j<MAX_FLAGS; ++j)
+		if (game->compat_flags & (1 << j))
+		  {
+		    char buffer[5];
+		    sprintf (buffer, "+%u", (unsigned int) (j + 1));
+		    strcat (compat_flags, buffer);
+		  }
+	      printf ("%3s %7luKB %*s %-12s %s\n",
 		      game->is_dvd ? "DVD" : "CD ",
 		      game->total_size_in_kb,
-		      compat_flags + 1, /* trim leading + */
+		      MAX_FLAGS * 2 - 1, compat_flags + 1, /* trim leading + */
 		      game->startup,
 		      game->name);
 	    }
@@ -371,6 +379,13 @@ delete_partition (const char *device_name,
   if (result == RET_OK)
     {
       result = apa_delete_partition (table, name);
+      if (result == RET_NOT_FOUND)
+	{ /* assume `name' is game name, instead of partition name */
+	  char partition_id [PS2_PART_IDMAX + 1];
+	  result = hdl_lookup_partition (device_name, name, partition_id);
+	  if (result == RET_OK)
+	    result = apa_delete_partition (table, partition_id);
+	}
 
       if (result == RET_OK)
 	result = apa_commit (device_name, table);
@@ -449,11 +464,18 @@ zero_device (const char *device_name)
       void *buffer = osal_alloc (1 _MB);
       if (buffer != NULL)
 	{
-	  u_int32_t bytes;
-	  memset (buffer, 0, 1 _MB);
+	  static const unsigned char ZERO_BYTE = 0x7f;
+	  u_int32_t bytes, counter = 0;
+	  memset (buffer, ZERO_BYTE, 1 _MB);
 	  do
 	    {
 	      result = osal_write (device, buffer, 1 _MB, &bytes);
+	      if ((counter & 0x0f) == 0x0f)
+		{
+		  fprintf (stdout, "%.2fGB   \r", counter / 1024.0);
+		  fflush (stdout);
+		}
+	      ++counter;
 	    }
 	  while (result == OSAL_OK && bytes > 0);
 	}
@@ -589,12 +611,13 @@ cdvd_info (const char *path)
       char volume_id [32 + 1];
       char signature [12 + 1];
       u_int32_t num_sectors, sector_size;
+      u_int64_t layer_pvd;
       result = iin->stat (iin, &sector_size, &num_sectors);
       if (result == OSAL_OK)
-	result = isofs_get_ps_cdvd_details (iin, volume_id, signature);
+	result = isofs_get_ps_cdvd_details (iin, volume_id, signature, &layer_pvd);
       if (result == OSAL_OK)
-	printf ("\"%s\" \"%s\" %luKB\n",
-		signature, volume_id,
+	printf ("\"%s\" \"%s\" %s %luKB\n",
+		signature, volume_id, (layer_pvd) ? ("dual layer") : (""),
 		(unsigned long) (((u_int64_t) num_sectors * sector_size) / 1024));
       iin->close (iin);
     }
@@ -774,18 +797,29 @@ inject (const char *output,
     result = hio_probe (output, &hio);
   if (result == RET_OK)
     {
+      char volume_id [32 + 1], signature [12 + 1];
+      u_int64_t layer_pvd;
       memset (&game, 0, sizeof (hdl_game_t));
       memcpy (game.name, name, sizeof (game.name) - 1);
       game.name [sizeof (game.name) - 1] = '\0';
+      result = isofs_get_ps_cdvd_details (iin, volume_id, signature, &layer_pvd);
+      if (result == RET_OK)
+	{
+	  if (layer_pvd != 0)
+	    game.layer_break = (u_int32_t) layer_pvd - 16;
+	  else
+	    game.layer_break = 0;
+	}
       if (startup != NULL)
 	{ /* use given startup file */
 	  memcpy (game.startup, startup, sizeof (game.startup) - 1);
 	  game.startup [sizeof (game.startup) - 1] = '\0';
+	  if (result == RET_NOT_PS_CDVD)
+	    /* ... and ignore possible `not a PS2 CD/DVD' error */
+	    result = RET_OK;
 	}
       else
-	{ /* try to autodetect startup file */
-	  char volume_id [32 + 1], signature [12 + 1];
-	  result = isofs_get_ps_cdvd_details (iin, volume_id, signature);
+	{ /* we got startup file from above; fail if not PS2 CD/DVD */
 	  if (result == RET_OK)
 	    strcpy (game.startup, signature);
 	}
@@ -815,6 +849,63 @@ remote_poweroff (const char *ip)
     {
       result = hio->poweroff (hio);
       hio->close (hio);
+    }
+  return (result);
+}
+
+
+/**************************************************************/
+static unsigned char
+parse_compat_flags (const char *flags)
+{
+  unsigned char result = 0;
+  if (flags != NULL)
+    {
+      size_t len = strlen (flags), i;
+      if (flags[0] == '0' && flags[1] == 'x')
+	{ /* hex: 0x... */
+	  unsigned long retval = strtoul (flags, NULL, 0);
+	  if (retval < (1 << MAX_FLAGS))
+	    result = (unsigned char) retval;
+	  else
+	    /* out-of-range */
+	    result = (unsigned char) -1;
+	}
+      else if (flags[0] == '+' && (len % 2) == 0)
+	{ /* +1, +1+2, +2+3, ... */
+	  for (i=0; i<len/2; ++i)
+	    {
+	      if (flags [i * 2 + 0] == '+')
+		{
+		  int flag = flags [i * 2 + 1] - '0';
+		  if (flag >= 1 && flag <= MAX_FLAGS)
+		    { /* support up to MAX_FLAGS flags */
+		      int bit = 1 << (flag - 1);
+		      if ((result & bit) == 0)
+			result |= bit;
+		      else
+			{ /* flag used twice */
+			  result = (unsigned char) -1;
+			  break;
+			}
+		    }
+		  else
+		    { /* not in [1..MAX_FLAGS] */
+		      result = (unsigned char) -1;
+		      break;
+		    }
+		}
+	      else
+		{ /* pair doesn't start with a plus */
+		  result = (unsigned char) -1;
+		  break;
+		}
+	    }
+	}
+      else
+	{ /* don't know how to handle those flags */
+	  result = (unsigned char) -1;
+	}
     }
   return (result);
 }
@@ -903,15 +994,16 @@ show_usage_and_exit (const char *app_path,
 	"Displays PlayStation 2 HDD usage map.",
 	"hdd1:", NULL, 0 },
 #endif
-      { CMD_DELETE, "device partition",
-	"Deletes PlayStation 2 HDD partition. Use \"map\" to find exact partition name.",
-	"hdd1: \"PP.HDL.Tekken Tag Tournament\"", NULL, 1 },
+      { CMD_DELETE, "device partition/game",
+	"Deletes PlayStation 2 HDD partition. First attempts to locate partition\n"
+	"by name, then by game name.",
+	"hdd1: \"PP.HDL.Tekken Tag Tournament\"", "hdd1: \"Tekken Tag Tournament\"", 1 },
 #if defined (INCLUDE_ZERO_CMD)
       { CMD_ZERO, "device",
 	"Fills HDD with zeroes. All information on the HDD will be lost.",
 	"hdd1:", NULL, 1 },
 #endif
-#if !defined (CRIPPLED_INJECTION) && defined (INCLUDE_CUTOUT_CMD)
+#if defined (INCLUDE_CUTOUT_CMD)
       { CMD_CUTOUT, "device size_in_MB",
 	"Displays partition table as if a new partition has been created.",
 	"hdd1: 2560", NULL, 0 },
@@ -921,25 +1013,29 @@ show_usage_and_exit (const char *app_path,
 	"Displays information about HD Loader partition.",
 	"hdd1: \"tekken tag tournament\"", NULL, 0 },
 #endif
-      { CMD_HDL_EXTRACT, "device partition output_file",
+      { CMD_HDL_EXTRACT, "device name output_file",
 	"Extracts application image from HD Loader partition.",
 	"hdd1: \"tekken tag tournament\" c:\\tekken.iso", NULL, 0 },
-      { CMD_HDL_INJECT_CD, "device partition file signature",
+      { CMD_HDL_INJECT_CD, "target name source [startup] [flags]",
 	"Creates a new HD Loader partition from a CD.\n"
 	"Supported inputs: plain ISO files, CDRWIN cuesheets, Nero images and tracks,\n"
 	"RecordNow! Global images, HD Loader partitions (hdd1:PP.HDL.Xenosaga) and\n"
-	"Sony CD/DVD generator IML files (if files are listed with full paths).",
-	"hdd1: \"Tekken Tag Tournament\" cd0: SCES_xxx.xx",
-	"hdd1: \"Tekken Tag Tournament\" c:\\tekken.iso SCES_xxx.xx", 1 },
-      { CMD_HDL_INJECT_DVD, "device partition file signature",
+	"Sony CD/DVD generator IML files (if files are listed with full paths).\n"
+	"Startup file and compatibility flags are optional. Flags syntax is\n"
+	"`+#[+#[+#]]' or `0xNN', for example `+1', `+2+3', `0x01', `0x03', etc.",
+	"192.168.0.10 \"Tekken Tag Tournament\" cd0: SCES_xxx.xx",
+	"hdd1: \"Tekken\" c:\\tekken.iso SCES_xxx.xx +1+2", 1 },
+      { CMD_HDL_INJECT_DVD, "target name source [startup] [flags]",
 	"Creates a new HD Loader partition from a DVD.\n"
 	"DVD9 cannot be directly installed from the DVD-ROM drive -\n"
 	"use ISO image or IML file instead.\n"
 	"Supported inputs: plain ISO files, CDRWIN cuesheets, Nero images and tracks,\n"
 	"RecordNow! Global images, HD Loader partitions (hdd1:PP.HDL.Xenosaga) and\n"
-	"Sony CD/DVD generator IML files (if files are listed with full paths).",
-	"hdd1: \"Gran Turismo 3\" cd0: SCES_xxx.xx",
-	"hdd1: \"Gran Turismo 3\" c:\\gt3.iso SCES_xxx.xx", 1 },
+	"Sony CD/DVD generator IML files (if files are listed with full paths).\n"
+	"Startup file and compatibility flags are optional. Flags syntax is\n"
+	"`+#[+#[+#]]' or `0xNN', for example `+1', `+2+3', `0x01', `0x03', etc.",
+	"192.168.0.10 \"Gran Turismo 3\" cd0:",
+	"hdd1: \"Gran Turismo 3\" c:\\gt3.iso SCES_xxx.xx +2+3", 1 },
       { CMD_CDVD_INFO, "iin_input",
 	"Displays signature (startup file), volume label and data size\n"
 	"for a CD-/DVD-drive or image file.",
@@ -957,6 +1053,11 @@ show_usage_and_exit (const char *app_path,
 	"Attempts to locate and display partition errors.",
 	"hdd1:", "192.168.0.10", 0 },
 #endif /* INCLUDE_CHECK_CMD defined? */
+#if defined (INCLUDE_INITIALIZE_CMD)
+      { CMD_INITIALIZE, "device",
+	"Prepares a HDD for HD Loader usage. All information on the HDD will be lost.\n",
+	"hdd1:", NULL, 1 },
+#endif /* INCLUDE_INITIALIZE_CMD defined? */
       { NULL, NULL,
 	NULL,
 	NULL, NULL, 0 }
@@ -969,7 +1070,7 @@ show_usage_and_exit (const char *app_path,
   else
     app = app_path;
 
-  fprintf (stderr,
+  fprintf (stdout,
 	   "hdl_dump-" VERSION " by The W1zard 0f 0z (AKA b...)\n"
 	   "http://hdldump.ps2-scene.org/ w1zard0f07@yahoo.com\n"
 	   "\n");
@@ -1193,6 +1294,14 @@ handle_result_and_exit (int result,
       fprintf (stderr, "Unable to limit HDD size to 128GB - data behind 128GB mark.\n");
       exit (100 + RET_CROSS_128GB);
 
+#if defined (_WITH_ASPI)
+    case RET_ASPI_ERROR:
+      fprintf (stderr, "ASPI error: 0x%08x (SRB/Sense/ASC/ASCQ) %s\n",
+	       aspi_get_last_error_code (),
+	       aspi_get_last_error_msg ());
+      exit (100 + RET_ASPI_ERROR);
+#endif
+
     default:
       fprintf (stderr, "%s: don't know what the error is: %d.\n", device, result);
       exit (200);
@@ -1330,25 +1439,36 @@ main (int argc, char *argv [])
 				  argv [2], argv [3]);
 	}
 
-      else if (caseless_compare (command_name, CMD_HDL_INJECT_CD))
+      else if (caseless_compare (command_name, CMD_HDL_INJECT_CD) ||
+	       caseless_compare (command_name, CMD_HDL_INJECT_DVD))
 	{ /* inject game image into a new HD Loader partition */
-	  if (argc != 6)
-	    show_usage_and_exit (argv [0], CMD_HDL_INJECT_CD);
+	  unsigned char compat_flags = 0, have_startup = 1;
+	  unsigned char media =
+	    caseless_compare (command_name, CMD_HDL_INJECT_CD) ? 0 : 1;
+
+	  if (!(argc >= 5 && argc <= 7))
+	    show_usage_and_exit (argv [0], command_name);
+
+	  /* parse compatibility flags */
+	  if (argc == 7)
+	    /* startup + compatibility flags */
+	    compat_flags = parse_compat_flags (argv [6]);
+	  else if (argc == 6 &&
+		   (argv[5][0] == '+' ||
+		    (argv[5][0] == '0' && argv[5][1] == 'x')))
+	    { /* compatibility flags only */
+	      compat_flags = parse_compat_flags (argv [5]);
+	      have_startup = 0;
+	    }
+	  else if (argc == 5)
+	    /* neither */
+	    have_startup = 0;
+	  if (compat_flags == (unsigned char) -1)
+	    show_usage_and_exit (argv [0], command_name);
 
 	  handle_result_and_exit (inject (argv [2], argv [3], argv [4],
-					  argc == 6 ? argv [5] : NULL,
-					  0 /* compat flags */, 0, get_progress ()),
-				  argv [2], argv [3]);
-	}
-
-      else if (caseless_compare (command_name, CMD_HDL_INJECT_DVD))
-	{ /* inject game image into a new HD Loader partition */
-	  if (argc != 6)
-	    show_usage_and_exit (argv [0], CMD_HDL_INJECT_DVD);
-
-	  handle_result_and_exit (inject (argv [2], argv [3], argv [4],
-					  argc == 6 ? argv [5] : NULL,
-					  0 /* compat flags */, 1, get_progress ()),
+					  have_startup ? argv [5] : NULL,
+					  compat_flags, media, get_progress ()),
 				  argv [2], argv [3]);
 	}
 
@@ -1402,6 +1522,16 @@ main (int argc, char *argv [])
 	  handle_result_and_exit (check (argv [2]), argv [2], NULL);
 	}
 #endif /* INCLUDE_CHECK_CMD defined? */
+
+#if defined (INCLUDE_INITIALIZE_CMD)
+      else if (caseless_compare (command_name, CMD_INITIALIZE))
+	{ /* prepare a HDD for HD Loader usage */
+	  if (argc != 3)
+	    show_usage_and_exit (argv [0], CMD_INITIALIZE);
+
+	  handle_result_and_exit (apa_initialize (argv [2]), argv [2], NULL);
+	}
+#endif /* INCLUDE_INITIALIZE_CMD defined? */
 
       else
 	{ /* something else... -h perhaps? */

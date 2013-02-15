@@ -1,6 +1,6 @@
 /*
  * aspi_hlio.h - ASPI high-level I/O
- * $Id: aspi_hlio.h,v 1.4 2004/12/04 10:20:53 b081 Exp $
+ * $Id: aspi_hlio.h,v 1.5 2005/05/06 14:50:34 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -25,6 +25,7 @@
 #define _ASPI_HLIO_H
 
 #include <stddef.h>
+#include "config.h"
 
 
 typedef struct scsi_device_type scsi_device_t;

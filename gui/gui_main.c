@@ -1,6 +1,6 @@
-/*
+*
  * gui_main.c
- * $Id: gui_main.c,v 1.5 2005/02/17 17:54:12 b081 Exp $
+ * $Id: gui_main.c,v 1.6 2005/05/06 14:50:35 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -751,6 +751,7 @@ delete (HWND dlg)
       int result = apa_ptable_read_ex (hio_, &ptable);
       if (result == RET_OK)
 	{
+	  /* TODO: re-read games_ */
 	  HWND lvw = GetDlgItem (dlg, IDC_CONTENTS);
 	  if (ListView_GetSelectedCount (lvw) > 0 &&
 	      MessageBox (dlg, get_string (IDS_CONFIRM_DELETE, 0),

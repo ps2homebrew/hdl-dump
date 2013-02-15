@@ -1,6 +1,6 @@
 /*
  * svr/ee/loader.c
- * $Id: loader.c,v 1.7 2004/12/04 10:28:44 b081 Exp $
+ * $Id: loader.c,v 1.8 2005/05/06 14:50:35 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -45,8 +45,25 @@
 #include "graph.h"
 
 
+/*
+ * this program were supposed to produce the following output:
+ * hdld_svr-x.y.z
+ * MR Brown patches
+ * SIO2MAN: 25
+ * MCMAN: 26
+ * MCSERV: 27
+ * IOMANX.IRX: 0
+ * PS2DEV9.IRX: 0
+ * PS2ATAD.IRX: 0
+ * PS2IP.IRX: 0
+ * message for config file
+ * Playstation 2 IP address: a.b.c.d
+ * PS2SMAP.IRX: 0
+ * HDLD_SVR.IRX: 0
+ */
+
 #define APP_NAME "hdld_svr"
-#define VERSION "0.7.3"
+#define VERSION "0.8.1"
 
 
 #if 1 /* debugging */
@@ -97,7 +114,7 @@ const char *default_gateway = "192.168.0.1";
 
 /**************************************************************/
 size_t /* "192.168.0.10 255.255.255.0 192.168.0.1" */
-setup_ip (char outp [IPCONF_MAX_LEN])
+setup_ip (char outp [IPCONF_MAX_LEN], int *retval)
 {
   size_t result = 0;
   int conf_ok = 0;
@@ -129,12 +146,17 @@ setup_ip (char outp [IPCONF_MAX_LEN])
 	      result = len;
 	    }
 	  else
-	    printf ("IPCONFIG.DAT format (use a single space as separator):\n"
-		    "ip_address network_mask gateway_ip\n");
+	    {
+	      *retval = -2; /* bad format */
+	    }
 	}
     }
   else
-    printf ("use mc0:/SYS-CONF/IPCONFIG.DAT to configure IP address\n");
+    {
+      *retval = -1;
+    }
+#else
+  *retval = 0;
 #endif
 
   if (!conf_ok)
@@ -160,70 +182,134 @@ setup_ip (char outp [IPCONF_MAX_LEN])
 
 
 /**************************************************************/
-void
+static int
 load_modules (int init_tcpip)
 {
+  const char *STEP_OK = "*";
+  const char *FAILED = "failed to load with";
 #if defined (LOAD_LIBHDD) && defined (LOAD_PS2HDD)
   static const char *hddarg = "-o\0" "4\0" "-n\0" "20";
 #endif
 #if defined (LOAD_PS2FS)
   static const char *pfsarg = "-m\0" "4\0" "-o\0" "10\0" "-n\0" "40";
 #endif
-  int ret;
+  int ret, ipcfg_ret = 0;
 
-#if defined (LOAD_SIOMAN_AND_MC)
-  printf ("SIO2MAN");
-  ret = SifLoadModule ("rom0:SIO2MAN", 0, NULL);
-  printf (": %d\n", ret);
-  printf ("MCMAN");
-  ret = SifLoadModule ("rom0:MCMAN", 0, NULL);
-  printf (": %d\n", ret);
-  printf ("MCSERV");
-  ret = SifLoadModule ("rom0:MCSERV", 0, NULL);
-  printf (": %d\n", ret);
+#if defined (LOAD_MRBROWN_PATCHES)
+  sbv_patch_enable_lmb ();
+  sbv_patch_disable_prefix_check ();
+  scr_printf (STEP_OK);
 #endif
 
-  printf ("IOMANX.IRX");
-  SifExecModuleBuffer (&iomanx_irx, size_iomanx_irx, 0, NULL, &ret);
-  printf (": %d\n", ret);
+#if defined (LOAD_SIOMAN_AND_MC)
+  ret = SifLoadModule ("rom0:SIO2MAN", 0, NULL);
+  if (ret > 0)
+    scr_printf (STEP_OK);
+  else
+    {
+      scr_printf ("\nrom0:SIO2MAN %s %d\n", FAILED, ret);
+      return (-1);
+    }
 
-  printf ("PS2DEV9.IRX", size_ps2dev9_irx);
+  ret = SifLoadModule ("rom0:MCMAN", 0, NULL);
+  if (ret > 0)
+    scr_printf (STEP_OK);
+  else
+    {
+      scr_printf ("\nrom0:MCMAN %s %d\n", FAILED, ret);
+      return (-1);
+    }
+
+  ret = SifLoadModule ("rom0:MCSERV", 0, NULL);
+  if (ret > 0)
+    scr_printf (STEP_OK);
+  else
+    {
+      scr_printf ("\nrom0:MCSERV %s %d\n", FAILED, ret);
+      return (-1);
+    }
+#endif
+
+  SifExecModuleBuffer (&iomanx_irx, size_iomanx_irx, 0, NULL, &ret);
+  if (ret == 0)
+    scr_printf (STEP_OK);
+  else
+    {
+      scr_printf ("IOMANX.IRX %s %d\n", FAILED, ret);
+      return (-1);
+    }
+
   SifExecModuleBuffer (&ps2dev9_irx, size_ps2dev9_irx, 0, NULL, &ret);
-  printf (": %d\n", ret);
+  if (ret == 0)
+    scr_printf (STEP_OK);
+  else
+    {
+      scr_printf ("PS2DEV9.IRX %s %d\n", FAILED, ret);
+      return (-1);
+    }
 
 #if defined (LOAD_PS2ATAD)
-  printf ("PS2ATAD.IRX");
   SifExecModuleBuffer (&ps2atad_irx, size_ps2atad_irx, 0, NULL, &ret);
-  printf (": %d\n", ret);
+  if (ret == 0)
+    scr_printf (STEP_OK);
+  else
+    {
+      scr_printf ("PS2ATAD.IRX %s %d\n", FAILED, ret);
+      return (-1);
+    }
 #endif
 
   if (init_tcpip)
     {
-      int pos1, pos2;
-      printf ("PS2IP.IRX");
       SifExecModuleBuffer (&ps2ip_irx, size_ps2ip_irx, 0, NULL, &ret);
-      printf (": %d\n", ret);
+      if (ret == 0)
+	scr_printf (STEP_OK);
+      else
+	{
+	  scr_printf ("PS2IP.IRX %s %d\n", FAILED, ret);
+	  return (-1);
+	}
 
-      if_conf_len = setup_ip (if_conf);
+      if_conf_len = setup_ip (if_conf, &ipcfg_ret);
 
-      pos1 = strlen (if_conf) + 1;
-      pos2 = strlen (if_conf + pos1) + 1;
-      printf ("Playstation 2 IP address: %s\n",
-	      if_conf, if_conf + pos1, if_conf + pos1 + pos2, if_conf_len);
-
-      printf ("PS2SMAP.IRX");
       SifExecModuleBuffer (&ps2smap_irx, size_ps2smap_irx,
 			   if_conf_len, if_conf, &ret);
-      printf (": %d\n", ret);
+      if (ret == 0)
+	scr_printf (STEP_OK);
+      else
+	{
+	  scr_printf ("PS2SMAP.IRX %s %d\n", FAILED, ret);
+	  return (-1);
+	}
     }
   else
     printf ("Assuming TCP/IP is already initialized\n");
 
 #if defined (LOAD_SERVER)
-  printf ("HDLD_SVR.IRX");
   SifExecModuleBuffer (&hdlsvr_iop_irx, size_hdlsvr_iop_irx, 0, NULL, &ret);
-  printf (": %d\n", ret);
+  if (ret == 0)
+    scr_printf (STEP_OK);
+  else
+    {
+      scr_printf ("HDLD_SVR.IRX %s %d\n", FAILED, ret);
+      return (-1);
+    }
 #endif
+
+  scr_printf ("\n");
+
+  if (ipcfg_ret == -1)
+    scr_printf ("\nuse mc0:/SYS-CONF/IPCONFIG.DAT to configure IP address\n\n");
+
+  if (ipcfg_ret == -2)
+    scr_printf ("\nIPCONFIG.DAT format is:\n"
+		"ip_address network_mask gateway_ip\n"
+		"(use a single space as separator)\n\n");
+
+  if (ipcfg_ret != 0)
+    scr_printf ("Playstation 2 IP address: %s\n", if_conf);
+
+  return (0);
 }
 
 
@@ -235,8 +321,8 @@ main (int argc,
   int init_tcpip = 0;
 
   SifInitRpc (0);
-  init_scr ();
 
+  init_scr ();
   scr_printf (APP_NAME "-" VERSION "\n");
 
   /* decide whether to load TCP/IP or it is already loaded */
@@ -266,13 +352,12 @@ main (int argc,
   SifInitRpc (0);
 #endif
 
-#if defined (LOAD_MRBROWN_PATCHES)
-  printf ("MR Brown patches\n");
-  sbv_patch_enable_lmb ();
-  sbv_patch_disable_prefix_check ();
-#endif
-
-  load_modules (init_tcpip);
+  if (load_modules (init_tcpip) == 0)
+    {
+      scr_printf ("Ready\n");
+    }
+  else
+    scr_printf ("Failed to load\n");
 
   /* our job is done; IOP would handle the rest */
   SleepThread ();

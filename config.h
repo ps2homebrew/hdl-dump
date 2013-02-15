@@ -1,6 +1,6 @@
 /*
  * config.h
- * $Id: config.h,v 1.8 2005/02/17 17:51:04 b081 Exp $
+ * $Id: config.h,v 1.9 2005/05/06 14:50:34 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -67,15 +67,16 @@ typedef u64 u_int64_t;
 
 
 /* control whether infrequently-used commands to be built */
-#undef INCLUDE_DUMP_CMD
+#define INCLUDE_DUMP_CMD
 #undef INCLUDE_COMPARE_CMD
 #define INCLUDE_COMPARE_IIN_CMD
-#define INCLUDE_MAP_CMD
-#define INCLUDE_INFO_CMD
+#undef INCLUDE_MAP_CMD
+#undef INCLUDE_INFO_CMD
 #undef INCLUDE_ZERO_CMD
 #undef INCLUDE_CUTOUT_CMD
 #undef INCLUDE_READ_TEST_CMD
 #undef INCLUDE_CHECK_CMD
+#define INCLUDE_INITIALIZE_CMD
 
 
 /*

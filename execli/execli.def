@@ -1,0 +1,6 @@
+LIBRARY EXECLI
+
+DESCRIPTION   'Execute Command-Line Interface application DLL'
+
+EXPORTS
+	exec_cli = exec_cli@16

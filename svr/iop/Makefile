@@ -1,6 +1,6 @@
 ##
 ## svr/iop/Makefile
-## $Id: Makefile,v 1.4 2004/12/04 10:28:45 b081 Exp $
+## $Id: Makefile,v 1.5 2005/05/06 14:50:35 b081 Exp $
 ##
 ## Copyright 2004 Bobi B., w1zard0f07@yahoo.com
 ##
@@ -29,7 +29,7 @@ IOP_LIBS =
 
 IOP_INCS += -I../../
 
-IOP_CFLAGS += -Wall -D_BUILD_PS2
+IOP_CFLAGS += -Wall -D_BUILD_PS2 -s
 
 all: $(IOP_BIN) copy_irx
 
@@ -51,5 +51,5 @@ byteseq.o: ../../byteseq.c
 copy_irx: $(IOP_BIN)
 	@cp $(IOP_BIN) ../irx/
 
-include $(PS2SDK)/Defs.make
-include $(PS2SDK)/iop-rules.make
+include ../Defs.make
+include ../iop-rules.make

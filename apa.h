@@ -1,6 +1,6 @@
 /*
  * apa.h
- * $Id: apa.h,v 1.7 2004/12/04 10:20:53 b081 Exp $
+ * $Id: apa.h,v 1.8 2005/05/06 14:50:34 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -92,5 +92,9 @@ int apa_commit (const char *device_name,
 
 int apa_commit_ex (hio_t *hio,
 		   const apa_partition_table_t *table);
+
+int apa_initialize (const char *device);
+
+int apa_initialize_ex (hio_t *hio);
 
 #endif /* _APA_H defined? */

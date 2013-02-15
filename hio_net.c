@@ -1,6 +1,6 @@
 /*
  * hio_net.c - TCP/IP networking access to PS2 HDD
- * $Id: hio_net.c,v 1.7 2004/12/04 10:20:52 b081 Exp $
+ * $Id: hio_net.c,v 1.8 2005/05/06 14:50:35 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -260,7 +260,7 @@ net_write (hio_t *hio,
 	  u_int32_t sectors_to_send;
 #if defined (COMPRESS_DATA)
 	  u_int32_t compr_len;
-	  const double SMALLEST_PC_FOR_COMPRESSION = 0.64;
+	  const double SMALLEST_PC_FOR_COMPRESSION = 0.5;
 
 	  /* compress input data */
 	  rle_compress ((const unsigned char*) inp, at_once_s * HDD_SECTOR_SIZE,

@@ -1,6 +1,6 @@
 /*
  * apa.c
- * $Id: apa.c,v 1.11 2005/02/17 17:51:42 b081 Exp $
+ * $Id: apa.c,v 1.12 2005/05/06 14:50:34 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -961,4 +961,54 @@ apa_check (const apa_partition_table_t *table)
     }
 
   return (RET_OK);
+}
+
+
+/**************************************************************/
+int
+apa_initialize (const char *device)
+{
+  hio_t *hio;
+  int result = hio_probe (device, &hio);
+  if (result == RET_OK)
+    {
+      result = apa_initialize_ex (hio);
+      hio->close (hio);
+    }
+  return (result);
+}
+
+
+/**************************************************************/
+int
+apa_initialize_ex (hio_t *hio)
+{
+  ps2_partition_header_t header;
+  u_int32_t dummy;
+
+  u_int8_t *zero = malloc (1 _MB);
+  if (zero != NULL)
+    { /* zero first 1MB of the HDD */
+      int result;
+      memset (zero, 0, 1 _MB);
+      result = hio->write (hio, 0, 1 _MB / 512, zero, &dummy);
+      free (zero);
+      if (result != RET_OK)
+	return (result);
+    }
+
+  /* prepare MBR */
+  memset (&header, 0, sizeof (ps2_partition_header_t));
+  strcpy ((void*) header.magic, PS2_PARTITION_MAGIC);
+  strcpy (header.id, "__mbr");
+  set_u32 (&header.length, 128 * 1024 * 2);
+  set_u16 (&header.type, 0x0001);
+  set_ps2fs_datetime (&header.created, time (NULL));
+  strcpy (header.mbr.magic, "Sony Computer Entertainment Inc.");
+  header.mbr.unknown_0x02 = 2;
+  set_ps2fs_datetime (&header.mbr.created, time (NULL));
+  set_u32 (&header.checksum, apa_partition_checksum (&header));
+
+  /* save __mbr partition */
+  return (hio->write (hio, 0, 2, &header, &dummy));
 }

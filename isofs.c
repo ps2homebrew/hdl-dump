@@ -1,6 +1,6 @@
 /*
  * isofs.c
- * $Id: isofs.c,v 1.7 2004/12/04 10:20:52 b081 Exp $
+ * $Id: isofs.c,v 1.8 2005/05/06 14:50:35 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -40,7 +40,8 @@ isofs_find_pvd_addr (iin_t *iin,
 		     u_int64_t *pvd_start_addr,
 		     u_int64_t *ptr_start_addr,
 		     char system_id [32 + 1],
-		     char volume_id [32 + 1])
+		     char volume_id [32 + 1],
+		     int layer)
 {
   u_int32_t start_sector = 16;
   const char *data;
@@ -51,6 +52,19 @@ isofs_find_pvd_addr (iin_t *iin,
 
   if (result == OSAL_OK)
     result = memcmp (buffer + 1, "CD001", 5) == 0 ? OSAL_OK : RET_BAD_ISOFS;
+  if (layer == 1)
+    {
+      start_sector = (buffer [83] << 24 |
+		      buffer [82] << 16 |
+		      buffer [81] <<  8 |
+		      buffer [80] <<  0);
+      result = iin->read (iin, start_sector, 1, &data, &len);
+      if (len != 2048)
+	result = RET_BAD_ISOFS;
+      if (result == OSAL_OK)
+        result = memcmp (buffer + 1, "CD001", 5) == 0 ? OSAL_OK : RET_BAD_ISOFS;
+    }
+
   if (result == OSAL_OK)
     {
       if (buffer [0] == 0x01) /* primary volume descriptor set */
@@ -219,7 +233,7 @@ parse_config_cnf (char *contents,
 	}
     }
   while (line < end);
-  return (found ? OSAL_OK : RET_NOT_FOUND);
+  return (found ? OSAL_OK : RET_NOT_PS_CDVD /* perhaps PSOne CD-ROM */);
 }
 
 
@@ -242,12 +256,16 @@ isofs_parse_config_cnf (iin_t *iin,
 int
 isofs_get_ps_cdvd_details (iin_t *iin,
 			   char volume_id [32 + 1],
-			   char signature [12 + 1])
+			   char signature [12 + 1],
+			   u_int64_t *layer_pvd)
 {
   u_int64_t pvd_start_addr, ptr_start_addr, root_start_addr;
   u_int64_t system_cnf_start_addr, system_cnf_length;
   char system_id [32 + 1];
-  int result = isofs_find_pvd_addr (iin, &pvd_start_addr, &ptr_start_addr, system_id, volume_id);
+  int result = isofs_find_pvd_addr (iin, &pvd_start_addr, &ptr_start_addr,
+				    system_id, volume_id, 0);
+  *layer_pvd = 0;
+
   if (result == OSAL_OK)
     if (strcmp (system_id, "PLAYSTATION") != 0)
       result = RET_NOT_PS_CDVD;
@@ -262,5 +280,11 @@ isofs_get_ps_cdvd_details (iin_t *iin,
   if (result == OSAL_OK)
     result = isofs_parse_config_cnf (iin, system_cnf_start_addr, system_cnf_length, signature);
 
+  *layer_pvd = 0;
+  if (result == OSAL_OK)
+    if (isofs_find_pvd_addr (iin, &pvd_start_addr, &ptr_start_addr,
+			     system_id, volume_id, 1) == OSAL_OK)
+      *layer_pvd = pvd_start_addr / CDVD_SECT_SIZE;
+	
   return (result);
 }

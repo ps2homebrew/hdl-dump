@@ -1,6 +1,6 @@
 ##
 ## Makefile
-## $Id: Makefile,v 1.15 2005/02/17 17:51:55 b081 Exp $
+## $Id: Makefile,v 1.16 2005/05/06 14:50:34 b081 Exp $
 ##
 ## Copyright 2004 Bobi B., w1zard0f07@yahoo.com
 ##
@@ -28,10 +28,14 @@
 # ASPI is supported on Windows platform, only
 # however, running `hdl_dump query' while burning a CD/DVD would make a coaster
 # and it kills/freezes some CD/DVD drives (like `Yamaha-8424S')
-INCLUDE_ASPI ?= no
+INCLUDE_ASPI ?= yes
 
 # limit HDD size to 128GB to preserve compatibility with updated PS2 browser
 LIMIT_HDD_TO_128GB ?= no # yes
+
+# select partition naming schema: `toxic_os' Toxic OS: "PP.HDL.STARTUP";
+# `standard' HD Loader: "PP.HDL.Game name"
+PARTITION_NAMING ?= toxic_os
 
 # include icon in the executable (`yes') or look for an extenal icon (other)
 BUILTIN_ICON ?= yes
@@ -58,7 +62,7 @@ COMPRESS_DATA ?= yes
 # hdl_dump current version/release
 VER_MAJOR = 0
 VER_MINOR = 8
-VER_PATCH = 0
+VER_PATCH = 1
 
 # configuration end
 ###############################################################################
@@ -131,6 +135,13 @@ ifeq ($(LIMIT_HDD_TO_128GB), yes)
 endif
 
 
+ifeq ($(PARTITION_NAMING), toxic_os)
+  CFLAGS += -DPARTITION_NAMING=\"toxic_os\"
+else
+  CFLAGS += -DPARTITION_NAMING=\"standard\"
+endif
+
+
 # built-in icon support
 ifeq ($(BUILTIN_ICON), yes)
   CFLAGS += -DBUILTIN_ICON
@@ -186,6 +197,9 @@ rsrc.o: rsrc.rc
 $(BINARY): $(OBJECTS)
 	@echo -e "\tLNK $@"
 	@$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+ifeq ($(RELEASE), yes)
+	@upx -9 $@
+endif
 
 
 %.o : %.c

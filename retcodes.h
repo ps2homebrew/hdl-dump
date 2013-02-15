@@ -1,6 +1,6 @@
 /*
  * retcodes.h
- * $Id: retcodes.h,v 1.9 2005/02/17 17:50:00 b081 Exp $
+ * $Id: retcodes.h,v 1.10 2005/05/06 14:50:35 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -52,6 +52,7 @@
 #define RET_FILE_NOT_FOUND 20 /* pretty obvious */
 #define RET_BROKEN_LINK 21 /* missing linked file (to an IML or CUE for example) */
 #define RET_CROSS_128GB 22 /* data behind 128GB mark */
+#define RET_ASPI_ERROR  23 /* ASPI error; they are far too many to list here */
 
 
 #endif /* _RETCODES_H defined? */
