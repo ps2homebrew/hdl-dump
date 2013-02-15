@@ -1,6 +1,6 @@
 /*
  * hio_iop.c
- * $Id: hio_iop.c,v 1.2 2004/08/15 16:44:20 b081 Exp $
+ * $Id: hio_iop.c,v 1.3 2004/09/26 19:39:40 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -24,6 +24,7 @@
 #include <sysmem.h>
 #include <sysclib.h>
 #include <atad.h>
+#include <dev9.h>
 #include "net_io.h"
 #include "hio_iop.h"
 #include "retcodes.h"
@@ -35,44 +36,6 @@ typedef struct hio_iop_type
   int unit;
   size_t size_in_sectors;
 } hio_iop_t;
-
-
-static int iop_stat (hio_t *hio,
-		     size_t *size_in_kb);
-
-static int iop_read (hio_t *hio,
-		     size_t start_sector,
-		     size_t num_sectors,
-		     void *output,
-		     size_t *bytes);
-
-static int iop_write (hio_t *hio,
-		      size_t start_sector,
-		      size_t num_sectors,
-		      const void *input,
-		      size_t *bytes);
-
-static int iop_close (hio_t *hio);
-
-
-/**************************************************************/
-static hio_t*
-iop_alloc (int unit,
-	   size_t size_in_sectors)
-{
-  hio_iop_t *iop = AllocSysMemory (ALLOC_FIRST, sizeof (hio_iop_t), NULL);
-  if (iop != NULL)
-    {
-      hio_t *hio = &iop->hio;
-      hio->stat = &iop_stat;
-      hio->read = &iop_read;
-      hio->write = &iop_write;
-      hio->close = &iop_close;
-      iop->unit = unit;
-      iop->size_in_sectors = size_in_sectors;
-    }
-  return ((hio_t*) iop);
-}
 
 
 /**************************************************************/
@@ -95,8 +58,8 @@ iop_read (hio_t *hio,
 	  size_t *bytes)
 {
   hio_iop_t *iop = (hio_iop_t*) hio;
-  int result = atadDmaTransfer (iop->unit, output,
-				start_sector, num_sectors, ATA_DIR_READ);
+  int result = ata_device_dma_transfer (iop->unit, output,
+					start_sector, num_sectors, ATA_DIR_READ);
   if (result == 0)
     {
       *bytes = num_sectors * HDD_SECTOR_SIZE;
@@ -116,18 +79,24 @@ iop_write (hio_t *hio,
 	   size_t *bytes)
 {
   hio_iop_t *iop = (hio_iop_t*) hio;
-  int result = atadDmaTransfer (iop->unit, (char*) input,
-				start_sector, num_sectors, ATA_DIR_WRITE);
+  int result = ata_device_dma_transfer (iop->unit, (char*) input,
+					start_sector, num_sectors, ATA_DIR_WRITE);
   if (result == 0)
     {
-      result = atadFlushCache (iop->unit);
-      if (result == 0)
-	{
-	  *bytes = num_sectors * HDD_SECTOR_SIZE;
-	  return (RET_OK);
-	}
+      *bytes = num_sectors * HDD_SECTOR_SIZE;
+      return (RET_OK);
     }
   return (RET_ERR);
+}
+
+
+/**************************************************************/
+static int
+iop_flush (hio_t *hio)
+{
+  hio_iop_t *iop = (hio_iop_t*) hio;
+  int result = ata_device_flush_cache (iop->unit);
+  return (result);
 }
 
 
@@ -137,6 +106,42 @@ iop_close (hio_t *hio)
 {
   FreeSysMemory (hio);
   return (RET_OK);
+}
+
+
+/**************************************************************/
+static int
+iop_poweroff (hio_t *hio)
+{
+  /* dev9 shutdown; borrowed from ps2link */
+  dev9IntrDisable (-1);
+  dev9Shutdown ();
+
+  *((unsigned char *) 0xbf402017) = 0x00;
+  *((unsigned char *) 0xbf402016) = 0x0f;
+  return (RET_OK);
+}
+
+
+/**************************************************************/
+static hio_t*
+iop_alloc (int unit,
+	   size_t size_in_sectors)
+{
+  hio_iop_t *iop = AllocSysMemory (ALLOC_FIRST, sizeof (hio_iop_t), NULL);
+  if (iop != NULL)
+    {
+      hio_t *hio = &iop->hio;
+      hio->stat = &iop_stat;
+      hio->read = &iop_read;
+      hio->write = &iop_write;
+      hio->flush = &iop_flush;
+      hio->close = &iop_close;
+      hio->poweroff = &iop_poweroff;
+      iop->unit = unit;
+      iop->size_in_sectors = size_in_sectors;
+    }
+  return ((hio_t*) iop);
 }
 
 
@@ -153,7 +158,7 @@ hio_iop_probe (const char *path,
       path [5] == '\0')
     {
       int unit = path [3] - '0';
-      ata_devinfo_t *dev_info = atadInit (unit);
+      ata_devinfo_t *dev_info = ata_get_devinfo (unit);
       if (dev_info != NULL && dev_info->exists)
 	{
 	  *hio = iop_alloc (unit, dev_info->total_sectors);

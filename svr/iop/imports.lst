@@ -32,22 +32,19 @@ I_lwip_recv
 I_lwip_close
 I_lwip_bind
 I_lwip_accept
+I_lwip_getsockopt
+I_lwip_setsockopt
 ps2ip_IMPORTS_end
 
 sifcmd_IMPORTS_start
 I_sceSifInitRpc
 sifcmd_IMPORTS_end
 
-DECLARE_IMPORT_TABLE(atad, 1, 1)// temp!
-DECLARE_IMPORT(4, atadInit)
-DECLARE_IMPORT(9, atadDmaTransfer)
-DECLARE_IMPORT(11, atadSceUnlock)
-DECLARE_IMPORT(13, atadIdle)
-DECLARE_IMPORT(14, atadSceIdentifyDrive)
-DECLARE_IMPORT(15, atadGetStatus)
-DECLARE_IMPORT(16, atadUpdateAttrib)
-DECLARE_IMPORT(17, atadFlushCache)
-END_IMPORT_TABLE
+atad_IMPORTS_start
+I_ata_get_devinfo
+I_ata_device_dma_transfer
+I_ata_device_flush_cache
+atad_IMPORTS_end
 
 dev9_IMPORTS_start
 I_dev9Shutdown

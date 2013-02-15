@@ -1,6 +1,6 @@
 /*
  * hdl.c
- * $Id: hdl.c,v 1.9 2004/09/12 17:25:26 b081 Exp $
+ * $Id: hdl.c,v 1.10 2004/09/26 19:39:39 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -32,6 +32,10 @@
 #include "osal.h"
 #include "common.h"
 #include "hio_probe.h"
+#include "net_io.h"
+#if defined (BUILTIN_ICON)
+#  include "icon.h"
+#endif
 
 
 /*
@@ -71,24 +75,32 @@ static const char *HDL_HDR2 =
 
 /**************************************************************/
 static int
-prepare_main (const char *game_name,
-	      const char *signature,
+prepare_main (const hdl_game_t *details,
 	      const apa_partition_table_t *table,
 	      size_t starting_partition_sector,
 	      size_t size_in_kb,
-	      int is_dvd,
 	      unsigned char *buffer_4m)
 {
   int result;
   size_t i, index = (size_t) -1;
+#if defined (BUILTIN_ICON)
+  const char *icon = (const char*) hdloader_icon;
+  size_t icon_length = HDLOADER_ICON_LEN;
+#else
   char *icon = NULL;
   size_t icon_length;
+#endif
   char icon_props [1024];
   const ps2_partition_header_t *part;
 
-  /* read icon */
   part = NULL;
+#if !defined (BUILTIN_ICON)
+  /* read icon */
   result = read_file ("./icon.bin", &icon, &icon_length);
+#else
+  /* icon is embedded in the executable */
+  result = OSAL_OK;
+#endif
   if (result == OSAL_OK)
     for (i=0; i<table->part_count; ++i)
       if (table->parts [i].header.start == starting_partition_sector)
@@ -114,7 +126,7 @@ prepare_main (const char *game_name,
 	memset (buffer_4m, 0, 4 * 1024 * 1024);
 	memcpy (buffer_4m, part, 1024);
 
-	sprintf (icon_props, HDL_HDR2, game_name);
+	sprintf (icon_props, HDL_HDR2, details->name);
 
 	/*
 	 *  1000: 50 53 32 49 43 4f 4e 33  44 00 00 00 00 00 00 00  PS2ICON3D.......
@@ -132,14 +144,14 @@ prepare_main (const char *game_name,
 	 *         +--+--+--+- part offset relative to 0x1000
 	 */
 	tmp = (unsigned long*) (buffer_4m + 0x001010);
-	tmp [0] = 0x0200;
-	tmp [1] = strlen (HDL_HDR1);
-	tmp [2] = 0x0400;
-	tmp [3] = strlen (icon_props);
-	tmp [4] = 0x0800;
-	tmp [5] = icon_length;
-	tmp [6] = 0x0800;
-	tmp [7] = icon_length;
+	put_ulong (tmp++, 0x0200);
+	put_ulong (tmp++, strlen (HDL_HDR1));
+	put_ulong (tmp++, 0x0400);
+	put_ulong (tmp++, strlen (icon_props));
+	put_ulong (tmp++, 0x0800);
+	put_ulong (tmp++, icon_length);
+	put_ulong (tmp++, 0x0800);
+	put_ulong (tmp++, icon_length);
 
 	/*
 	 *  1200: 42 4f 4f 54 32 20 3d 20  63 64 72 6f 6d 30 3a 5c  BOOT2 = cdrom0:\
@@ -174,7 +186,7 @@ prepare_main (const char *game_name,
 	buffer_4m [0x101002] = 0xad;
 	buffer_4m [0x101003] = 0xde;
 	buffer_4m [0x101006] = 0x01;
-	memcpy (buffer_4m + 0x101008, game_name, strlen (game_name));
+	memcpy (buffer_4m + 0x101008, details->name, strlen (details->name));
 
 	/*
          *                                  +- compatibility modes
@@ -182,7 +194,8 @@ prepare_main (const char *game_name,
 	 *1010a0: 00 00 00 00 00 00 00 00  00 00 00 00 53 43 45 53  ............SCES
 	 *1010b0: 5f 35 30 33 2e 36 30 00  00 00 00 00 00 00 00 00  _503.60.........
 	 */
-	memcpy (buffer_4m + 0x1010ac, signature, strlen (signature));
+	buffer_4m [0x1010a8] = details->compat_flags;
+	memcpy (buffer_4m + 0x1010ac, details->startup, strlen (details->startup));
 
 	/*
 	 *	            +- media type? 0x14 for DVD, 0x12 for CD, 0x10 for PSX CD (w/o audio)?
@@ -201,7 +214,7 @@ prepare_main (const char *game_name,
 	 */
 
 	/* that is aerial acrobatics :-) */
-	buffer_4m [0x1010ec] = is_dvd ? 0x14 : 0x12;
+	buffer_4m [0x1010ec] = details->is_dvd ? 0x14 : 0x12;
 	buffer_4m [0x1010f0] = (unsigned char) (part->nsub + 1);
 	tmp = (unsigned long*) (buffer_4m + 0x1010f5);
 
@@ -211,9 +224,10 @@ prepare_main (const char *game_name,
 	  size_in_kb : partition_usable_size_in_kb;
 
 	/* offset, start, data length */
-	*tmp++ = 0; /* offset */
-	*tmp++ = (part->start + 0x2000) >> 8; /* 0x2000 sectors = 4M (data offset for 1st part.) */
-	*tmp++ = partition_data_len_in_kb * 4;
+	put_ulong (tmp++, 0); /* offset */
+	/* 0x2000 sec = 4M (offs for 1st part.) */
+	put_ulong (tmp++, (part->start + 0x2000) >> 8);
+	put_ulong (tmp++, partition_data_len_in_kb * 4);
 	++partitions_used;
 
 	offset = (part->length - 0x2000) / 1024;
@@ -226,9 +240,10 @@ prepare_main (const char *game_name,
 	      size_remaining_in_kb : partition_usable_size_in_kb;
 
 	    /* offset, start, data length */
-	    *tmp++ = offset;
-	    *tmp++ = (part->subs [i].start + 0x0800) >> 8; /* 0x0800 sec = 1M (sub part. offs) */
-	    *tmp++ = partition_data_len_in_kb * 4;
+	    put_ulong (tmp++, offset);
+	    /* 0x0800 sec = 1M (sub part. offs) */
+	    put_ulong (tmp++, (part->subs [i].start + 0x0800) >> 8);
+	    put_ulong (tmp++, partition_data_len_in_kb * 4);
 	    ++partitions_used;
 
 	    offset += (part->subs [i].length - 0x0800) / 1024;
@@ -241,10 +256,34 @@ prepare_main (const char *game_name,
       result = RET_NOT_FOUND;
   }
 
+#if !defined (BUILTIN_ICON)
   if (icon != NULL)
     osal_free (icon);
+#endif
 
   return (result);
+}
+
+
+/**************************************************************/
+void
+hdl_pname (const char *name,
+	   char partition_name [PS2_PART_IDMAX + 1])
+{
+  size_t game_name_len = PS2_PART_IDMAX - 1 - 7; /* limit partition name length */
+  char *p;
+
+  game_name_len = strlen (name) < game_name_len ? strlen (name) : game_name_len;
+  strcpy (partition_name, "PP.HDL.");
+  memcpy (partition_name + 7, name, game_name_len);
+  partition_name [7 + game_name_len] = '\0';
+  p = partition_name + 7; /* len ("PP.HDL.") */
+  while (*p)
+    {
+      if (!isalnum (*p) && *p != ' ')
+	*p = '_'; /* escape non-alphanumeric characters with `_' */
+      ++p;
+    }
 }
 
 
@@ -357,14 +396,12 @@ hdl_extract (const char *device_name,
 
 /**************************************************************/
 static int
-inject_data (const char *path,
+inject_data (hio_t *hio,
 	     const apa_partition_table_t *table,
 	     size_t starting_partition_sector,
 	     iin_t *iin,
 	     size_t size_in_kb,
-	     const char *game_name,
-	     const char *game_signature,
-	     int is_dvd,
+	     const hdl_game_t *details,
 	     progress_t *pgs)
 {
   int result;
@@ -390,75 +427,66 @@ inject_data (const char *path,
 
   if (result == RET_OK)
     {
-      result = prepare_main (game_name, game_signature,
-			     table, starting_partition_sector,
-			     size_in_kb, is_dvd,
-			     (unsigned char*) buffer);
+      result = prepare_main (details, table, starting_partition_sector,
+			     size_in_kb, (unsigned char*) buffer);
       if (result == RET_OK)
 	{
-	  hio_t *hio;
-	  result = hio_probe (path, &hio);
+	  size_t kb_remaining = size_in_kb;
+	  size_t start_sector = 0;
+	  size_t bytes;
+	  size_t main_hdr_size_s = (4 _MB) / 512;
+
+	  pgs_prepare (pgs, (bigint_t) (size_in_kb + 4 * 1024) * 1024);
+
+	  /* first: write main partition header (4MB total) */
+	  result = hio->write (hio, part->start, main_hdr_size_s, buffer, &bytes);
 	  if (result == OSAL_OK)
+	    result = bytes == 4 _MB ? OSAL_OK : OSAL_ERR;
+	  osal_free (buffer), buffer = NULL;
+
+	  /* track header, otherwise it would influence the progress calculation */
+	  pgs_update (pgs, 4 _MB);
+	  pgs_chunk_complete (pgs);
+
+	  /* next: fill-in 1st partition */
+	  if (result == RET_OK)
 	    {
-	      size_t kb_remaining = size_in_kb;
-	      size_t start_sector = 0;
-	      size_t bytes;
-	      size_t main_hdr_size_s = (4 _MB) / 512;
+	      bigint_t part_size = ((bigint_t) part->length) * 512 - (4 _MB);
+	      bigint_t chunk_length_in_bytes =
+		((bigint_t) kb_remaining) * 1024 < part_size ?
+		((bigint_t) kb_remaining) * 1024 : part_size;
 
-	      pgs_prepare (pgs, (bigint_t) (size_in_kb + 4 * 1024) * 1024);
-
-	      /* first: write main partition header (4MB total) */
-	      result = hio->write (hio, part->start, main_hdr_size_s, buffer, &bytes);
-	      if (result == OSAL_OK)
-		result = bytes == 4 _MB ? OSAL_OK : OSAL_ERR;
-	      osal_free (buffer), buffer = NULL;
-
-	      /* track header, otherwise it would influence the progress calculation */
-	      pgs_update (pgs, 4 _MB);
+	      result = iin_copy_ex (iin, hio, start_sector, part->start + main_hdr_size_s,
+				    chunk_length_in_bytes / IIN_SECTOR_SIZE, pgs);
 	      pgs_chunk_complete (pgs);
-
-	      /* next: fill-in 1st partition */
-	      if (result == RET_OK)
-		{
-		  bigint_t part_size = ((bigint_t) part->length) * 512 - (4 _MB);
-		  bigint_t chunk_length_in_bytes =
-		    ((bigint_t) kb_remaining) * 1024 < part_size ?
-		    ((bigint_t) kb_remaining) * 1024 : part_size;
-
-		  result = iin_copy_ex (iin, hio, start_sector, part->start + main_hdr_size_s,
-					chunk_length_in_bytes / IIN_SECTOR_SIZE, pgs);
-		  pgs_chunk_complete (pgs);
-		  start_sector += chunk_length_in_bytes / IIN_SECTOR_SIZE;
-		  kb_remaining -= (size_t) (chunk_length_in_bytes / 1024);
-		}
-
-	      for (i=0; result == OSAL_OK && kb_remaining>0 && i!=part->nsub; ++i)
-		{ /* next: fill-in remaining partitions */
-		  size_t sub_part_start_s = part->subs [i].start;
-		  bigint_t sub_part_size = ((bigint_t) part->subs [i].length) * 512 - (1 _MB);
-		  size_t sub_part_hdr_size_s = (1 _MB) / 512;
-		  bigint_t chunk_length =
-		    ((bigint_t) kb_remaining) * 1024 < sub_part_size ?
-		    ((bigint_t) kb_remaining) * 1024 : sub_part_size;
-
-		  result = iin_copy_ex (iin, hio, start_sector,
-					sub_part_start_s + sub_part_hdr_size_s,
-					chunk_length / IIN_SECTOR_SIZE, pgs);
-		  pgs_chunk_complete (pgs);
-		  start_sector += chunk_length / IIN_SECTOR_SIZE;
-		  kb_remaining -= (size_t) (chunk_length / 1024);
-		}
-
-	      if (result == RET_OK &&
-		  kb_remaining != 0)
-		result = RET_NO_SPACE; /* the game does not fit in the allocated space... why? */
-
-	      /* finally: commit partition table */
-	      if (result == OSAL_OK)
-		result = apa_commit_ex (hio, table);
-
-	      result = hio->close (hio) == OSAL_OK ? result : OSAL_ERR;
+	      start_sector += chunk_length_in_bytes / IIN_SECTOR_SIZE;
+	      kb_remaining -= (size_t) (chunk_length_in_bytes / 1024);
 	    }
+
+	  for (i=0; result == OSAL_OK && kb_remaining>0 && i!=part->nsub; ++i)
+	    { /* next: fill-in remaining partitions */
+	      size_t sub_part_start_s = part->subs [i].start;
+	      bigint_t sub_part_size = ((bigint_t) part->subs [i].length) * 512 - (1 _MB);
+	      size_t sub_part_hdr_size_s = (1 _MB) / 512;
+	      bigint_t chunk_length =
+		((bigint_t) kb_remaining) * 1024 < sub_part_size ?
+		((bigint_t) kb_remaining) * 1024 : sub_part_size;
+
+	      result = iin_copy_ex (iin, hio, start_sector,
+				    sub_part_start_s + sub_part_hdr_size_s,
+				    chunk_length / IIN_SECTOR_SIZE, pgs);
+	      pgs_chunk_complete (pgs);
+	      start_sector += chunk_length / IIN_SECTOR_SIZE;
+	      kb_remaining -= (size_t) (chunk_length / 1024);
+	    }
+
+	  if (result == RET_OK &&
+	      kb_remaining != 0)
+	    result = RET_NO_SPACE; /* the game does not fit in the allocated space... why? */
+
+	  /* finally: commit partition table */
+	  if (result == OSAL_OK)
+	    result = apa_commit_ex (hio, table);
 	}
     }
 
@@ -471,62 +499,38 @@ inject_data (const char *path,
 
 /**************************************************************/
 int
-hdl_inject (const char *device_name,
-	    const char *game_name,
-	    const char *game_signature,
-	    const char *input_path,
-	    int input_is_dvd,
+hdl_inject (hio_t *hio,
+	    iin_t *iin,
+	    hdl_game_t *details,
 	    progress_t *pgs)
 {
   apa_partition_table_t *table = NULL;
-  int result = apa_ptable_read (device_name, &table);
+  int result = apa_ptable_read_ex (hio, &table);
   if (result == OSAL_OK)
     {
-      iin_t *iin;
-      result = iin_probe (input_path, &iin);
+      size_t sector_size, num_sectors;
+      result = iin->stat (iin, &sector_size, &num_sectors);
       if (result == OSAL_OK)
 	{
-	  size_t sector_size, num_sectors;
-	  result = iin->stat (iin, &sector_size, &num_sectors);
-	  if (result == OSAL_OK)
+	  bigint_t input_size = (bigint_t) num_sectors * (bigint_t) sector_size;
+	  size_t size_in_kb = (size_t) (input_size / 1024);
+	  size_t size_in_mb = (size_t) ((input_size + (1 _MB - 1)) / (1 _MB));
+	  size_t new_partition_start;
+
+	  if (details->partition_name [0] == '\0')
+	    hdl_pname (details->name, details->partition_name);
+	  result = apa_allocate_space (table, details->partition_name, size_in_mb,
+				       &new_partition_start, 0); /* order by size desc */
+	  if (result == RET_OK)
 	    {
-	      bigint_t input_size = (bigint_t) num_sectors * (bigint_t) sector_size;
-	      size_t size_in_kb = (size_t) (input_size / 1024);
-	      size_t size_in_mb = (size_t) ((input_size + (1 _MB - 1)) / (1 _MB));
-	      char partition_name [PS2_PART_IDMAX];
-	      size_t new_partition_start;
-	      char *p;
-
-	      size_t game_name_len = PS2_PART_IDMAX - 1 - 7;
-	      game_name_len =
-		strlen (game_name) < game_name_len ? strlen (game_name) : game_name_len;
-	      strcpy (partition_name, "PP.HDL.");
-	      memcpy (partition_name + 7, game_name, game_name_len);
-	      partition_name [7 + game_name_len] = '\0'; /* limit game name length */
-
-	      p = partition_name + 7; /* len ("PP.HDL.") */
-	      while (*p)
-		{
-		  if (!isalnum (*p) && *p != ' ')
-		    *p = '_'; /* escape some characters with `_' */
-		  ++p;
-		}
-	      result = apa_allocate_space (table, partition_name, size_in_mb,
-					   &new_partition_start, 0); /* order by size desc */
-	      if (result == RET_OK)
-		{
-		  result = inject_data (device_name,
-					table,
-					new_partition_start,
-					iin,
-					size_in_kb,
-					game_name,
-					game_signature,
-					input_is_dvd,
-					pgs);
-		}
+	      result = inject_data (hio,
+				    table,
+				    new_partition_start,
+				    iin,
+				    size_in_kb,
+				    details,
+				    pgs);
 	    }
-	  iin->close (iin);
 	}
     }
 
@@ -534,4 +538,112 @@ hdl_inject (const char *device_name,
     apa_ptable_free (table);
 
   return (result);
+}
+
+
+/**************************************************************/
+static int
+hdl_ginfo_read (hio_t *hio,
+		const ps2_partition_header_t *part,
+		hdl_game_info_t *ginfo)
+{
+  size_t i, size;
+  /* data we're interested in starts @ 0x101000 and is header
+   * plus information for up to 65 partitions
+   * (1 main + 64 sub) by 12 bytes each */
+  const size_t offset = 0x101000;
+  char buffer [1024];
+  int result;
+  size_t bytes;
+
+  result = hio->read (hio, part->start + offset / 512, 2, buffer, &bytes);
+  if (result == RET_OK)
+    {
+      if (bytes == 1024)
+	{
+	  /* calculate total size */
+	  size = part->length;
+	  for (i=0; i<part->nsub; ++i)
+	    size += part->subs [i].length;
+
+	  memcpy (ginfo->partition_name, part->id, PS2_PART_IDMAX);
+	  ginfo->partition_name [PS2_PART_IDMAX] = '\0';
+	  strcpy (ginfo->name, buffer + 0x101008 - offset);
+	  strcpy (ginfo->startup, buffer + 0x1010ac - offset);
+	  ginfo->compat_flags = buffer [0x1010a8 - offset];
+	  ginfo->is_dvd = buffer [0x1010ec - offset] == 0x14;
+	  ginfo->start_sector = part->start;
+	  ginfo->total_size_in_kb = size / 2;
+	}
+      else
+	result = RET_ERR;
+    }
+
+  return (result);
+}
+
+
+/**************************************************************/
+int
+hdl_glist_read (hio_t *hio,
+		hdl_games_list_t **glist)
+{
+  apa_partition_table_t *ptable;
+  int result;
+
+  result = apa_ptable_read_ex (hio, &ptable);
+  if (result == RET_OK)
+    {
+      size_t i, count = 0;
+      void *tmp;
+      for (i=0; i<ptable->part_count; ++i)
+	count += (ptable->parts [i].header.flags == 0x00 &&
+		  ptable->parts [i].header.type == 0x1337);
+
+      tmp = osal_alloc (sizeof (hdl_game_info_t) * count);
+      if (tmp != NULL)
+	{
+	  memset (tmp, 0, sizeof (hdl_game_info_t) * count);
+	  *glist = osal_alloc (sizeof (hdl_games_list_t));
+	  if (*glist != NULL)
+	    {
+	      size_t index = 0;
+	      memset (*glist, 0, sizeof (hdl_games_list_t));
+	      (*glist)->count = count;
+	      (*glist)->games = tmp;
+	      (*glist)->total_chunks = ptable->total_chunks;
+	      (*glist)->free_chunks = ptable->free_chunks;
+	      for (i=0; result==RET_OK&&i<ptable->part_count; ++i)
+		{
+		  const ps2_partition_header_t *part = &ptable->parts [i].header;
+		  if (part->flags == 0x00 && part->type == 0x1337)
+		    result = hdl_ginfo_read (hio, part, (*glist)->games + index++);
+		}
+
+	      if (result != RET_OK)
+		osal_free (*glist);
+	    }
+	  else
+	    result = RET_NO_MEM;
+	  if (result != RET_OK)
+	    osal_free (tmp);
+	}
+      else
+	result = RET_NO_MEM;
+
+      apa_ptable_free (ptable);
+    }
+  return (result);
+}
+
+
+/**************************************************************/
+void
+hdl_glist_free (hdl_games_list_t *glist)
+{
+  if (glist != NULL)
+    {
+      osal_free (glist->games);
+      osal_free (glist);
+    }
 }

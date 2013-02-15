@@ -1,6 +1,6 @@
 /*
  * hio_win32.c - Win32 interface to locally connected PS2 HDD
- * $Id: hio_win32.c,v 1.4 2004/09/12 17:25:26 b081 Exp $
+ * $Id: hio_win32.c,v 1.5 2004/09/26 19:39:39 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -99,6 +99,22 @@ win32_write (hio_t *hio,
 
 /**************************************************************/
 static int
+win32_flush (hio_t *hio)
+{ /* win32_flush is intentionately blank */
+  return (RET_OK);
+}
+
+
+/**************************************************************/
+static int
+win32_poweroff (hio_t *hio)
+{ /* win32_poweroff is intentionately blank */
+  return (RET_OK);
+}
+
+
+/**************************************************************/
+static int
 win32_close (hio_t *hio)
 {
   hio_win32_t *hw32 = (hio_win32_t*) hio;
@@ -137,6 +153,8 @@ win32_alloc (osal_handle_t device)
       hw32->hio.stat = &win32_stat;
       hw32->hio.read = &win32_read;
       hw32->hio.write = &win32_write;
+      hw32->hio.flush = &win32_flush;
+      hw32->hio.poweroff = &win32_poweroff;
       hw32->hio.close = &win32_close;
       hw32->hio.last_error = &win32_last_error;
       hw32->hio.dispose_error = &win32_dispose_error;

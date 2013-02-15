@@ -1,6 +1,6 @@
 /*
  * hdl_dump.c
- * $Id: hdl_dump.c,v 1.11 2004/09/12 17:25:26 b081 Exp $
+ * $Id: hdl_dump.c,v 1.12 2004/09/26 19:39:39 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -60,6 +60,7 @@
 #  define CMD_COMPARE_IIN "compare_iin"
 #endif
 #define CMD_TOC "toc"
+#define CMD_HDL_TOC "hdl_toc"
 #if defined (INCLUDE_MAP_CMD)
 #  define CMD_MAP "map"
 #endif
@@ -80,6 +81,7 @@
 #if defined (INCLUDE_READ_TEST_CMD)
 #  define CMD_READ_TEST "read_test"
 #endif
+#define CMD_POWER_OFF "poweroff"
 
 
 /**************************************************************/
@@ -159,6 +161,49 @@ show_toc (const char *device_name)
 
 
 /**************************************************************/
+static int
+show_hdl_toc (const char *device_name)
+{
+  hio_t *hio;
+  int result = hio_probe (device_name, &hio);
+  if (result == RET_OK)
+    {
+      hdl_games_list_t *glist;
+      result = hdl_glist_read (hio, &glist);
+      if (result == RET_OK)
+	{
+	  size_t i;
+	  printf ("%-4s%9s %-5s %-12s %s\n",
+		  "type", "size", "flags", "startup", "name");
+	  for (i=0; i<glist->count; ++i)
+	    {
+	      const hdl_game_info_t *game = glist->games + i;
+	      char compat_flags [6 + 1] = { "\0\0\0\0\0\0" };
+	      if (game->compat_flags & 0x01)
+		strcat (compat_flags, "+1");
+	      if (game->compat_flags & 0x02)
+		strcat (compat_flags, "+2");
+	      if (game->compat_flags & 0x04)
+		strcat (compat_flags, "+3");
+	      printf ("%3s %7luKB %5s %-12s %s\n",
+		      game->is_dvd ? "DVD" : "CD ",
+		      game->total_size_in_kb,
+		      compat_flags + 1, /* trim leading + */
+		      game->startup,
+		      game->name);
+	    }
+	  printf ("total %uMB, used %uMB, available %uMB\n",
+		  glist->total_chunks * 128,
+		  (glist->total_chunks - glist->free_chunks) * 128,
+		  glist->free_chunks * 128);
+	  hdl_glist_free (glist);
+	}
+      hio->close (hio);
+    }
+  return (result);
+}
+
+/**************************************************************/
 #if defined (INCLUDE_MAP_CMD)
 static int
 show_map (const char *device_name)
@@ -224,14 +269,33 @@ show_hdl_game_info (const char *device_name,
 			{ /* 0xdeadfeed magic found */
 			  bigint_t total_size = 0;
 
+#if 0
+			  /* save main partition incomplete header or debug purposes */
+			  write_file (signature, buffer, 0x00101200);
+#endif
+
 			  fprintf (stdout, "%s: [%s], %s\n",
 				   signature, hdl_name, (type == 0x14 ? "DVD" : "CD"));
+			  if (buffer [0x1010a8] != 0)
+			    {
+			      char compat_flags [6 + 1] = { "" };
+			      if (buffer [0x1010a8] & 0x01)
+				strcat (compat_flags, "+1");
+			      if (buffer [0x1010a8] & 0x02)
+				strcat (compat_flags, "+2");
+			      if (buffer [0x1010a8] & 0x04)
+				strcat (compat_flags, "+3");
+			      fprintf (stdout, "compatibility flags: %s\n",
+				       compat_flags + 1);
+			    }
 			  for (i=0; i<num_parts; ++i)
 			    {
-			      total_size += ((LONGLONG) data [i * 3 + 2]) << 8;
+			      unsigned long start = get_ulong (data + (i * 3 + 1));
+			      unsigned long length = get_ulong (data + (i * 3 + 2));
+			      total_size += ((bigint_t) length) << 8;
 			      fprintf (stdout,
-				       "\tpart %2u is from sector 0x%06x00, %7uKB long\n",
-				       i + 1, data [i * 3 + 1], data [i * 3 + 2] / 4);
+				       "\tpart %2u is from sector 0x%06lx00, %7luKB long\n",
+				       i + 1, start, length / 4);
 			    }
 			  fprintf (stdout, "Total size: %luKB (%luMB approx.)\n",
 				   (unsigned long) (total_size / 1024),
@@ -677,6 +741,72 @@ compare_iin (const char *path1,
 
 
 /**************************************************************/
+int
+inject (const char *output,
+	const char *name,
+	const char *input,
+	const char *startup, /* or NULL */
+	unsigned char compat_flags,
+	int is_dvd,
+	progress_t *pgs)
+{
+  hdl_game_t game;
+  int result = RET_OK;
+  iin_t *iin = NULL;
+  hio_t *hio = NULL;
+
+  result = iin_probe (input, &iin);
+  if (result == RET_OK)
+    result = hio_probe (output, &hio);
+  if (result == RET_OK)
+    {
+      memset (&game, 0, sizeof (hdl_game_t));
+      memcpy (game.name, name, sizeof (game.name) - 1);
+      game.name [sizeof (game.name) - 1] = '\0';
+      if (startup != NULL)
+	{ /* use given startup file */
+	  memcpy (game.startup, startup, sizeof (game.startup) - 1);
+	  game.startup [sizeof (game.startup) - 1] = '\0';
+	}
+      else
+	{ /* try to autodetect startup file */
+	  char volume_id [32 + 1], signature [12 + 1];
+	  result = isofs_get_ps_cdvd_details (iin, volume_id, signature);
+	  if (result == RET_OK)
+	    strcpy (game.startup, signature);
+	}
+      game.compat_flags = compat_flags;
+      game.is_dvd = is_dvd;
+
+      if (result == RET_OK)
+	result = hdl_inject (hio, iin, &game, pgs);
+    }
+
+  if (hio != NULL)
+    hio->close (hio);
+  if (iin != NULL)
+    iin->close (iin);
+
+  return (result);
+}
+
+
+/**************************************************************/
+static int
+remote_poweroff (const char *ip)
+{
+  hio_t *hio;
+  int result = hio_probe (ip, &hio);
+  if (result == RET_OK)
+    {
+      result = hio->poweroff (hio);
+      hio->close (hio);
+    }
+  return (result);
+}
+
+
+/**************************************************************/
 static int
 progress_cb (progress_t *pgs)
 {
@@ -750,7 +880,10 @@ show_usage_and_exit (const char *app_path,
 #endif
       { CMD_TOC, "device",
 	"Displays PlayStation 2 HDD TOC.",
-	"hdd1:", NULL, 0 },
+	"hdd1:", "192.168.0.10", 0 },
+      { CMD_HDL_TOC, "device",
+	"Displays a list of all HD Loader games on the PlayStation 2 HDD.",
+	"hdd1:", "192.168.0.10", 0 },
 #if defined (INCLUDE_MAP_CMD)
       { CMD_MAP, "device",
 	"Displays PlayStation 2 HDD usage map.",
@@ -797,6 +930,9 @@ show_usage_and_exit (const char *app_path,
 	"Displays signature (startup file), volume label and data size\n"
 	"for a CD-/DVD-drive or image file.",
 	"c:\\gt3.gi", "\"hdd2:Gran Turismo 3\"", 0 },
+      { CMD_POWER_OFF, "ip",
+	"Powers-off Playstation 2.",
+	"192.168.0.10", NULL, 0 },
 #if defined (INCLUDE_READ_TEST_CMD)
       { CMD_READ_TEST, "iin_input",
 	"Consecutively reads all sectors from the specified input.",
@@ -1106,8 +1242,14 @@ main (int argc, char *argv [])
 	{ /* show TOC of a PlayStation 2 HDD */
 	  if (argc != 3)
 	    show_usage_and_exit (argv [0], CMD_TOC);
-
 	  handle_result_and_exit (show_toc (argv [2]), argv [2], NULL);
+	}
+
+      else if (caseless_compare (command_name, CMD_HDL_TOC))
+	{ /* show a TOC of HD Loader games only */
+	  if (argc != 3)
+	    show_usage_and_exit (argv [0], CMD_HDL_TOC);
+	  handle_result_and_exit (show_hdl_toc (argv [2]), argv [2], NULL);
 	}
 
 #if defined (INCLUDE_MAP_CMD)
@@ -1170,8 +1312,9 @@ main (int argc, char *argv [])
 	  if (argc != 6)
 	    show_usage_and_exit (argv [0], CMD_HDL_INJECT_CD);
 
-	  handle_result_and_exit (hdl_inject (argv [2], argv [3], argv [5],
-					      argv [4], 0, get_progress ()),
+	  handle_result_and_exit (inject (argv [2], argv [3], argv [4],
+					  argc == 6 ? argv [5] : NULL,
+					  0 /* compat flags */, 0, get_progress ()),
 				  argv [2], argv [3]);
 	}
 
@@ -1180,8 +1323,9 @@ main (int argc, char *argv [])
 	  if (argc != 6)
 	    show_usage_and_exit (argv [0], CMD_HDL_INJECT_DVD);
 
-	  handle_result_and_exit (hdl_inject (argv [2], argv [3], argv [5],
-					      argv [4], 1, get_progress ()),
+	  handle_result_and_exit (inject (argv [2], argv [3], argv [4],
+					  argc == 6 ? argv [5] : NULL,
+					  0 /* compat flags */, 1, get_progress ()),
 				  argv [2], argv [3]);
 	}
 
@@ -1217,6 +1361,15 @@ main (int argc, char *argv [])
 	  handle_result_and_exit (read_test (argv [2], get_progress ()), argv [2], NULL);
 	}
 #endif /* INCLUDE_READ_TEST_CMD defined? */
+
+      else if (caseless_compare (command_name, CMD_POWER_OFF))
+	{ /* PS2 power-off */
+	  if (argc != 3)
+	    show_usage_and_exit (argv [0], CMD_POWER_OFF);
+	  
+	  handle_result_and_exit (remote_poweroff (argv [2]), argv [2], NULL);
+	}
+
 
       else
 	{ /* something else... -h perhaps? */

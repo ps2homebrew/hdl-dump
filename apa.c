@@ -1,6 +1,6 @@
 /*
  * apa.c
- * $Id: apa.c,v 1.8 2004/08/20 12:35:17 b081 Exp $
+ * $Id: apa.c,v 1.9 2004/09/26 19:39:39 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -279,29 +279,28 @@ apa_find_partition (const apa_partition_table_t *table,
 		    size_t *partition_index)
 {
   size_t i;
-  int partition_found = 0;
-
+  int result = RET_NOT_FOUND;
   for (i=0; i<table->part_count; ++i)
     {
       const ps2_partition_header_t *part = &table->parts [i].header;
       if (part->main == 0)
-	{
-	  /* trim partition name */
-	  char id_copy [PS2_PART_IDMAX];
+	{ /* trim partition name */
+	  char id_copy [PS2_PART_IDMAX + 1];
 	  char *part_id_end = id_copy + PS2_PART_IDMAX - 1;
 	  memcpy (id_copy, part->id, PS2_PART_IDMAX);
+	  id_copy [PS2_PART_IDMAX] = '\0';
 	  while (part_id_end > id_copy &&
 		 *part_id_end == ' ')
 	    *part_id_end-- = '\0';
 	  if (caseless_compare (id_copy, partition_name))
-	    { /* partition found */
+	    { /* found */
 	      *partition_index = i;
-	      partition_found = 1;
+	      result = RET_OK;
 	      break;
 	    }
 	}
     }
-  return (partition_found ? RET_OK : RET_NOT_FOUND);
+  return (result);
 }
 
 

@@ -1,6 +1,6 @@
 /*
  * net_io.c
- * $Id: net_io.c,v 1.3 2004/08/15 16:44:19 b081 Exp $
+ * $Id: net_io.c,v 1.4 2004/09/26 19:39:40 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -26,24 +26,26 @@
 
 /**************************************************************/
 unsigned long
-get_ulong (unsigned char buffer [4])
+get_ulong (const void *buffer)
 {
-  return ((unsigned long) buffer [0] << 24 |
-	  (unsigned long) buffer [1] << 16 |
-	  (unsigned long) buffer [2] <<  8 |
-	  (unsigned long) buffer [3] <<  0);
+  const unsigned char *p = buffer;
+  return ((unsigned long) p [3] << 24 |
+	  (unsigned long) p [2] << 16 |
+	  (unsigned long) p [1] <<  8 |
+	  (unsigned long) p [0] <<  0);
 }
 
 
 /**************************************************************/
 void
-put_ulong (unsigned char buffer [4],
+put_ulong (void *buffer,
 	   unsigned long val)
 {
-  buffer [0] = (unsigned char) (val >> 24);
-  buffer [1] = (unsigned char) (val >> 16);
-  buffer [2] = (unsigned char) (val >>  8);
-  buffer [3] = (unsigned char) (val >>  0);
+  unsigned char *p = buffer;
+  p [3] = (unsigned char) (val >> 24);
+  p [2] = (unsigned char) (val >> 16);
+  p [1] = (unsigned char) (val >>  8);
+  p [0] = (unsigned char) (val >>  0);
 }
 
 

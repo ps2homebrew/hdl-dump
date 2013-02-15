@@ -1,6 +1,6 @@
 /*
  * config.h
- * $Id: config.h,v 1.5 2004/09/12 17:25:26 b081 Exp $
+ * $Id: config.h,v 1.6 2004/09/26 19:39:39 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -41,5 +41,13 @@ typedef long long bigint_t;
 /* #define INCLUDE_CUTOUT_CMD */
 /* #define INCLUDE_READ_TEST_CMD */
 
+
+/*
+ * networking options below:
+ * - high-level ACK: none, normal, dummy reverse
+ * - local TCP_NODELAY: yes/no
+ * - remote TCP_NODELAY: yes/no
+ * - remote TCP_ACKNODELAY: yes/no
+ */
 
 #endif /* _CONFIG_H defined? */

@@ -1,6 +1,6 @@
 /*
  * hdld_svr_iop.c
- * $Id: hdld_svr_iop.c,v 1.3 2004/08/15 16:44:20 b081 Exp $
+ * $Id: hdld_svr_iop.c,v 1.4 2004/09/26 19:39:40 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -39,6 +39,10 @@
 volatile int interrupt_flag = 0;
 
 
+int run_server (unsigned short port,
+		hio_t *hio,
+		volatile int *interrupt_flag);
+
 /**************************************************************/
 void
 serve (void *arg)
@@ -63,7 +67,6 @@ _start (int argc,
 {
   iop_thread_t t;
   int tid;
-  size_t i;
 
   sceSifInitRpc (0);
 
@@ -71,7 +74,7 @@ _start (int argc,
   t.option = 0;
   t.thread = serve;
   t.stacksize = 0x1000;
-  t.priority = 0x09;
+  t.priority = 0x20; /* 0x09; */
   tid = CreateThread (&t);
   if (tid >= 0)
     StartThread (tid, NULL);

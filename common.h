@@ -1,6 +1,6 @@
 /*
  * common.h
- * $Id: common.h,v 1.9 2004/08/20 12:35:17 b081 Exp $
+ * $Id: common.h,v 1.10 2004/09/26 19:39:39 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -55,7 +55,7 @@ int read_file (const char *file_name,
 	       size_t *len);
 
 int write_file (const char *file_name,
-		const char *data,
+		const void *data,
 		size_t len);
 
 int dump_device (const char *device_name,

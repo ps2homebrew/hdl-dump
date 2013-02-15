@@ -1,6 +1,6 @@
 /*
  * osal_unix.c
- * $Id: osal_unix.c,v 1.2 2004/09/12 17:25:27 b081 Exp $
+ * $Id: osal_unix.c,v 1.3 2004/09/26 19:39:40 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -193,9 +193,9 @@ osal_get_device_sect_size (osal_handle_t handle,
 int
 osal_get_volume_sect_size (const char *volume_root,
 			   size_t *size_in_bytes)
-{ /* TODO: osal_get_volume_sect_size */
-  struct stat st;
-  int result = stat (volume_root, &st) == 0 ? RET_OK : RET_ERR;
+{
+  struct stat64 st;
+  int result = stat64 (volume_root, &st) == 0 ? RET_OK : RET_ERR;
   if (result == RET_OK)
     *size_in_bytes = st.st_blksize; 
   return (result);

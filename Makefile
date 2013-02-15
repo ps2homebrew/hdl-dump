@@ -1,6 +1,6 @@
 ##
 ## Makefile
-## $Id: Makefile,v 1.12 2004/09/12 17:25:26 b081 Exp $
+## $Id: Makefile,v 1.13 2004/09/26 19:39:39 b081 Exp $
 ##
 ## Copyright 2004 Bobi B., w1zard0f07@yahoo.com
 ##
@@ -23,20 +23,39 @@
 
 ###############################################################################
 # configuration start
+# NOTE: don't forget, that changing some options REQUIRES `make clean' next!
 
 # ASPI is supported on Windows platform, only
 # however, running `hdl_dump query' while burning a CD/DVD would make a coaster
-# and it kills/freezes CD/DVD drives (like `Yamaha-8424S')
-INCLUDE_ASPI = no
+# and it kills/freezes some CD/DVD drives (like `Yamaha-8424S')
+INCLUDE_ASPI ?= no
+
+# include icon in the executable (`yes') or look for an extenal icon (other)
+BUILTIN_ICON ?= yes
 
 # `yes' - debug build; something else - release build
-# `RELEASE=yes make' would make a release build no matter what DEBUG flag is
-DEBUG = yes
+# `RELEASE=yes make' makes a release build no matter what DEBUG flag is
+RELEASE ?= no
+DEBUG ?= yes
+
+# `yes' - don't expect ACK when streaming data to the PS2 (works faster?)
+#
+# combination RAW_speed compressed_dummy_file_speed
+# no/no/no    0,68MBps  2,90MBps
+# no/no/yes   0,76MBps  2,95MBps
+# no/yes/yes  0,80MBps  3,00MBps
+SEND_NOACK ?= no
+QUICK_ACK ?= yes
+DUMMY_ACK ?= yes
+
+# `yes' - compress data being sent during network transfers
+# sends less data, but makes additional load on the IOP
+COMPRESS_DATA ?= yes
 
 # hdl_dump current version/release
 VER_MAJOR = 0
 VER_MINOR = 7
-VER_PATCH = 2
+VER_PATCH = 3
 
 # configuration end
 ###############################################################################
@@ -46,10 +65,10 @@ CFLAGS = -Wall -ansi -pedantic -Wno-long-long
 
 LDFLAGS =
 
-OBJECTS = hdl_dump.o apa.o common.o progress.o hdl.o isofs.o \
-	iin_img_base.o iin_optical.o iin_iso.o iin_hdloader.o iin_cdrwin.o \
-	iin_nero.o iin_gi.o iin_iml.o iin_probe.o iin_net.o aligned.o \
-	hio_probe.o hio_win32.o hio_net.o net_io.o
+SOURCES = hdl_dump.c apa.c common.c progress.c hdl.c isofs.c \
+	iin_img_base.c iin_optical.c iin_iso.c iin_hdloader.c iin_cdrwin.c \
+	iin_nero.c iin_gi.c iin_iml.c iin_probe.c iin_net.c aligned.c \
+	hio_probe.c hio_win32.c hio_net.c net_io.c
 
 
 # "autodetect" Windows builds
@@ -62,7 +81,8 @@ endif
 
 # Windows/Unix/Linux build
 ifeq ($(WINDOWS), yes)
-  OBJECTS += rsrc.o osal_win32.o
+  SOURCES += osal_win32.c
+  OBJECTS += rsrc.o
   CFLAGS += -mno-cygwin -D_BUILD_WIN32
   LDFLAGS += -lwsock32
   EXESUF = .exe
@@ -72,13 +92,16 @@ ifeq ($(WINDOWS), yes)
     CFLAGS += -D_WITH_ASPI
     OBJECTS += iin_aspi.o aspi_hlio.o
   endif
+
+  # make it compile with latest cygwin/mingw
+  # however, that would probably not work under older versions of Windows
+  CFLAGS += -D_WIN32_WINNT=0x0500
 else
-  OBJECTS += osal_unix.o
+  SOURCES += osal_unix.c
   CFLAGS += -D_GNU_SOURCE -D_BUILD_UNIX
   EXESUF = 
 endif
 
-BINARY = hdl_dump$(EXESUF)
 
 # whether to make debug or release build
 ifeq ($(RELEASE), yes)
@@ -90,6 +113,7 @@ else
   CFLAGS += -O2 -s -DNDEBUG
 endif
 
+
 # version number
 VERSION = -DVER_MAJOR=$(VER_MAJOR) \
 	-DVER_MINOR=$(VER_MINOR) \
@@ -98,6 +122,41 @@ VERSION += -DVERSION=\"$(VER_MAJOR).$(VER_MINOR).$(VER_PATCH)\"
 CFLAGS += $(VERSION)
 
 
+# built-in icon support
+ifeq ($(BUILTIN_ICON), yes)
+  CFLAGS += -DBUILTIN_ICON
+endif
+
+
+# ACK/NOACK support
+ifeq ($(SEND_NOACK), yes)
+  CFLAGS += -DNET_SEND_NOACK
+endif
+ifeq ($(DUMMY_ACK), yes)
+  CFLAGS += -DNET_DUMMY_ACK
+endif
+ifeq ($(QUICK_ACK), yes)
+  CFLAGS += -DNET_QUICK_ACK
+endif
+
+
+# compressed/uncompressed data transfer support
+ifeq ($(COMPRESS_DATA), yes)
+  CFLAGS += -DCOMPRESS_DATA
+endif
+
+
+OBJECTS += $(SOURCES:.c=.o)
+DEPENDS += $(SOURCES:.c=.d)
+
+BINARY = hdl_dump$(EXESUF)
+
+
+###############################################################################
+# make commands below...
+
+.PHONY: all clean rmdeps
+
 all: $(BINARY)
 
 
@@ -105,19 +164,31 @@ clean:
 	rm -f $(BINARY) $(OBJECTS)
 
 
+rmdeps:
+	rm -f $(DEPENDS)
+
+
+# rules below
 rsrc.o: rsrc.rc
-	@echo -e "\tR $<"
+	@echo -e "\tRES $<"
 	@windres $(VERSION) -o $@ -i $<
 
 
 $(BINARY): $(OBJECTS)
-	@echo -e "\tL $@"
+	@echo -e "\tLNK $@"
 	@$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 
 %.o : %.c
-	@echo -e "\tC $<"
+	@echo -e "\tCC  $<"
 	@$(CC) -c $(CFLAGS) -o $@ $<
 
 
-include ./.depends
+%.d : %.c
+	@echo -e "\tDEP $<"
+	@$(CC) -MM $(CFLAGS) $< > $@
+
+
+ifneq ($(MAKECMDGOAL),rmdeps)
+  include $(DEPENDS)
+endif

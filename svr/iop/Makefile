@@ -1,6 +1,6 @@
 ##
 ## svr/iop/Makefile
-## $Id: Makefile,v 1.2 2004/09/12 17:23:15 b081 Exp $
+## $Id: Makefile,v 1.3 2004/09/26 19:39:40 b081 Exp $
 ##
 ## Copyright 2004 Bobi B., w1zard0f07@yahoo.com
 ##
@@ -29,7 +29,7 @@ IOP_LIBS =
 
 IOP_INCS += -I../../
 
-IOP_CFLAGS += -D_BUILD_PS2
+IOP_CFLAGS += -Wall -D_BUILD_PS2
 
 all: $(IOP_BIN) copy_irx
 
@@ -37,13 +37,15 @@ clean:
 	rm -f $(IOP_BIN) $(IOP_OBJS)
 
 net_server.o: ../net_server.c
-	$(IOP_CC) $(IOP_CFLAGS) $< -o $@
+	@echo -e "\tIOP-CC $<"
+	@$(IOP_CC) $(IOP_CFLAGS) $< -o $@
 
 net_io.o: ../../net_io.c
-	$(IOP_CC) $(IOP_CFLAGS) $< -o $@
+	@echo -e "\tIOP-CC $<"
+	@$(IOP_CC) $(IOP_CFLAGS) $< -o $@
 
 copy_irx: $(IOP_BIN)
-	cp $(IOP_BIN) ../irx/
+	@cp $(IOP_BIN) ../irx/
 
 include $(PS2SDK)/Defs.make
 include $(PS2SDK)/iop-rules.make

@@ -1,6 +1,6 @@
 ##
 ## svr/win32/Makefile
-## $Id: Makefile,v 1.3 2004/09/12 17:22:52 b081 Exp $
+## $Id: Makefile,v 1.4 2004/09/26 19:39:40 b081 Exp $
 ##
 ## Copyright 2004 Bobi B., w1zard0f07@yahoo.com
 ##
@@ -43,6 +43,10 @@ ifeq ($(WINDOWS), yes)
   CFLAGS += -mno-cygwin -D_BUILD_WIN32
   LDFLAGS += -lwsock32
   EXESUF = .exe
+
+  # make it compile with latest cygwin/mingw
+  # however, that would probably not work under older versions of Windows
+  CFLAGS += -D_WIN32_WINNT=0x0500
 else
   OBJECTS += ../../osal_unix.o
   CFLAGS += -D_BUILD_UNIX -D_GNU_SOURCE
@@ -67,5 +71,3 @@ endef
 %.o : %.c
 	@echo -e "\tCC  $<"
 	@$(CC) $(CFLAGS) -c -o $@ $^
-
-include ../../.depends
