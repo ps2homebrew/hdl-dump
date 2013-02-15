@@ -1519,6 +1519,8 @@ show_usage_and_exit (const char *app_path,
 	       "Warning: Commands, marked with * (asterisk) does write on the HDD\n"
 	       "         and could cause corruption. Use with care.\n"
 	       "\n"
+	       "Warning: for this version you need PATINFO.KELF in the working folder\n"
+	       "\n"
 	       "License: You are only allowed to use this program with a software\n"
 	       "         you legally own. Use at your own risk.\n",
 	       app);

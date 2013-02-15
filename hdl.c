@@ -47,7 +47,7 @@ static const char *HDL_HDR0 =
 "PS2ICON3D";
 
 static const char *HDL_HDR1 =
-"BOOT2 = cdrom0:\\SLUS_202.02;1\n"
+"BOOT2 = PATINFO\n"
 "VER = 1.00\n"
 "VMODE = PAL\n"
 "HDDUNITPOWER = NICHDD\n";
@@ -84,6 +84,10 @@ prepare_main (const hdl_game_t *details,
 {
   int result;
   u_int32_t i;
+  
+  char *patinfo = NULL;
+  u_int32_t patinfo_length;
+  
 #if defined (BUILTIN_ICON)
   const char *icon = (const char*) hdloader_icon;
   u_int32_t icon_length = HDLOADER_ICON_LEN;
@@ -96,6 +100,7 @@ prepare_main (const hdl_game_t *details,
   const apa_slice_t *slice = toc->slice + slice_index;
 
   part = NULL;
+
 #if !defined (BUILTIN_ICON)
   /* read icon */
   result = read_file ("./icon.bin", &icon, &icon_length);
@@ -104,13 +109,17 @@ prepare_main (const hdl_game_t *details,
   result = OSAL_OK;
 #endif
   if (result == OSAL_OK)
-    for (i = 0; i < slice->part_count; ++i)
-      if (get_u32 (&slice->parts[i].header.start) == starting_partition_sector)
-	{ /* locate starting partition index */
-	  part = &slice->parts[i].header;
-	  break;
-	}
-
+  {
+    result = read_file ("./PATINFO.KELF", &patinfo, &patinfo_length);
+	if (result == OSAL_OK)
+	  for (i = 0; i < slice->part_count; ++i)
+		if (get_u32 (&slice->parts[i].header.start) == starting_partition_sector)
+		{ /* locate starting partition index */
+		  part = &slice->parts[i].header;
+		  break;
+		}
+  }
+	
   if (part == NULL)
     result = RET_NOT_FOUND;
 
@@ -144,7 +153,7 @@ prepare_main (const hdl_game_t *details,
        *  1020: 00 08 00 00 58 81 00 00  00 08 00 00 58 81 00 00
        *         ^  ^  ^  ^  ^  ^  ^  ^               ^  ^  ^  ^
        *         |  |  |  |  +--+--+--+- same as =>   +--+--+--+- BE, icon length in bytes
-       *         +--+--+--+- part offset relative to 0x1000
+       *         +--+--+--+- part offset relative to 0x1000	   
        */
       tmp = (u_int32_t*) (buffer_4m + 0x001010);
       set_u32 (tmp++, 0x0200);
@@ -155,13 +164,21 @@ prepare_main (const hdl_game_t *details,
       set_u32 (tmp++, icon_length);
       set_u32 (tmp++, 0x0800);
       set_u32 (tmp++, icon_length);
+	  
+	  /*  
+       *  1030: 00 00 11 00 58 81 00 00  00 00 00 00 00 00 00 00
+       *         ^  ^  ^  ^  ^  ^  ^  ^
+       *         |  |  |  |  +--+--+--+- BE, PATINFO.KELF length in bytes
+       *         +--+--+--+- PATINFO.KELF offset relative to 0x1000
+       */
+      set_u32 (tmp++, 0x110000);
+      set_u32 (tmp++, patinfo_length);
 
       /*
-       *  1200: 42 4f 4f 54 32 20 3d 20  63 64 72 6f 6d 30 3a 5c  BOOT2 = cdrom0:\
-       *  1210: 53 4c 55 53 5f 32 30 32  2e 30 32 3b 31 0a 56 45  SLUS_202.02;1.VE
-       *  1220: 52 20 3d 20 31 2e 30 30  0a 56 4d 4f 44 45 20 3d  R = 1.00.VMODE =
-       *  1230: 20 50 41 4c 0a 48 44 44  55 4e 49 54 50 4f 57 45   PAL.HDDUNITPOWE
-       *  1240: 52 20 3d 20 4e 49 43 48  44 44 0a 00 00 00 00 00  R = NICHDD......
+       *  1200: 42 4f 4f 54 32 20 3d 20 50 41 54 49 4e 46 4f 0a  BOOT2 = PATINFO.
+       *  1210: 56 45 52 20 3D 20 31 2E 30 30 0A 56 4D 4F 44 45  VER = 1.00.VMODE
+       *  1220: 20 3d 20 50 41 4c 0a 48 44 44 55 4e 49 54 50 4f   = PAL.HDDUNITPO
+       *  1230: 57 45 52 20 3d 20 4e 49 43 48 44 44 0a 00 00 00  WER = NICHDD....
        */
       memcpy (buffer_4m + 0x001200, HDL_HDR1, strlen (HDL_HDR1));
 
@@ -198,11 +215,11 @@ prepare_main (const hdl_game_t *details,
       memcpy (buffer_4m + 0x1010ac, details->startup, strlen (details->startup));
 
       /*
-       *	            +- media type? 0x14 for DVD, 0x12 for CD, 0x10 for PSX CD (w/o audio)?
-       *	            |           +- number of partitions
-       *	            v           v
-       *	           14 00 00 00 05 00 00 00 00 
-       *1010f5: 00 00 00 00 20 50 00 00 00 c0 1f 00	;; 0x00500000, 512MB
+       *	          +- media type? 0x14 for DVD, 0x12 for CD, 0x10 for PSX CD (w/o audio)?
+       *	          |           +- number of partitions
+       *	          v           v
+       *	         14 00 00 00 05 00 00 00 00 
+   *1010f5: 00 00 00 00 20 50 00 00 00 c0 1f 00	;; 0x00500000, 512MB
        *	f8 03 00 00 08 60 00 00 00 f0 1f 00	;; 0x00600000, 512MB
        *	f6 07 00 00 08 70 00 00 00 f0 1f 00	;; 0x00700000, 512MB
        *	f4 0b 00 00 08 44 00 00 00 f0 07 00	;; 0x00440000, 128MB
@@ -218,6 +235,13 @@ prepare_main (const hdl_game_t *details,
       buffer_4m[0x1010ec] = (u_int8_t) (details->is_dvd ? 0x14 : 0x12);
       buffer_4m[0x1010f0] = (u_int8_t) (get_u32 (&part->nsub) + 1);
       tmp = (u_int32_t*) (buffer_4m + 0x1010f5);
+
+      /*
+       *111000: 01 00 00 01 00 03 00 4a  00 01 02 19 00 00 00 56 
+       *        ... PATINFO.KELF ...
+       *120CA0: 9f ef d1 b3 69 0d 75 bd  4c 26 82 20 13 c3 71 1c 
+       */
+      memcpy (buffer_4m + 0x111000, patinfo, patinfo_length);
 
       partition_usable_size_in_kb = (get_u32 (&part->length) - 0x2000) / 2; /* 2 sectors == 1K */
       partition_data_len_in_kb =
@@ -235,25 +259,25 @@ prepare_main (const hdl_game_t *details,
       offset = (get_u32 (&part->length) - 0x2000) / 1024;
       size_remaining_in_kb = size_in_kb - partition_data_len_in_kb;
       for (i=0; size_remaining_in_kb>0 && i<get_u32 (&part->nsub); ++i)
-	{
-	  partition_usable_size_in_kb =
-	    (get_u32 (&part->subs[i].length) - 0x0800) / 2;
-	  partition_data_len_in_kb =
-	    size_remaining_in_kb < partition_usable_size_in_kb ?
-	    size_remaining_in_kb : partition_usable_size_in_kb;
+	  {
+		  partition_usable_size_in_kb =
+			(get_u32 (&part->subs[i].length) - 0x0800) / 2;
+		  partition_data_len_in_kb =
+			size_remaining_in_kb < partition_usable_size_in_kb ?
+			size_remaining_in_kb : partition_usable_size_in_kb;
 
-	  /* offset, start, data length */
-	  set_u32 (tmp++, offset);
-	  /* 0x0800 sec = 1M (sub part. offs) */
-	  sector = (get_u32 (&part->subs[i].start) + 0x0800 +
-		    SLICE_2_OFFS * slice_index);
-	  set_u32 (tmp++, sector >> 8);
-	  set_u32 (tmp++, partition_data_len_in_kb * 4);
-	  ++partitions_used;
+		  /* offset, start, data length */
+		  set_u32 (tmp++, offset);
+		  /* 0x0800 sec = 1M (sub part. offs) */
+		  sector = (get_u32 (&part->subs[i].start) + 0x0800 +
+				SLICE_2_OFFS * slice_index);
+		  set_u32 (tmp++, sector >> 8);
+		  set_u32 (tmp++, partition_data_len_in_kb * 4);
+		  ++partitions_used;
 
-	  offset += (get_u32 (&part->subs[i].length) - 0x0800) / 1024;
-	  size_remaining_in_kb -= partition_data_len_in_kb;
-	}
+		  offset += (get_u32 (&part->subs[i].length) - 0x0800) / 1024;
+		  size_remaining_in_kb -= partition_data_len_in_kb;
+	  }
 
       buffer_4m[0x1010f0] = (u_int8_t) partitions_used;
     }
