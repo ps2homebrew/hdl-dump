@@ -1,6 +1,6 @@
 /*
  * hio_net.c - TCP/IP networking access to PS2 HDD
- * $Id: hio_udpnet.c,v 1.4 2006/09/01 17:27:02 bobi Exp $
+ * $Id: hio_udpnet.c,v 1.4 2006-09-01 17:27:02 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *

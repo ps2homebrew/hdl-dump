@@ -1,6 +1,6 @@
 /*
  * iin_optical.c
- * $Id: iin_optical.c,v 1.12 2006/09/01 17:24:29 bobi Exp $
+ * $Id: iin_optical.c,v 1.13 2007-05-12 20:17:08 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -269,7 +269,9 @@ iin_optical_probe_path (const char *path,
 #if defined (_BUILD_WIN32)
       return (RET_NOT_COMPAT);
 #else
-
+      /* don't treat files as devices */
+      return (RET_NOT_COMPAT);
+#  if 0
       /* FreeBSD patch to support device nodes */
       char device_name [MAX_PATH];
       int result = osal_map_device_name (path, device_name);
@@ -297,6 +299,7 @@ iin_optical_probe_path (const char *path,
       else
 	result = RET_NOT_COMPAT;
       return (result);
+#  endif
 #endif
     }
 }

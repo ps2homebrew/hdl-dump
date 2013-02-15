@@ -4,32 +4,39 @@ hdl_dump, hdl_dumb and networking server README
 
 TOC
 ---
-General
+Intro
+Networking server
 Compilation
 Configuration and list file location
 Configuration
-Network speed notes
 
 
 Intro
 -----
 
-Latest version, as well as some? documentation (ha-ha-ha) could be
-found on the official site -- http://hdldump.ps2-scene.org/.
-Me reads w1zard0f07@yahoo.com and ps2-scene forums now and then.
+Latest version, as well as some? documentation (ha-ha-ha) is to be
+found on the official site -- http://www.psx-scene.com/hdldump/.
+Me reads w1zard0f07@yahoo.com and ps2-scene forums every now and then.
 
 
-General
--------
+Networking server
+-----------------
 
-It is advised (but not strictly necessary) to remove your old
-configuration file before using the new version. Client 0.8.4 must be
-compatible with server version 0.8.3a, too. Server version 0.8.3
-should NOT be used as it is buggy and almost certainly will corrupt
-data during installation.
+A new, purely UDP networking server is available, based on recently
+released on ps2dev forums AFL pktdrv driver
+(http://forums.ps2dev.org/viewtopic.php?t=6784). Transfer speeds vary
+and during testing phase achieved speeds were as follows:
 
-Server 0.8.5 would look for IPCONFIG.DAT file in B?DATA-SYSTEM
-directory first.
+ * install speed between 2,7-3MB/sec, and
+ * extract speed between 3,3-3,6MB/sec.
+
+(not bad, for a 36Mhz CPU -- 11-to-13 ticks per byte). You might need
+to punch a hole in your firewall for incoming UDP from port 12345.
+
+New server were tested with PAL editions of Shadow of the Colossus,
+God of War II and Disgaea, with both, install and extract + MD5, and
+were runing for at least 4 hours with no problems (pktdrv is pretty
+stable).
 
 
 Compilation
@@ -77,37 +84,7 @@ Configuration
 * disc_database_file -- full path to your disc compatibility database
 file;
 
-* target_kbps -- target speed to follow when installing games via
-networking; look below.
-
-* auto_throttle -- attempt to tune network transfer speeds; as it
-doesn't seems to make things always better, it is disabled by default;
-
-
-Network speed notes
--------------------
-
-Networking server is able to accept a limited number of bytes per
-second. Any extra bytes send would probably be missed -- "dropped on
-the floor" -- as UDP is unreliable protocol. For not to corrupt data
-the client will ask the server if it got all the data send and will
-retransmit some or all of the missed bytes if necessary. Hence if the
-client sends data too quickly it will need to make a retry and there
-will be a waste of time. However, if it sends the data too slowly
-there will be a waste of bandwidth.
-
-"target_kbps" controls the number of kbytes client will send each
-second. The "maximum" practical speed depends on many factors, like OS
-and maybe kernel compilation flags -- mostly timer granularity -- as
-client uses sleep and benefits greatly from high-resolution timers.
-"2350" is a good default value, which gives about 2,1MB/sec. "2500"
-works great on my Linux box, making 2,25MB/sec, but performs badly on
-a Windows machine decreasing speed below 1,6MB/sec.
-
-Run a few tries and pick a number for yourself.
-
-
 
 Happy gaming.
 
-$Id: README,v 1.6 2006/06/18 13:07:41 bobi Exp $
+$Id: README,v 1.7 2007-05-12 20:13:14 bobi Exp $

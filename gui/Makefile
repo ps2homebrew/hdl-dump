@@ -1,6 +1,6 @@
 ##
 ## Makefile
-## $Id: Makefile,v 1.9 2006/09/01 17:33:52 bobi Exp $
+## $Id: Makefile,v 1.10 2007-05-12 20:18:11 bobi Exp $
 ##
 ## Copyright 2004 Bobi B., w1zard0f07@yahoo.com
 ##
@@ -43,8 +43,8 @@ USE_THREADED_IIN ?= yes
 
 # hdl_dump current version/release
 VER_MAJOR = 0
-VER_MINOR = 8
-VER_PATCH = 6
+VER_MINOR = 9
+VER_PATCH = 0
 
 # configuration end
 ###############################################################################
@@ -63,7 +63,7 @@ SOURCES = gui_main.c \
 	iin_nero.c iin_gi.c iin_iml.c iin_spti.c iin_probe.c \
 	iin_hio.c thd_iin.c iin_aspi.c aspi_hlio.c \
 	hio_probe.c hio_win32.c hio_dbg.c hio_trace.c \
-	osal_win32.c net_common.c byteseq.c dict.c hio_udpnet.c
+	osal_win32.c net_common.c byteseq.c dict.c hio_udpnet2.c
 
 
 # "autodetect" Windows builds

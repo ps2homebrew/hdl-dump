@@ -1,6 +1,6 @@
 /*
  * svr/ee/loader.c
- * $Id: loader.c,v 1.11 2006/06/18 13:13:13 bobi Exp $
+ * $Id: loader.c,v 1.12 2007-05-12 20:18:51 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -46,7 +46,7 @@
 
 
 #define APP_NAME "hdld_svr"
-#define VERSION "0.8.5"
+#define VERSION "0.9.0"
 
 
 #if 1 /* debugging */
@@ -59,7 +59,6 @@
 
 #define RESET_IOP
 #define LOAD_MRBROWN_PATCHES
-#define LOAD_SIOMAN_AND_MC
 
 
 extern u8 *iomanx_irx;
@@ -68,11 +67,8 @@ extern int size_iomanx_irx;
 extern u8 *ps2dev9_irx;
 extern int size_ps2dev9_irx;
 
-extern u8 *ps2ip_irx;
-extern int size_ps2ip_irx;
-
-extern u8 *ps2smap_irx;
-extern int size_ps2smap_irx;
+extern u8 *pktdrv_irx;
+extern int size_pktdrv_irx;
 
 extern u8 *ps2atad_irx;
 extern int size_ps2atad_irx;
@@ -94,7 +90,7 @@ setup_ip (const char *ipconfig_dat_path,
 {
   int result = 0;
   int conf_ok = 0;
-#if defined (LOAD_SIOMAN_AND_MC)
+
   int fd = fioOpen (ipconfig_dat_path, O_RDONLY);
   if (!(fd < 0))
     { /* configuration file found */
@@ -129,7 +125,6 @@ setup_ip (const char *ipconfig_dat_path,
   else
     /* not found */
     result = -1;
-#endif /* LOAD_SIOMAN_AND_MC? */
 
   if (!conf_ok)
     { /* configuration file not found; use hard-coded defaults */
@@ -171,13 +166,10 @@ load_modules ()
       NULL
     };
 
-#if defined (LOAD_MRBROWN_PATCHES)
   sbv_patch_enable_lmb ();
   sbv_patch_disable_prefix_check ();
   scr_printf (STEP_OK);
-#endif
 
-#if defined (LOAD_SIOMAN_AND_MC)
   ret = SifLoadModule ("rom0:SIO2MAN", 0, NULL);
   if (ret > 0)
     scr_printf (STEP_OK);
@@ -204,7 +196,6 @@ load_modules ()
       scr_printf ("\nrom0:MCSERV %s %d\n", FAILED, ret);
       return (-1);
     }
-#endif
 
   SifExecModuleBuffer (&iomanx_irx, size_iomanx_irx, 0, NULL, &ret);
   if (ret == 0)
@@ -233,28 +224,19 @@ load_modules ()
       return (-1);
     }
 
-  SifExecModuleBuffer (&ps2ip_irx, size_ps2ip_irx, 0, NULL, &ret);
-  if (ret == 0)
-    scr_printf (STEP_OK);
-  else
-    {
-      scr_printf ("PS2IP.IRX %s %d\n", FAILED, ret);
-      return (-1);
-    }
-
   ipcfg_ret = -1;
   for (i = 0; ipcfg_ret != 0 && IPCONFIG_DAT_PATHS[i] != NULL; ++i)
     {
       ipcfg_ret = setup_ip (IPCONFIG_DAT_PATHS[i], if_conf, &if_conf_len);
     }
 
-  SifExecModuleBuffer (&ps2smap_irx, size_ps2smap_irx,
+  SifExecModuleBuffer (&pktdrv_irx, size_pktdrv_irx,
 		       if_conf_len, if_conf, &ret);
   if (ret == 0)
     scr_printf (STEP_OK);
   else
     {
-      scr_printf ("PS2SMAP.IRX %s %d\n", FAILED, ret);
+      scr_printf ("PKTDRV.IRX %s %d\n", FAILED, ret);
       return (-1);
     }
 

@@ -1,3 +1,10 @@
+0.9.0
+	+ new networking server
+	+ copy_hdd command (doing what the name says), contributed by JimmyZ
+	~ fixed an inssue where APA might get broken on interrupted install
+	  (when main partition overwrites __empty one)
+	~ help has been revised
+
 0.8.6
 	+ SPTI: dual-layer DVDs can finally be installed from the DVD-ROM drive
 	~ thanks to SPTI hdl_dumb works pretty well with both, wine and winelib
@@ -101,4 +108,4 @@
 0.1
 	+ toc, map, extract support
 
-$Id: CHANGELOG,v 1.14 2006/09/01 17:34:47 bobi Exp $
+$Id: CHANGELOG,v 1.15 2007-05-12 20:12:35 bobi Exp $

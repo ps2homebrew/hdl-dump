@@ -1,6 +1,6 @@
 /*
  * hdl.c
- * $Id: hdl.c,v 1.17 2006/09/01 17:31:19 bobi Exp $
+ * $Id: hdl.c,v 1.18 2007-05-12 20:15:19 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -447,19 +447,7 @@ inject_data (hio_t *hio,
 
 	  pgs_prepare (pgs, (u_int64_t) (size_in_kb + 4 * 1024) * 1024);
 
-	  /* first: write main partition header (4MB total) */
-	  sector = get_u32 (&part->start) + SLICE_2_OFFS * slice_index;
-	  result = hio->write (hio, sector, MAIN_HDR_SIZE_S,
-			       buffer, &bytes);
-	  if (result == OSAL_OK)
-	    result = bytes == 4 _MB ? OSAL_OK : OSAL_ERR;
-	  osal_free (buffer), buffer = NULL;
-
-	  /* track header, otherwise it would influence progress calculation */
-	  (void) pgs_update (pgs, 4 _MB);
-	  pgs_chunk_complete (pgs);
-
-	  /* next: fill-in 1st partition */
+	  /* first: fill-in 1st partition data, but exclude header for now */
 	  if (result == RET_OK)
 	    {
 	      u_int64_t part_size =
@@ -502,7 +490,31 @@ inject_data (hio_t *hio,
 	  if (result == RET_OK && kb_remaining != 0)
 	    result = RET_NO_SPACE; /* the game does not fit in the allocated space... why? */
 
-	  /* finally: commit partition table */
+	  /* NOTE: when this used to be the first operation, in cases where
+	   * there is a gap and first partition header overwrites an __empty
+	   * partition, if transfer is interrupted APA gets broken
+	   * (as sub-partitions are not neccessarily there);
+	   * therefore, main partition header is written here, at the end,
+	   * where transfer can no longer be interrupted by the user */
+
+	  if (result == RET_OK)
+	    { /* last: write main partition header (4MB total) */
+	      sector = get_u32 (&part->start) + SLICE_2_OFFS * slice_index;
+	      result = hio->write (hio, sector, MAIN_HDR_SIZE_S,
+				   buffer, &bytes);
+	      if (result == OSAL_OK)
+		{
+		  result = bytes == 4 _MB ? OSAL_OK : OSAL_ERR;
+		  /* track header,
+		   * otherwise it would influence progress calculation */
+		  (void) pgs_update (pgs, 4 _MB);
+		  pgs_chunk_complete (pgs);
+		}
+	    }
+	  osal_free (buffer), buffer = NULL;
+
+	  /* finally: commit partition table; non-interruptable,
+	   * except Ctrl+C might interrupt socket operation */
 	  if (result == OSAL_OK)
 	    result = apa_commit_ex (hio, toc);
 	}
