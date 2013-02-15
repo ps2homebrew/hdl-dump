@@ -1,6 +1,6 @@
 /*
  * retcodes.h
- * $Id: retcodes.h,v 1.8 2004/12/04 10:20:52 b081 Exp $
+ * $Id: retcodes.h,v 1.9 2005/02/17 17:50:00 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -51,6 +51,7 @@
 #define RET_2ND_LONGER  19 /* compare_iin: second input is longer */
 #define RET_FILE_NOT_FOUND 20 /* pretty obvious */
 #define RET_BROKEN_LINK 21 /* missing linked file (to an IML or CUE for example) */
+#define RET_CROSS_128GB 22 /* data behind 128GB mark */
 
 
 #endif /* _RETCODES_H defined? */
