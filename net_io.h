@@ -1,6 +1,6 @@
 /*
  * net_io.h
- * $Id: net_io.h,v 1.8 2006/05/21 21:40:27 bobi Exp $
+ * $Id: net_io.h,v 1.9 2007-05-12 20:17:30 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -29,7 +29,7 @@
 
 C_START
 
-#define NET_HIO_SERVER_PORT 0xb0b1  /* port where server would listen */
+#define NET_HIO_SERVER_PORT 12345  /* port where server would listen */
 
 /* commands */
 #define CMD_HIO_STAT          0x73746174 /* 'stat'; get HDD size in sectors */

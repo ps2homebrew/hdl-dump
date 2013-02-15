@@ -1,6 +1,6 @@
 /*
  * apa.c
- * $Id: apa.c,v 1.17 2006/09/01 17:33:34 bobi Exp $
+ * $Id: apa.c,v 1.18 2007-05-12 20:13:29 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -892,7 +892,10 @@ apa_commit (const dict_t *config,
 	{
 	  result = apa_commit_ex (hio, toc);
 	  if (result == RET_OK)
-	    result = hio->close (hio);
+	    {
+	      (void) hio->flush (hio);
+	      result = hio->close (hio);
+	    }
 	  else
 	    (void) hio->close (hio); /* ignore close error in this case */
 	  hio = NULL;

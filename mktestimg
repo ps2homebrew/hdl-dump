@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: mktestimg,v 1.1 2006/09/01 17:37:58 bobi Exp $
+# $Id: mktestimg,v 1.1 2006-09-01 17:37:58 bobi Exp $
 
 # well, maybe fs will need to support sparse files
 

@@ -1,6 +1,6 @@
 /*
  * osal_unix.c
- * $Id: osal_unix.c,v 1.8 2006/09/01 17:21:39 bobi Exp $
+ * $Id: osal_unix.c,v 1.9 2007-05-12 20:17:38 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -443,8 +443,8 @@ int /* RET_OK, RET_BAD_FORMAT, RET_BAD_DEVICE */
 osal_map_device_name (const char *input,
 		      char output [MAX_PATH])
 {
-  struct stat st;
-  int result = stat (input, &st) == 0 ? RET_OK : RET_ERR;
+  struct stat64 st;
+  int result = stat64 (input, &st) == 0 ? RET_OK : RET_ERR;
   if (result == RET_OK)
     { /* accept the input, only if it is a block device */
 #if !defined (_DEBUG) /* in debug mode treat files as devices */

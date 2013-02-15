@@ -1,6 +1,6 @@
 /*
- * hio_iop.h
- * $Id: hio_iop.h,v 1.1 2006/05/21 21:48:28 bobi Exp $
+ * hio_udpnet2.h - TCP/IP+UDP networking access to PS2 HDD
+ * $Id: hio_udpnet2.h,v 1.1 2007-05-12 20:16:35 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -21,14 +21,21 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#if !defined (_SVR_IOP_HIO_IOP_H)
-#define _SVR_IOP_HIO_IOP_H
+#if !defined (_HIO_UDPNET2_H)
+#define _HIO_UDPNET2_H
 
-#include "../../../../hio.h"
+#include "config.h"
+#include "hio.h"
+#include "dict.h"
 
+C_START
 
-int hio_iop_probe (const char *path,
-		   hio_t **hio);
+/* accepts paths of the following form: "udp2:a.b.c.d",
+   where a.b.c.d is a valid IP address */
+int hio_udpnet2_probe (const dict_t *config,
+		       const char *path,
+		       /*@special@*/ hio_p_t *hio) /*@allocates *hio@*/ /*@defines *hio@*/;
 
+C_END
 
-#endif /* _SVR_IOP_HIO_IOP_H defined? */
+#endif /* _HIO_UDPNET2_H defined? */

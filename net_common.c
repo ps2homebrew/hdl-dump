@@ -1,6 +1,6 @@
 /*
  * net_common.c
- * $Id: net_common.c,v 1.2 2006/09/01 17:22:24 bobi Exp $
+ * $Id: net_common.c,v 1.3 2007-05-12 20:17:15 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -28,6 +28,7 @@
 #    include <winsock.h> /* GNU C/C++ compiler */
 #  endif
 #  include <windows.h>
+#  include <sys/types.h>
 #elif defined (_BUILD_UNIX)
 #  include <errno.h>
 #  include <unistd.h>

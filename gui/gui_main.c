@@ -1,6 +1,6 @@
 /*
  * gui_main.c
- * $Id: gui_main.c,v 1.10 2006/09/01 17:34:20 bobi Exp $
+ * $Id: gui_main.c,v 1.11 2007-05-12 20:18:17 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -156,9 +156,11 @@ dlg_get_target (HWND dlg, char target [MAX_PATH])
       DWORD ip;
       SendMessage (GetDlgItem (dlg, IDC_PS2IP),
 		   IPM_GETADDRESS, 0, (LPARAM) (void*) &ip);
-      sprintf (target, "%lu.%lu.%lu.%lu",
-	       (ip >> 24) & 0xff, (ip >> 16) & 0xff,
-	       (ip >>  8) & 0xff, (ip >>  0) & 0xff);
+      sprintf (target, "%u.%u.%u.%u",
+	       (unsigned int) ((ip >> 24) & 0xff),
+	       (unsigned int) ((ip >> 16) & 0xff),
+	       (unsigned int) ((ip >>  8) & 0xff),
+	       (unsigned int) ((ip >>  0) & 0xff));
     }
   return (target);
 }

@@ -1,6 +1,6 @@
 /*
  * common.c
- * $Id: common.c,v 1.17 2006/09/01 17:31:58 bobi Exp $
+ * $Id: common.c,v 1.18 2007-05-12 20:14:05 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -379,6 +379,28 @@ iin_copy_ex (iin_t *iin,
 
 
 /**************************************************************/
+#if defined (_BUILD_WIN32)
+const char*
+get_app_data (void)
+{
+  static char path[1024];
+  LONG path_size = sizeof (path);
+  HKEY shell_fold = NULL;
+  LONG retv = RegOpenKeyEx (HKEY_CURRENT_USER,
+			    "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Shell Folders",
+			    0, KEY_READ,
+			    &shell_fold);
+  if (retv == ERROR_SUCCESS)
+    {
+      retv = RegQueryValue (shell_fold, "AppData", path, &path_size);
+      (void) RegCloseKey (shell_fold);
+    }
+  return (retv == ERROR_SUCCESS ? path : NULL);
+}
+#endif /* _BUILD_WIN32 defined? */
+
+
+/**************************************************************/
 const char*
 get_config_file (void)
 {
@@ -386,16 +408,25 @@ get_config_file (void)
 
   if (*config_file == '\0')
     { /* default location */
-      char *p;
+      const char *p;
       strcpy (config_file, "./hdl_dump.conf");
 
       /* decide where config file is depending on the OS/build type */
 #if defined (_BUILD_WIN32)
-      p = getenv ("USERPROFILE");
+      p = get_app_data ();
       if (p != NULL)
 	{
 	  strcpy (config_file, p);
-	  strcat (config_file, "\\Application Data\\hdl_dump.conf");
+	  strcat (config_file, "\\hdl_dump.conf");
+	}
+      else
+	{
+	  p = getenv ("USERPROFILE");
+	  if (p != NULL)
+	    {
+	      strcpy (config_file, p);
+	      strcat (config_file, "\\Application Data\\hdl_dump.conf");
+	    }
 	}
 #elif defined (_BUILD_UNIX)
       p = getenv ("HOME");
@@ -415,7 +446,8 @@ get_config_file (void)
 void
 set_config_defaults (dict_t *config)
 {
-  char disc_database[256], *p;
+  char disc_database[256];
+  const char *p;
 
 #if defined (_BUILD_WIN32)
   /* disable ASPI by default */
@@ -425,11 +457,20 @@ set_config_defaults (dict_t *config)
   /* decide where disc compatibility database would be kept */
   strcpy (disc_database, "./hdl_dump.list"); /* default */
 #if defined (_BUILD_WIN32) && !defined (_BUILD_WINE)
-  p = getenv ("USERPROFILE");
+  p = get_app_data ();
   if (p != NULL)
     {
       strcpy (disc_database, p);
-      strcat (disc_database, "\\Application Data\\hdl_dump.list");
+      strcat (disc_database, "\\hdl_dump.list");
+    }
+  else
+    {
+      p = getenv ("USERPROFILE");
+      if (p != NULL)
+	{
+	  strcpy (disc_database, p);
+	  strcat (disc_database, "\\Application Data\\hdl_dump.list");
+	}
     }
 #else
   /* Unix/Linux/WineLib */
@@ -441,9 +482,6 @@ set_config_defaults (dict_t *config)
     }
 #endif
   (void) dict_put (config, CONFIG_DISC_DATABASE_FILE, disc_database);
-
-  (void) dict_put (config, CONFIG_TARGET_KBPS, "2300");
-  (void) dict_put (config, CONFIG_AUTO_THROTTLE, "0");
 }
 
 

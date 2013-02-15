@@ -1,6 +1,6 @@
 /*
  * hdl_dump.c
- * $Id: hdl_dump.c,v 1.20 2006/09/01 17:28:52 bobi Exp $
+ * $Id: hdl_dump.c,v 1.21 2007-05-12 20:15:58 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -87,13 +87,7 @@
 #define CMD_HDL_INSTALL "install"
 #define CMD_CDVD_INFO "cdvd_info"
 #define CMD_CDVD_INFO2 "cdvd_info2"
-#if defined (INCLUDE_READ_TEST_CMD)
-#  define CMD_READ_TEST "read_test"
-#endif
 #define CMD_POWER_OFF "poweroff"
-#if defined (INCLUDE_CHECK_CMD)
-#  define CMD_CHECK "check"
-#endif
 #if defined (INCLUDE_INITIALIZE_CMD)
 #  define CMD_INITIALIZE "initialize"
 #endif
@@ -108,6 +102,9 @@
 #endif
 #if defined (INCLUDE_MODIFY_CMD)
 #  define CMD_MODIFY "modify"
+#endif
+#if defined (INCLUDE_COPY_HDD_CMD)
+#  define CMD_COPY_HDD "copy_hdd"
 #endif
 
 
@@ -735,49 +732,6 @@ query_devices (const dict_t *config)
 
 
 /**************************************************************/
-#if defined (INCLUDE_READ_TEST_CMD)
-static int
-read_test (const char *path,
-	   progress_t *pgs)
-{
-  /*@only@*/ iin_t *iin = NULL;
-  int result = iin_probe (path, &iin);
-  if (result == OSAL_OK && iin != NULL)
-    {
-      u_int32_t sector_size, num_sectors;
-      result = iin->stat (iin, &sector_size, &num_sectors);
-      if (result == OSAL_OK)
-	{
-	  u_int32_t sector = 0;
-	  u_int32_t len;
-
-	  pgs_prepare (pgs, (u_int64_t) num_sectors * sector_size);
-	  do
-	    {
-	      const char *data; /* not really used */
-	      u_int32_t sectors = (num_sectors > IIN_NUM_SECTORS ?
-				   IIN_NUM_SECTORS : num_sectors);
-	      result = iin->read (iin, sector, sectors, &data, &len);
-	      if (result == RET_OK)
-		{
-		  u_int32_t sectors_read = len / IIN_SECTOR_SIZE;
-		  sector += sectors_read;
-		  num_sectors -= sectors_read;
-		  result = pgs_update (pgs,
-				       (u_int64_t) sector * IIN_SECTOR_SIZE);
-		}
-	    }
-	  while (result == OSAL_OK && num_sectors > 0 && len > 0);
-	}
-      
-      (void) iin->close (iin), iin = NULL;
-    }
-  return (result);
-}
-#endif /* INCLUDE_READ_TEST_CMD defined? */
-
-
-/**************************************************************/
 #if defined (INCLUDE_COMPARE_IIN_CMD)
 static int
 compare_iin (const dict_t *config,
@@ -1189,6 +1143,88 @@ modify (const dict_t *config,
 
 /**************************************************************/
 static int
+copy_hdd (const dict_t *config,
+	  const char *src_device_name,
+	  const char *dest_device_name,
+	  const char *flags,
+	  progress_t *pgs)
+{
+  hio_t *hio = NULL;
+  int result, i;
+  hdl_games_list_t *in_list = NULL, *out_list = NULL;
+  size_t count = 0, flags_count = 0, chunks_needed = 0;
+
+  /* read games lists for both -- source and destination */
+  result = hio_probe (config, src_device_name, &hio);
+  if (result == RET_OK && hio != NULL)
+    {
+      result = hdl_glist_read (hio, &in_list);
+      (void) hio->close (hio), hio = NULL;
+    }
+  if (result == RET_OK)
+    {
+      result = hio_probe (config, dest_device_name, &hio);
+      if (result == RET_OK && hio != NULL)
+	{
+	  result = hdl_glist_read (hio, &out_list);
+	  (void) hio->close (hio), hio = NULL;
+	}
+    }
+
+  if (result == RET_OK)
+    { /* calculate space required */
+      flags_count = (flags ? strlen (flags) : 0);
+      for (i = 0; i < in_list->count; ++i)
+	if (i >= flags_count || tolower (flags[i]) == 'y')
+	  {
+	    const hdl_game_info_t *game = in_list->games + i;
+	    ++count;
+	    chunks_needed += (game->alloc_size_in_kb / 1024 + 127) / 128;
+	  }
+      result = (out_list->free_chunks >= chunks_needed ?
+		RET_OK : RET_NO_SPACE);
+    }
+
+  if (result == RET_OK && count > 0)
+    {
+      printf ("%dMB in %d game(s) remaining...\n",
+	      chunks_needed * 128, count);
+      for (i = 0; result == RET_OK && i < in_list->count; ++i)
+	if (i >= flags_count || tolower (flags[i]) == 'y')
+	  { /* copy that game */
+	    char in[1024];
+	    const hdl_game_info_t *game = in_list->games + i;
+	    sprintf (in, "%s@%s", game->name, src_device_name);
+	    result = inject (config, dest_device_name, game->name,
+			     in, game->startup, game->compat_flags,
+			     game->is_dvd, -1, pgs);
+	    if (result == RET_OK)
+	      fprintf (stdout, "  %s copied.                               \n",
+		       game->name);
+	    if (result == RET_PART_EXISTS)
+	      { /* treat "exists" errors as warnings */
+		fprintf (stderr, " ...skipping %s\n", game->name);
+		result = RET_OK;
+	      }
+	  }
+    }
+  else if (count == 0)
+    {
+      printf ("Nothing to do.\n");
+      result = RET_NOT_ALLOWED;
+    }
+
+  if (in_list != NULL)
+    hdl_glist_free (in_list);
+  if (out_list != NULL)
+    hdl_glist_free (out_list);
+
+  return (result);
+}
+
+
+/**************************************************************/
+static int
 remote_poweroff (const dict_t *config,
 		 const char *ip)
 {
@@ -1270,23 +1306,18 @@ show_usage_and_exit (const char *app_path,
     {
 #if defined (_BUILD_WIN32)
       { CMD_QUERY, NULL,
-	"Displays a list of all hard- and optical drives.",
+	"Displays a list of all recognized hard- and optical drives.",
 	NULL, NULL, 0 },
 #endif
 #if defined (INCLUDE_DUMP_CMD)
       { CMD_DUMP, "device file",
 	"Makes device image (AKA ISO-image).",
-	"cd0: c:\\tekken.iso", NULL, 0 },
-#endif
-#if defined (INCLUDE_COMPARE_CMD)
-      { CMD_COMPARE, "file_or_device1 file_or_device2",
-	"Compares two files or devices.",
-	"cd0: c:\\tekken.iso", NULL, 0 },
+	"cd0: c:\\tekken.iso", "\"Tekken@192.168.0.10\" ./tekken.iso", 0 },
 #endif
 #if defined (INCLUDE_COMPARE_IIN_CMD)
       { CMD_COMPARE_IIN, "iin1 iin2",
 	"Compares two ISO inputs.",
-	"c:\\tekken.cue cd0:", "c:\\gt3.gi hdd1:GT3", 0 },
+	"c:\\tekken.cue cd0:", "c:\\gt3.gi GT3@hdd1:", 0 },
 #endif
       { CMD_TOC, "device",
 	"Displays PlayStation 2 HDD TOC.",
@@ -1303,7 +1334,7 @@ show_usage_and_exit (const char *app_path,
       { CMD_DELETE, "device partition/game",
 	"Deletes PlayStation 2 HDD partition. First attempts to locate partition\n"
 	"by name, then by game name.",
-	"hdd1: \"PP.HDL.Tekken Tag Tournament\"", "hdd1: \"Tekken Tag Tournament\"", 1 },
+	"hdd1: \"PP.HDL.Tekken Tag Tournament\"", "192.168.0.10 \"Tekken\"", 1 },
 #endif
 #if defined (INCLUDE_ZERO_CMD)
       { CMD_ZERO, "device",
@@ -1320,7 +1351,7 @@ show_usage_and_exit (const char *app_path,
 #if defined (INCLUDE_INFO_CMD)
       { CMD_HDL_INFO, "device partition",
 	"Displays information about HD Loader partition.",
-	"hdd1: \"tekken tag tournament\"", NULL, 0 },
+	"hdd1: \"tekken tag tournament\"", "192.168.0.10 Tekken", 0 },
 #endif
       { CMD_HDL_EXTRACT, "device name output_file",
 	"Extracts application image from HD Loader partition.",
@@ -1328,7 +1359,7 @@ show_usage_and_exit (const char *app_path,
       { CMD_HDL_INJECT_CD, "target name source [startup] [flags] [@slice_index]",
 	"Creates a new HD Loader partition from a CD.\n"
 	"Supported inputs: plain ISO files, CDRWIN cuesheets, Nero images and tracks,\n"
-	"RecordNow! Global images, HD Loader partitions (hdd1:PP.HDL.Xenosaga) and\n"
+	"RecordNow! Global images, HD Loader partitions (PP.HDL.Xenosaga@hdd1:) and\n"
 	"Sony CD/DVD generator IML files (if files are listed with full paths).\n"
 	"Startup file and compatibility flags are optional. Flags syntax is\n"
 	"`+#[+#[+#]]' or `0xNN', for example `+1', `+2+3', `0x01', `0x03', etc.",
@@ -1339,7 +1370,7 @@ show_usage_and_exit (const char *app_path,
 	"DVD9 cannot be directly installed from the DVD-ROM drive -\n"
 	"use ISO image or IML file instead.\n"
 	"Supported inputs: plain ISO files, CDRWIN cuesheets, Nero images and tracks,\n"
-	"RecordNow! Global images, HD Loader partitions (hdd1:PP.HDL.Xenosaga) and\n"
+	"RecordNow! Global images, HD Loader partitions (PP.HDL.Xenosaga@192....) and\n"
 	"Sony CD/DVD generator IML files (if files are listed with full paths).\n"
 	"Startup file and compatibility flags are optional. Flags syntax is\n"
 	"`+#[+#[+#]]' or `0xNN', for example `+1', `+2+3', `0x01', `0x03', etc.",
@@ -1360,16 +1391,6 @@ show_usage_and_exit (const char *app_path,
       { CMD_POWER_OFF, "ip",
 	"Powers-off Playstation 2.",
 	"192.168.0.10", NULL, 0 },
-#if defined (INCLUDE_READ_TEST_CMD)
-      { CMD_READ_TEST, "iin_input",
-	"Consecutively reads all sectors from the specified input.",
-	"cd0:", NULL, 0 },
-#endif /* INCLUDE_READ_TEST_CMD defined? */
-#if defined (INCLUDE_CHECK_CMD)
-      { CMD_CHECK, "device",
-	"Attempts to locate and display partition errors.",
-	"hdd1:", "192.168.0.10", 0 },
-#endif /* INCLUDE_CHECK_CMD defined? */
 #if defined (INCLUDE_INITIALIZE_CMD)
       { CMD_INITIALIZE, "device",
 	"Prepares a HDD for HD Loader usage. All information on the HDD will be lost.\n",
@@ -1383,7 +1404,7 @@ show_usage_and_exit (const char *app_path,
 #if defined (INCLUDE_RESTORE_TOC_CMD)
       { CMD_RESTORE_TOC, "device file",
 	"Restores TOC from a binary file.\n",
-	"hdd1: toc.bak", NULL, 0 },
+	"hdd1: toc.bak", NULL, 1 },
 #endif /* INCLUDE_RESTORE_TOC_CMD defined? */
 #if defined (INCLUDE_DIAG_CMD)
       { CMD_DIAG, "device",
@@ -1396,6 +1417,15 @@ show_usage_and_exit (const char *app_path,
 	"hdd1: DDS \"Digital Devil Saga\"",
 	"192.168.0.100 \"FF X-2\" +3", 1 },
 #endif /* INCLUDE_MODIFY_CMD defined? */
+#if defined (INCLUDE_COPY_HDD_CMD)
+      { CMD_COPY_HDD, "source_device destination_device [flags]",
+	"Copy games from one device to another. Flags is a sequence of `y' or `n'\n"
+	"characters, one for each game on the source device, given in the same order as\n"
+	"in hdl_toc command list. If no character given for a particular game (or flags\n"
+	"are missing) yes is assumed. " CMD_COPY_HDD " is contributed by JimmyZ.",
+	"hdd1: 192.168.0.100 # to copy all games",
+	"hdd1: hdd2: ynyn # to copy all games but 2nd and 4th", 1 },
+#endif /* INCLUDE_COPY_HDD_CMD defined? */
       { NULL, NULL,
 	NULL,
 	NULL, NULL, 0 }
@@ -1902,16 +1932,6 @@ main (int argc, char *argv[])
 				  argv[2], NULL);
 	}
 
-#if defined (INCLUDE_READ_TEST_CMD)
-      else if (caseless_compare (command_name, CMD_READ_TEST))
-	{
-	  if (argc != 3)
-	    show_usage_and_exit (argv[0], CMD_READ_TEST);
-
-	  handle_result_and_exit (read_test (argv[2], get_progress ()), argv[2], NULL);
-	}
-#endif /* INCLUDE_READ_TEST_CMD defined? */
-
       else if (caseless_compare (command_name, CMD_POWER_OFF))
 	{ /* PS2 power-off */
 	  if (argc != 3)
@@ -1991,6 +2011,18 @@ main (int argc, char *argv[])
 					  new_flags), argv[2], argv[3]);
 	}
 #endif /* INCLUDE_MODIFY_CMD defined? */
+
+#if defined (INCLUDE_COPY_HDD_CMD)
+      else if (caseless_compare (command_name, CMD_COPY_HDD))
+	{
+	  if (argc != 4 && argc != 5)
+	    show_usage_and_exit (argv[0], CMD_COPY_HDD);
+	  handle_result_and_exit (copy_hdd (config, argv[2], argv[3],
+					    argc == 5 ? argv[4] : NULL,
+					    get_progress ()),
+				  argv[2], NULL);
+	}
+#endif /* INCLUDE_COPY_HDD_CMD defined? */
 
       else
 	{ /* something else... -h perhaps? */

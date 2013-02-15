@@ -1,6 +1,6 @@
 ##
 ## svr/ee/Makefile
-## $Id: Makefile,v 1.7 2006/06/18 13:13:12 bobi Exp $
+## $Id: Makefile,v 1.8 2007-05-12 20:18:38 bobi Exp $
 ##
 ## Copyright 2004 Bobi B., w1zard0f07@yahoo.com
 ##
@@ -33,7 +33,7 @@ EE_LIBS = -lc -lpatches
 EE_BIN = hdld_svr.elf
 
 EE_OBJS = loader.o \
-	graph.o font.o iomanx.o ps2dev9.o ps2ip.o ps2smap.o ps2atad.o
+	graph.o font.o iomanx.o ps2dev9.o pktdrv.o ps2atad.o
 
 IRX_PATH = ../irx
 
@@ -56,11 +56,8 @@ ps2dev9.s: $(IRX_PATH)/ps2dev9.irx
 ps2atad.s: $(IRX_PATH)/ps2atad.irx
 	@bin2s $< $@ ps2atad_irx
 
-ps2ip.s: $(IRX_PATH)/ps2ip.irx
-	@bin2s $< $@ ps2ip_irx
-
-ps2smap.s: $(IRX_PATH)/ps2smap.irx
-	@bin2s $< $@ ps2smap_irx
+pktdrv.s: $(IRX_PATH)/pktdrv.irx
+	@bin2s $< $@ pktdrv_irx
 
 include ../Defs.make
 include ../ee-rules.make
