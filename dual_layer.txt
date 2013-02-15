@@ -1,0 +1,20 @@
+http://www.ps2-scene.org/forums/showthread.php?t=35652
+
+experimental hdl dual layer support
+This is an experimental patch which adds dual layer disk support to hdloader. It implements CdDualLayerInfo and CdLayerSearchFile, but the only game i've tried it with is God of War, which doen't require LayerSearchFile. Two caveats, it requires a new value in the header and the mode related to dual layer support no longer works. Offset 0xe8 of the header, between the executable file name and the disk type, needs to be set to the sector address of the second layer PVD - 16.
+
+Edit: revised patch
+
+
+
+Gow is already contained in the patch, if it's already applied it should be alright, don't apply it afterwards. Toxic core, no way. 48-bit should be okay and date patch should be too, but if it doesn't work, try it without.
+
+
+Added revised patch on first page, xenosaga works now. Also I tested with fresh copy of hdloader and it worked fine, if it doesn't work try the same.
+
+
+
+First unpack it with sjuncrunch/ps2-unpacker and then:
+
+hdlpatch_0.5c.exe /d0 hdlin.elf hdlout.elf
+

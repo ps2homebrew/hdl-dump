@@ -1,6 +1,17 @@
+0.8.1
+	+ quick-and-dirty prepare HDD for HD Loader (AKA format or initialize)
+	  works fine with HD Loader; not tested with homebrew
+	+ alternative partition naming scheme selectable via Makefile
+	+ startup file is optional when injecting a game
+	+ new optional argument to set compatibility flags from the commandline
+	  (+1/+2/+1+2/... or in hexidecimal - 0x01/0x02/0x03), up to 6 bits
+	+ dual-layer patch by CrazyC@ps2-scene
+	~ delete and extract now works by game name, too
+
 0.8
 	+ should be compatible with MacOS X
-	+ build-time option (in the Makefile) to limit hdl_dump/b to 128GB to preserve compatibility with updated Sony browser
+	+ build-time option (in the Makefile) to limit hdl_dump/b to 128GB
+	  to preserve compatibility with updated Sony browser
 	~ few hdl_dumb bugs fixed and few minor tweaks
 	+ GUI source code is now open
 

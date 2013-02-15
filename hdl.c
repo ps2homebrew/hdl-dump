@@ -1,6 +1,6 @@
 /*
  * hdl.c
- * $Id: hdl.c,v 1.11 2004/12/04 10:20:52 b081 Exp $
+ * $Id: hdl.c,v 1.12 2005/05/06 14:50:34 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -216,6 +216,7 @@ prepare_main (const hdl_game_t *details,
 	 */
 
 	/* that is aerial acrobatics :-) */
+	*(u_int32_t *)(&buffer_4m [0x1010e8]) = details->layer_break;
 	buffer_4m [0x1010ec] = details->is_dvd ? 0x14 : 0x12;
 	buffer_4m [0x1010f0] = (u_int8_t) (get_u32 (&part->nsub) + 1);
 	tmp = (unsigned long*) (buffer_4m + 0x1010f5);
@@ -282,7 +283,7 @@ hdl_pname (const char *name,
   p = partition_name + 7; /* len ("PP.HDL.") */
   while (*p)
     {
-      if (!isalnum (*p) && *p != ' ')
+      if (!isalnum (*p) && *p != ' ' && *p != '.')
 	*p = '_'; /* escape non-alphanumeric characters with `_' */
       ++p;
     }
@@ -304,11 +305,11 @@ hdl_extract (const char *device_name,
       u_int32_t partition_index;
       result = apa_find_partition (table, game_name, &partition_index);
       if (result == RET_NOT_FOUND)
-	{ /* use heuristics - look among the HD Loader partitions */
-	  char tmp [PS2_PART_IDMAX + 8];
-	  strcpy (tmp, "PP.HDL.");
-	  strcat (tmp, game_name);
-	  result = apa_find_partition (table, tmp, &partition_index);
+	{ /* assume it is `game_name' and not a partition name */
+	  char partition_id [PS2_PART_IDMAX + 8];
+	  result = hdl_lookup_partition (device_name, game_name, partition_id);
+	  if (result == RET_OK)
+	    result = apa_find_partition (table, partition_id, &partition_index);
 	}
 
       if (result == RET_OK)
@@ -525,7 +526,18 @@ hdl_inject (hio_t *hio,
 	  u_int32_t new_partition_start;
 
 	  if (details->partition_name [0] == '\0')
-	    hdl_pname (details->name, details->partition_name);
+	    {
+	      if (strcmp (PARTITION_NAMING, "toxic_os") == 0)
+		/* Toxic OS partition naming: "PP.HDL.STARTUP" */
+		hdl_pname (details->startup, details->partition_name);
+	      else if (strcmp (PARTITION_NAMING, "standard") == 0)
+		/* HD Loader partition naming: "PP.HDL.Game name" */
+		hdl_pname (details->name, details->partition_name);
+	      else
+		/* default to standard if unknown option */
+		hdl_pname (details->name, details->partition_name);
+	    }
+
 	  result = apa_allocate_space (table, details->partition_name, size_in_mb,
 				       &new_partition_start, 0); /* order by size desc */
 	  if (result == RET_OK)
@@ -653,4 +665,37 @@ hdl_glist_free (hdl_games_list_t *glist)
       osal_free (glist->games);
       osal_free (glist);
     }
+}
+
+
+/**************************************************************/
+int
+hdl_lookup_partition (const char *device_name,
+		      const char *game_name,
+		      char partition_id [PS2_PART_IDMAX + 1])
+{
+  hio_t *hio = NULL;
+  int result = hio_probe (device_name, &hio);
+  if (result == RET_OK)
+    {
+      hdl_games_list_t *games = NULL;
+      result = hdl_glist_read (hio, &games);
+      if (result == RET_OK)
+	{
+	  int i, found = 0;
+	  for (i=0; i<games->count; ++i)
+	    if (caseless_compare (game_name, games->games [i].name))
+	      { /* found */
+		strcpy (partition_id, games->games [i].partition_name);
+		found = 1;
+		break;
+	      }
+	  if (!found)
+	    result = RET_NOT_FOUND;
+
+	  hdl_glist_free (games);
+	}
+      hio->close (hio);
+    }
+  return (result);
 }

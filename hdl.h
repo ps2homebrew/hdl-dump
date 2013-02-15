@@ -1,6 +1,6 @@
 /*
  * hdl.h
- * $Id: hdl.h,v 1.5 2004/12/04 10:20:52 b081 Exp $
+ * $Id: hdl.h,v 1.6 2005/05/06 14:50:34 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -39,6 +39,7 @@ typedef struct hdl_game_type
   char startup [8 + 1 + 3 + 1];
   unsigned char compat_flags;
   int is_dvd;
+  u_int32_t layer_break;
 } hdl_game_t;
 
 typedef struct hdl_game_info_type
@@ -80,5 +81,8 @@ int hdl_glist_read (hio_t *hio,
 
 void hdl_glist_free (hdl_games_list_t *glist);
 
+int hdl_lookup_partition (const char *device_name,
+			  const char *game_name,
+			  char partition_id [PS2_PART_IDMAX + 1]);
 
 #endif /* _HDL_H defined? */

@@ -1,6 +1,6 @@
 ##
 ## svr/ee/Makefile
-## $Id: Makefile,v 1.4 2004/12/04 10:28:44 b081 Exp $
+## $Id: Makefile,v 1.5 2005/05/06 14:50:35 b081 Exp $
 ##
 ## Copyright 2004 Bobi B., w1zard0f07@yahoo.com
 ##
@@ -22,13 +22,13 @@
 ##
 
 EE_CFLAGS = -mips3 -ffreestanding -fno-builtin -G0 \
-	-fshort-double -mlong64 -mhard-float -mno-abicalls -O2 -EL -Wall -s
+	-fshort-double -mlong64 -mhard-float -mno-abicalls -Os -EL -Wall -s
 
 EE_LDFLAGS = -s
 
 EE_ASFLAGS = -EL
 
-EE_LIBS = -lc -lsbv_patches
+EE_LIBS = -lc -lpatches
 
 EE_BIN = hdld_svr.elf
 
@@ -68,5 +68,5 @@ poweroff.s: $(IRX_PATH)/poweroff.irx
 hdld_svr_iop.s: ../iop/hdld_svr.irx
 	@bin2s $< $@ hdlsvr_iop_irx
 
-include $(PS2SDK)/Defs.make
-include $(PS2SDK)/ee-rules.make
+include ../Defs.make
+include ../ee-rules.make

@@ -11,7 +11,7 @@
 EE_INCS := \
 	-I$(PS2SDK)/ee/include \
 	-I$(PS2SDK)/common/include \
-	-I$(PS2DEV)/sbv-1.0-lite/include \
+	-I$(PS2SDK)/sbv/include \
 	$(EE_INCS)
 
 # C compiler flags
@@ -23,7 +23,7 @@ EE_CXXFLAGS := -D_EE -O2 -G0 -Wall $(EE_CXXFLAGS)
 # Linker flags
 EE_LDFLAGS := \
 	-L$(PS2SDK)/ee/lib \
-	-L$(PS2DEV)/sbv-1.0-lite/lib \
+	-L$(PS2SDK)/sbv/lib \
 	$(EE_LDFLAGS)
 
 # Assembler flags

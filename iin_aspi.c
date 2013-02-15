@@ -1,6 +1,6 @@
 /*
  * iin_aspi.c
- * $Id: iin_aspi.c,v 1.5 2004/12/04 10:20:52 b081 Exp $
+ * $Id: iin_aspi.c,v 1.6 2005/05/06 14:50:35 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -84,7 +84,11 @@ aspicd_read (iin_t *iin,
       *length = num_sectors * IIN_SECTOR_SIZE;
     }
   else
-    aspi->error_code = aspi_get_last_error_code ();
+    {
+      if (result == RET_ERR)
+	result = RET_ASPI_ERROR;
+      aspi->error_code = aspi_get_last_error_code ();
+    }
   return (result);
 }
 
@@ -208,6 +212,8 @@ iin_aspi_probe_path (const char *path,
 	  else
 	    result = RET_NO_MEM;
 	}
+      else if (result == RET_ERR)
+	result = RET_ASPI_ERROR;
     }
 
   if (result != RET_OK && aspi_init)
