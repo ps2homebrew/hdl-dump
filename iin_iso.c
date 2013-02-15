@@ -1,6 +1,6 @@
 /*
  * iin_iso.c
- * $Id: iin_iso.c,v 1.10 2006/06/18 13:11:39 bobi Exp $
+ * $Id: iin_iso.c,v 1.11 2006/09/01 17:24:59 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -67,7 +67,7 @@ iin_iso_probe_path (const char *path,
       if (result == OSAL_OK)
 	result = osal_get_volume_sect_size (path, &volume_sector_size);
 
-      osal_close (file);
+      osal_close (&file);
     }
 
   if (result == OSAL_OK)

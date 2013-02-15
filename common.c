@@ -1,6 +1,6 @@
 /*
  * common.c
- * $Id: common.c,v 1.16 2006/06/18 13:08:21 bobi Exp $
+ * $Id: common.c,v 1.17 2006/09/01 17:31:58 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -55,7 +55,7 @@ rtrim (char *text)
 {
   char *last_non_space = text - 1;
   char *p = text;
-  while (*p)
+  while (*p != '\0')
     {
       if (*p != ' ' && *p != '\t')
 	last_non_space = p;
@@ -138,9 +138,9 @@ read_file (const char *file_name,
 	   char **data,
 	   u_int32_t *len)
 {
-  osal_handle_t file;
+  /*@only@*/ osal_handle_t file = OSAL_HANDLE_INIT;
   int result = osal_open (file_name, &file, 0);
-  *data = NULL;
+  *data = NULL; *len = 0;
   if (result == OSAL_OK)
     {
       u_int64_t size;
@@ -161,7 +161,7 @@ read_file (const char *file_name,
 	  else
 	    result = RET_NO_MEM; /* file size is limited to MAX_READ_FILE_SIZE bytes */
 	}
-      osal_close (file);
+      (void) osal_close (&file);
     }
   if (result != OSAL_OK)
     if (*data != NULL)
@@ -176,13 +176,13 @@ write_file (const char *file_name,
 	    const void *data,
 	    u_int32_t len)
 {
-  osal_handle_t handle;
+  /*@only@*/ osal_handle_t handle = OSAL_HANDLE_INIT;
   int result = osal_create_file (file_name, &handle, (u_int64_t) len);
   if (result == OSAL_OK)
     {
       u_int32_t bytes;
       result = osal_write (handle, data, len, &bytes);
-      result = osal_close (handle) == OSAL_OK ? result : OSAL_ERR;
+      result = osal_close (&handle) == OSAL_OK ? result : OSAL_ERR;
     }
   return (result);
 }
@@ -190,20 +190,22 @@ write_file (const char *file_name,
 
 /**************************************************************/
 int
-dump_device (const char *device_name,
+dump_device (const dict_t *config,
+	     const char *device_name,
 	     const char *output_file,
 	     u_int64_t max_size,
 	     progress_t *pgs)
 {
-  osal_handle_t device;
-  int result = osal_open (device_name, &device, 1);
+  /*@only@*/ iin_t *iin = NULL;
+  int result = iin_probe (config, device_name, &iin);
   if (result == OSAL_OK)
     {
-      u_int64_t size_in_bytes = 0;
-      result = osal_get_estimated_device_size (device, &size_in_bytes);
+      u_int32_t sector_size, num_sectors;
+      result = iin->stat (iin, &sector_size, &num_sectors);
       if (result == OSAL_OK)
 	{
-	  osal_handle_t file;
+	  u_int64_t size_in_bytes = (u_int64_t) num_sectors * sector_size;
+	  /*@only@*/ osal_handle_t file = OSAL_HANDLE_INIT;
 
 	  pgs_prepare (pgs, size_in_bytes);
 
@@ -215,12 +217,34 @@ dump_device (const char *device_name,
 	  result = osal_create_file (output_file, &file, size_in_bytes);
 	  if (result == OSAL_OK)
 	    {
-	      result = copy_data (device, file, (u_int64_t) 0, 1 _MB, pgs);
+	      u_int64_t offset = 0;
+	      while (result == RET_OK && offset < size_in_bytes)
+		{
+		  u_int32_t bytes = 0;
+		  const char *buf = NULL;
+		  const u_int64_t BYTES_AT_ONCE = 1024 * 1024;
+		  const u_int64_t remaining = size_in_bytes - offset;
+		  const u_int32_t count =
+		    (u_int32_t) (remaining > BYTES_AT_ONCE ?
+				 BYTES_AT_ONCE : remaining);
+		  result = iin->read (iin, offset / 2048, count / 2048,
+				      &buf, &bytes);
+		  if (result == RET_OK)
+		    {
+		      u_int32_t stored = 0;
+		      result = osal_write (file, buf, bytes, &stored);
+		      if (result == RET_OK)
+			{
+			  offset += count;
+			  result = pgs_update (pgs, offset);
+			}
+		    }
+		}
 	      /* TODO: store GetLastError () on error */
-	      result = osal_close (file) == OSAL_OK ? result : OSAL_ERR;
+	      result = osal_close (&file) == OSAL_OK ? result : OSAL_ERR;
 	    }
 	}
-      osal_close (device);
+      (void) iin->close (iin);
       /* TODO: restore last error on error */
     }
 
@@ -232,11 +256,11 @@ dump_device (const char *device_name,
 int
 file_exists (const char *path)
 {
-  osal_handle_t in;
+  /*@only@*/ osal_handle_t in = OSAL_HANDLE_INIT;
   int result = osal_open (path, &in, 1);
   if (result == OSAL_OK)
     {
-      osal_close (in);
+      (void) osal_close (&in);
       return (1);
     }
   else
@@ -294,7 +318,8 @@ iin_copy (iin_t *iin,
     {
       const char *data;
       u_int32_t bytes_written;
-      u_int32_t sectors = num_sectors > IIN_NUM_SECTORS ? IIN_NUM_SECTORS : num_sectors;
+      u_int32_t sectors =
+	num_sectors > IIN_NUM_SECTORS ? IIN_NUM_SECTORS : num_sectors;
       result = iin->read (iin, start_sector, sectors, &data, &data_len);
       if (result == OSAL_OK)
 	result = osal_write (out, data, data_len, &bytes_written);
@@ -334,7 +359,8 @@ iin_copy_ex (iin_t *iin,
       if (result == OSAL_OK)
 	{
 	  sectors_read = data_len / IIN_SECTOR_SIZE;
-	  result = hio->write (hio, output_start_sector, data_len / 512, data, &bytes_written);
+	  result = hio->write (hio, output_start_sector,
+			       data_len / 512, data, &bytes_written);
 	  if (result == OSAL_OK)
 	    result = bytes_written == data_len ? OSAL_OK : OSAL_ERR;
 	}
@@ -414,10 +440,10 @@ set_config_defaults (dict_t *config)
       strcat (disc_database, "/.hdl_dump.list");
     }
 #endif
-  dict_put (config, CONFIG_DISC_DATABASE_FILE, disc_database);
+  (void) dict_put (config, CONFIG_DISC_DATABASE_FILE, disc_database);
 
-  dict_put (config, CONFIG_TARGET_KBPS, "2300");
-  dict_put (config, CONFIG_AUTO_THROTTLE, "0");
+  (void) dict_put (config, CONFIG_TARGET_KBPS, "2300");
+  (void) dict_put (config, CONFIG_AUTO_THROTTLE, "0");
 }
 
 
@@ -488,6 +514,7 @@ ddb_lookup (const dict_t *config,
   int result;
   const char *disc_db = dict_lookup (config, CONFIG_DISC_DATABASE_FILE);
   dict_t *list = disc_db != NULL ? dict_restore (NULL, disc_db) : NULL;
+  *name = '\0'; *flags = 0;
   if (list != NULL)
     {
       const char *entry = dict_lookup (list, startup);
@@ -546,11 +573,11 @@ ddb_update (const dict_t *config,
       if (result != RET_DDB_INCOMPATIBLE)
 	{ /* do not overwrite entries, marked as incompatible */
 	  sprintf (tmp, "%s;0x%02x", name, flags);
-	  dict_put (list, startup, tmp);
+	  (void) dict_put (list, startup, tmp);
 
 	  result = dict_store (list, disc_db);
 	}
-      dict_free (list);
+      dict_free (list), list = NULL;
     }
   else
     result = RET_NO_DISC_DB;

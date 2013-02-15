@@ -1,6 +1,6 @@
 /*
  * iin_nero.c
- * $Id: iin_nero.c,v 1.9 2006/06/18 13:11:42 bobi Exp $
+ * $Id: iin_nero.c,v 1.10 2006/09/01 17:24:48 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -36,13 +36,13 @@
 #define CHECK_NER5
 
 
-typedef enum data_mode_type
+typedef enum nero_data_mode_type
   {
-    dm_mode1_plain = 0,
-    dm_mode1_raw = 1,
-    dm_mode2_plain = 2,
-    dm_mode2_raw = 3
-  } data_mode_t;
+    ndm_mode1_plain = 0,
+    ndm_mode1_raw = 1,
+    ndm_mode2_plain = 2,
+    ndm_mode2_raw = 3
+  } nero_data_mode_t;
 
 /* values for Nero found out by building test images */
 static const u_int32_t RAW_SECTOR_SIZE [4] = { 2048, 2352, 2048, 2352 };
@@ -53,9 +53,9 @@ static const u_int32_t RAW_SKIP_OFFSET [4] = {    0,   16,    0,   24 };
 static int
 probe_nero_image (osal_handle_t in,
 		  u_int64_t file_size,
-		  data_mode_t *mode,
-		  u_int32_t *header_length,
-		  u_int32_t *footer_length)
+		  /*@out@*/ nero_data_mode_t *mode,
+		  /*@out@*/ u_int32_t *header_length,
+		  /*@out@*/ u_int32_t *footer_length)
 {
   char header [156];
   int result;
@@ -91,11 +91,11 @@ probe_nero_image (osal_handle_t in,
       int type = (unsigned char) header [0x54];
       switch (type)
 	{ /* mode 1 */
-	case 0x00: *mode = dm_mode1_plain; break;
-	case 0x05: *mode = dm_mode1_raw; break;
+	case 0x00: *mode = ndm_mode1_plain; break;
+	case 0x05: *mode = ndm_mode1_raw; break;
 	  /* mode 2 */
-	case 0x02: *mode = dm_mode2_plain; break;
-	case 0x06: *mode = dm_mode2_raw; break;
+	case 0x02: *mode = ndm_mode2_plain; break;
+	case 0x06: *mode = ndm_mode2_raw; break;
 	default: result = RET_BAD_COMPAT;
 	}
     }
@@ -112,9 +112,9 @@ probe_nero_image (osal_handle_t in,
 static int
 probe_nero_track (osal_handle_t in,
 		  u_int64_t file_size,
-		  data_mode_t *mode,
-		  u_int32_t *header_length,
-		  u_int32_t *footer_length)
+		  /*@out@*/ nero_data_mode_t *mode,
+		  /*@out@*/ u_int32_t *header_length,
+		  /*@out@*/ u_int32_t *footer_length)
 {
   /* NOTE: by some reason, Nero track file is one sector shorter than the Nero image file */
   char header [72];
@@ -148,7 +148,7 @@ probe_nero_track (osal_handle_t in,
 
   if (result == OSAL_OK)
     {
-      *mode = dm_mode1_plain;
+      *mode = ndm_mode1_plain;
       *header_length = 0;
       *footer_length = 72;
     }
@@ -165,7 +165,7 @@ iin_nero_probe_path (const char *path,
   osal_handle_t in;
   u_int64_t file_size;
   u_int32_t header_size, footer_size;
-  data_mode_t mode;
+  nero_data_mode_t mode;
   int result = osal_get_volume_sect_size (path, &device_sector_size);
   if (result == OSAL_OK)
     result = osal_open (path, &in, 0); /* do not disable cache yet */
@@ -174,11 +174,13 @@ iin_nero_probe_path (const char *path,
       result = osal_get_file_size (in, &file_size);
       if (result == OSAL_OK)
 	{
-	  result = probe_nero_image (in, file_size, &mode, &header_size, &footer_size);
+	  result = probe_nero_image (in, file_size,
+				     &mode, &header_size, &footer_size);
 	  if (result != OSAL_OK)
-	    result = probe_nero_track (in, file_size, &mode, &header_size, &footer_size);
+	    result = probe_nero_track (in, file_size,
+				       &mode, &header_size, &footer_size);
 	}
-      osal_close (in);
+      osal_close (&in);
     }
 
   if (result == RET_OK)
@@ -198,13 +200,13 @@ iin_nero_probe_path (const char *path,
 	  *iin = (iin_t*) img_base;
 	  switch (mode)
 	    {
-	    case dm_mode1_plain:
+	    case ndm_mode1_plain:
 	      strcpy ((*iin)->source_type, "Nero Image, Mode 1, plain"); break;
-	    case dm_mode1_raw:
+	    case ndm_mode1_raw:
 	      strcpy ((*iin)->source_type, "Nero Image, Mode 1, RAW"); break;
-	    case dm_mode2_plain:
+	    case ndm_mode2_plain:
 	      strcpy ((*iin)->source_type, "Nero Image, Mode 2, plain"); break;
-	    case dm_mode2_raw:
+	    case ndm_mode2_raw:
 	      strcpy ((*iin)->source_type, "Nero Image, Mode 2, RAW"); break;
 	    }
 	}

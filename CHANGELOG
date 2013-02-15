@@ -1,3 +1,14 @@
+0.8.6
+	+ SPTI: dual-layer DVDs can finally be installed from the DVD-ROM drive
+	~ thanks to SPTI hdl_dumb works pretty well with both, wine and winelib
+	+ optional threaded I/O (faster networked installs from optical drive)
+	~ two fixes sent by Diego G. and few more by my self
+	+ dump command slighly modified to support all inputs
+	  (can even be used for BIN-to-ISO, IML-to-ISO, etc. conversion)
+	+ modify command
+	~ 'game@device' is now available as an input (to copy HDD-to-HDD)
+	  instead of 'hddX:game' and '192.168.0.10:game'
+
 0.8.5
 	+ better differentiation between CD- and DVD-images/medias
 	+ server will look for IPCONFIG.DAT at mc0:/B?DATA-SYSTEM/, too
@@ -90,4 +101,4 @@
 0.1
 	+ toc, map, extract support
 
-$Id: CHANGELOG,v 1.13 2006/06/18 13:07:30 bobi Exp $
+$Id: CHANGELOG,v 1.14 2006/09/01 17:34:47 bobi Exp $

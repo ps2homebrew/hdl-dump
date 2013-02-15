@@ -1,6 +1,6 @@
 /*
  * osal_unix.c
- * $Id: osal_unix.c,v 1.7 2006/05/21 21:41:15 bobi Exp $
+ * $Id: osal_unix.c,v 1.8 2006/09/01 17:21:39 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -272,7 +272,7 @@ osal_get_file_size_ex (const char *path,
   if (result == OSAL_OK)
     {
       result = osal_get_file_size (in, size_in_bytes);
-      osal_close (in);
+      osal_close (&in);
     }
   return (result);
 }
@@ -325,9 +325,9 @@ osal_write (osal_handle_t handle,
 
 /**************************************************************/
 int /* OSAL_OK, OSAL_ERR */
-osal_close (osal_handle_t handle)
+osal_close (osal_handle_t *handle)
 {
-  return (close (handle.desc) == -1 ? OSAL_ERR : OSAL_OK);
+  return (close (handle->desc) == -1 ? OSAL_ERR : OSAL_OK);
 }
 
 
@@ -359,13 +359,18 @@ osal_mmap (osal_mmap_t **mm,
   *mm = osal_alloc (sizeof (osal_mmap_t));
   if (*mm != NULL)
     {
-      void *addr = mmap64 (NULL, length, PROT_READ, MAP_SHARED,
-			   handle.desc, offset);
+      int align = offset % getpagesize ();
+      void *addr;
+
+      offset -= align;
+      length += align;
+      addr = mmap64 (NULL, length, PROT_READ, MAP_SHARED,
+		     handle.desc, offset);
       if (addr != MAP_FAILED)
 	{ /* success */
 	  (*mm)->start = addr;
 	  (*mm)->length = length;
-	  *p = addr;
+	  *p = (u_int8_t*) addr + align;
 	  return (OSAL_OK);
 	}
       else

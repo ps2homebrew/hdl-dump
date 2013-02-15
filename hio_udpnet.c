@@ -1,6 +1,6 @@
 /*
  * hio_net.c - TCP/IP networking access to PS2 HDD
- * $Id: hio_udpnet.c,v 1.3 2006/06/18 13:10:56 bobi Exp $
+ * $Id: hio_udpnet.c,v 1.4 2006/09/01 17:27:02 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -185,9 +185,9 @@ send_for_write (hio_net_t *net,
 		  highres_time_t now;
 
 		  highres_time (&now);
-		  seconds = ((highres_time_val (&now) -
-			      highres_time_val (&start)) /
-			     (double) HIGHRES_TO_SEC);
+		  seconds = (double) ((highres_time_val (&now) -
+				       highres_time_val (&start)) /
+				      (double) HIGHRES_TO_SEC);
 		  next = (double) sent / (double) sps;
 #if (FEEDBACK == 2)
 		  printf ("%.5f, %.5f, %4d\n",
@@ -204,8 +204,8 @@ send_for_write (hio_net_t *net,
 				    HDD_SECTOR_SIZE * 2);
 			    set_u32 (&packet.command, command);
 			    set_u32 (&packet.start, sector + i);
-			    send (net->udp, (void*) &packet,
-				  sizeof (packet), 0);
+			    (void) send (net->udp, (void*) &packet,
+					 sizeof (packet), 0);
 #if (FEEDBACK == 1)
 			    printf (".");
 #endif
@@ -303,7 +303,7 @@ execute (SOCKET s,
 /**************************************************************/
 static int
 net_stat (hio_t *hio,
-	  u_int32_t *size_in_kb)
+	  /*@out@*/ u_int32_t *size_in_kb)
 {
   hio_net_t *net = (hio_net_t*) hio;
   u_int32_t size_in_kb2;
@@ -321,8 +321,8 @@ static int
 net_read (hio_t *hio,
 	  u_int32_t start_sector,
 	  u_int32_t num_sectors,
-	  void *output,
-	  u_int32_t *bytes)
+	  /*@out@*/ void *output,
+	  /*@out@*/ u_int32_t *bytes)
 {
   hio_net_t *net = (hio_net_t*) hio;
   u_int32_t response;
@@ -367,7 +367,7 @@ net_write (hio_t *hio,
 	   u_int32_t start_sector,
 	   u_int32_t num_sectors,
 	   const void *input,
-	   u_int32_t *bytes)
+	   /*@out@*/ u_int32_t *bytes)
 {
   hio_net_t *net = (hio_net_t*) hio;
   u_int32_t response;
@@ -435,7 +435,7 @@ net_flush (hio_t *hio)
 
 /**************************************************************/
 static int
-net_close (hio_t *hio)
+net_close (/*@special@*/ /*@only@*/ hio_t *hio) /*@releases hio@*/
 {
   hio_net_t *net = (hio_net_t*) hio;
 #if defined (_BUILD_WIN32)
@@ -468,7 +468,7 @@ net_last_error (hio_t *hio)
 /**************************************************************/
 static void
 net_dispose_error (hio_t *hio,
-		   char* error)
+		   /*@only@*/ char* error)
 {
   osal_dispose_error_msg (error);
 }

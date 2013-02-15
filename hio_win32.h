@@ -1,6 +1,6 @@
 /*
  * hio_win32.h - Win32 interface to locally connected PS2 HDD
- * $Id: hio_win32.h,v 1.5 2006/06/18 13:11:10 bobi Exp $
+ * $Id: hio_win32.h,v 1.6 2006/09/01 17:26:29 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -34,7 +34,7 @@ C_START
    "hdd?:" or "hdd??:" where ? is 0-based device index */
 int hio_win32_probe (const dict_t *config,
 		     const char *path,
-		     hio_t **hio);
+		     /*@special@*/ hio_p_t *hio) /*@allocates *hio@*/ /*@defines *hio@*/;
 
 C_END
 

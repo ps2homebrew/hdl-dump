@@ -1,6 +1,6 @@
 /*
  * retcodes.h
- * $Id: retcodes.h,v 1.12 2005/12/08 20:42:19 bobi Exp $
+ * $Id: retcodes.h,v 1.13 2006/09/01 17:20:42 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -58,6 +58,8 @@
 #define RET_DDB_INCOMPATIBLE 26 /* game is incompatible according to disc database */
 #define RET_TIMEOUT     27 /* communication timeout */
 #define RET_PROTO_ERR   28 /* network communication protocol error */
+#define RET_INVARIANT   29 /* invalid internal data state; probably a bug */
+#define RET_SPTI_ERROR  30 /* SPTI error */
 
 
 #endif /* _RETCODES_H defined? */

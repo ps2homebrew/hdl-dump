@@ -1,6 +1,6 @@
 /*
  * iin_optical.h
- * $Id: iin_optical.h,v 1.6 2006/06/18 13:11:48 bobi Exp $
+ * $Id: iin_optical.h,v 1.7 2006/09/01 17:24:08 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -31,7 +31,7 @@ C_START
 
 /* would accept "cd*:" */
 int iin_optical_probe_path (const char *path,
-			    iin_t **iin);
+			    /*@special@*/ iin_p_t *iin) /*@allocates *iin@*/ /*@defines *iin@*/;
 
 C_END
 

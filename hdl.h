@@ -1,6 +1,6 @@
 /*
  * hdl.h
- * $Id: hdl.h,v 1.8 2006/06/18 13:08:57 bobi Exp $
+ * $Id: hdl.h,v 1.9 2006/09/01 17:29:13 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -50,7 +50,7 @@ typedef struct hdl_game_info_type
   char partition_name[PS2_PART_IDMAX + 1];
   char name[HDL_GAME_NAME_MAX + 1];
   char startup[8 + 1 + 3 + 1];
-  unsigned char compat_flags;
+  compat_flags_t compat_flags;
   int is_dvd;
   int slice_index;
   u_int32_t start_sector;
@@ -61,14 +61,15 @@ typedef struct hdl_game_info_type
 typedef struct hdl_games_list_type
 {
   u_int32_t count;
-  hdl_game_info_t *games;
+  /*@only@*/ hdl_game_info_t *games;
   u_int32_t total_chunks;
   u_int32_t free_chunks;
 } hdl_games_list_t;
+typedef /*@only@*/ /*@null@*/ /*@out@*/ hdl_games_list_t* hdl_games_list_p_t;
 
 
 void hdl_pname (const char *name,
-		char partition_name [PS2_PART_IDMAX + 1]);
+		/*@out@*/ char partition_name[PS2_PART_IDMAX + 1]);
 
 int hdl_extract_ex (hio_t *hio,
 		    const char *game_name,
@@ -89,18 +90,18 @@ int hdl_inject (hio_t *hio,
 
 
 int hdl_glist_read (hio_t *hio,
-		    hdl_games_list_t **glist);
+		    /*@special@*/ hdl_games_list_p_t *glist) /*@allocates *glist@*/ /*@defines *glist@*/;
 
-void hdl_glist_free (hdl_games_list_t *glist);
+void hdl_glist_free (/*@special@*/ /*@only@*/ hdl_games_list_t *glist) /*@releases glist@*/;
 
 int hdl_lookup_partition_ex (hio_t *hio,
 			     const char *game_name,
-			     char partition_id [PS2_PART_IDMAX + 1]);
+			     /*@out@*/ char partition_id[PS2_PART_IDMAX + 1]);
 
 int hdl_lookup_partition (const dict_t *config,
 			  const char *device_name,
 			  const char *game_name,
-			  char partition_id [PS2_PART_IDMAX + 1]);
+			  /*@out@*/ char partition_id[PS2_PART_IDMAX + 1]);
 
 typedef struct hdl_game_alloc_table_type
 {
@@ -116,7 +117,14 @@ int hdl_read_game_alloc_table (hio_t *hio,
 			       const apa_toc_t *toc,
 			       int slice_index,
 			       u_int32_t partition_index,
-			       hdl_game_alloc_table_t *gat);
+			       /*@out@*/ hdl_game_alloc_table_t *gat);
+
+int hdl_modify_game (hio_t *hio,
+		     apa_toc_t *toc,
+		     int slice_index,
+		     u_int32_t starting_partition_sector,
+		     const char *new_name, /* or NULL */
+		     compat_flags_t new_compat_flags); /* or COMPAT_FLAGS_INVALID */
 
 C_END
 

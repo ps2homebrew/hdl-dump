@@ -1,6 +1,6 @@
 /*
  * iin_iml.c
- * $Id: iin_iml.c,v 1.8 2006/06/18 13:11:37 bobi Exp $
+ * $Id: iin_iml.c,v 1.9 2006/09/01 17:25:20 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -161,12 +161,12 @@ process_loc_line (iml_files_t *list,
   if (result == OSAL_OK)
     { /* dummies */
       while (is_space_or_tab (*endp)) ++endp;
-      strtod (endp, &endp);
+      (void) strtod (endp, &endp);
       result = is_space_or_tab (*endp) ? OSAL_OK : RET_BAD_COMPAT;
       if (result == OSAL_OK)
 	{
 	  while (is_space_or_tab (*endp)) ++endp;
-	  strtol (endp, &endp, 10);
+	  (void) strtol (endp, &endp, 10);
 	  result = is_space_or_tab (*endp) ? OSAL_OK : RET_BAD_COMPAT;
 	}
     }
@@ -239,7 +239,7 @@ build_file_list (const char *iml_path,
 	{
 	  enum section_type_t sec = st_unk; /* current section */
 	  char *line = strtok (data, "\r\n");
-	  if (line != NULL && line != '\0')
+	  if (line != NULL && *line != '\0')
 	    do
 	      {
 		if (caseless_compare (line, "[sys]"))

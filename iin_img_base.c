@@ -1,6 +1,6 @@
 /*
  * iin_img_base.c
- * $Id: iin_img_base.c,v 1.8 2006/05/21 21:38:18 bobi Exp $
+ * $Id: iin_img_base.c,v 1.9 2006/09/01 17:25:33 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -68,7 +68,7 @@ close_current (iin_img_base_t *img_base)
   if (img_base->current != NULL)
     { /* close the old input */
       al_free (img_base->al);
-      osal_close (img_base->file);
+      osal_close (&img_base->file);
       img_base->current = NULL;
     }
 }
@@ -133,8 +133,8 @@ img_base_add_gap (iin_img_base_t *img_base,
 /**************************************************************/
 static int
 img_base_stat (iin_t *iin,
-	       u_int32_t *sector_size,
-	       u_int32_t *num_sectors)
+	       /*@out@*/ u_int32_t *sector_size,
+	       /*@out@*/ u_int32_t *num_sectors)
 {
   iin_img_base_t *img_base = (iin_img_base_t*) iin;
   *sector_size = IIN_SECTOR_SIZE;
@@ -152,8 +152,8 @@ static int
 img_base_read (iin_t *iin,
 	       u_int32_t start_sector,
 	       u_int32_t num_sectors,
-	       const char **data,
-	       u_int32_t *length)
+	       /*@out@*/ const char **data,
+	       /*@out@*/ u_int32_t *length)
 {
   iin_img_base_t *img_base = (iin_img_base_t*) iin;
   int result = OSAL_OK;
@@ -206,7 +206,7 @@ img_base_read (iin_t *iin,
 		  else
 		    result = RET_NO_MEM;
 		  if (result != OSAL_OK)
-		    osal_close (in); /* al allocation failed? */
+		    osal_close (&in); /* al allocation failed? */
 		}
 	    }
 	}
@@ -292,7 +292,7 @@ img_base_read (iin_t *iin,
 
 /**************************************************************/
 static int
-img_base_close (iin_t *iin)
+img_base_close (/*@special@*/ /*@only@*/ iin_t *iin) /*@releases iin@*/
 {
   iin_img_base_t *img_base = (iin_img_base_t*) iin;
   u_int32_t i;
@@ -318,7 +318,7 @@ img_base_last_error (iin_t *iin)
 /**************************************************************/
 static void
 img_base_dispose_error (iin_t *iin,
-			char* error)
+			/*@only@*/ char* error)
 {
   osal_dispose_error_msg (error);
 }
@@ -329,7 +329,8 @@ iin_img_base_t*
 img_base_alloc (u_int32_t raw_sector_size,
 		u_int32_t raw_skip_offset)
 {
-  iin_img_base_t *img_base = (iin_img_base_t*) osal_alloc (sizeof (iin_img_base_t));
+  iin_img_base_t *img_base =
+    (iin_img_base_t*) osal_alloc (sizeof (iin_img_base_t));
   if (img_base != NULL)
     {
       iin_t *iin = &img_base->iin;

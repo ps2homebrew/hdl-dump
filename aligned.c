@@ -1,6 +1,6 @@
 /*
  * aligned.c
- * $Id: aligned.c,v 1.7 2006/05/21 21:35:11 bobi Exp $
+ * $Id: aligned.c,v 1.8 2006/09/01 17:18:31 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -31,7 +31,8 @@
 struct aligned_type
 {
   osal_handle_t in;
-  char *unaligned, *buffer;
+  char /*@owned@*/ *unaligned;
+  char /*@dependent@*/ *buffer;
   u_int32_t sector_size, buffer_size, data_length;
   u_int64_t offset;
 };

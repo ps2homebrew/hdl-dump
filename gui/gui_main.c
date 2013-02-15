@@ -1,6 +1,6 @@
 /*
  * gui_main.c
- * $Id: gui_main.c,v 1.9 2006/06/18 13:13:04 bobi Exp $
+ * $Id: gui_main.c,v 1.10 2006/09/01 17:34:20 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -36,7 +36,6 @@
 #include "../isofs.h"
 #include "../iin.h"
 #include "../hio.h"
-#include "../hio_probe.h"
 #include "../dict.h"
 #include "../common.h"
 
@@ -44,6 +43,9 @@
 /*
  * I'm not too proud with this source, but it is supposed to run fine :-)
  */
+
+/* whether to use SPTI or old-style optical drives access */
+#define USE_SPTI
 
 
 #if defined (_DEBUG)
@@ -55,7 +57,9 @@
 
 static HINSTANCE inst;
 static osal_dlist_t *hard_drives_ = NULL;
+#if !defined (USE_SPTI)
 static osal_dlist_t *optical_drives_ = NULL;
+#endif
 static HWND progress_dlg;
 static int interrupted;
 
@@ -115,7 +119,7 @@ show_error_2 (HWND parent,
 {
   int id;
   switch (result)
-    {
+    { /* TODO: revise missing codes; add SPTI errors */
     case RET_NOT_APA:      id = IDS_NOT_APA_ERR; break;
     case RET_NOT_HDL_PART: id = IDS_NOT_HDL_PART_ERR; break;
     case RET_NOT_FOUND:    id = IDS_NOT_FOUND_ERR; break;
@@ -349,6 +353,7 @@ int
 fill_opticals_combo (HWND dlg)
 {
   HWND cbo = GetDlgItem (dlg, IDC_SOURCE_DRIVE);
+#if !defined (USE_SPTI) /* old-style opticals ("cd0:", "cd1:",...) */
   int result;
   osal_dlist_free (optical_drives_);
   result = osal_query_optical_drives (&optical_drives_);
@@ -369,6 +374,27 @@ fill_opticals_combo (HWND dlg)
     }
   else
     return (result);
+
+#else
+  char path[4] = { '?', ':', '\\' };
+  char iin_path[3] = { '?', ':' };
+  size_t count = 0;
+
+  SendMessage (cbo, CB_RESETCONTENT, 0, 0);
+  for (path[0] = 'c'; path[0] <= 'z'; ++path[0])
+    {
+      if (GetDriveType (path) == DRIVE_CDROM)
+	{
+	  iin_path[0] = path[0];
+	  SendMessage (cbo, CB_ADDSTRING, 0, (LPARAM) iin_path);
+	  ++count;
+	}
+    }
+  fprintf (stdout, "\n");
+  if (count > 0) /* select the first one by default */
+    SendMessage (cbo, CB_SETCURSEL, 0, 0);
+  return (count > 0 ? RET_OK : RET_NOT_FOUND);
+#endif /* USE_SPTI defined? */
 }
 
 
@@ -407,8 +433,10 @@ dlg_refresh_hdd_info (HWND dlg)
 		       (long) (games_->total_chunks * 128));
 	      SendMessage (hdd_info, WM_SETTEXT, 0, (LPARAM) details);
 
-	      SendMessage (progress, PBM_SETRANGE, 0, MAKELPARAM (0, games_->total_chunks));
-	      SendMessage (progress, PBM_SETPOS, games_->total_chunks - games_->free_chunks, 0);
+	      SendMessage (progress, PBM_SETRANGE, 0,
+			   MAKELPARAM (0, games_->total_chunks));
+	      SendMessage (progress, PBM_SETPOS,
+			   games_->total_chunks - games_->free_chunks, 0);
 
 	      /* setup games list */
 	      for (i=0; i<games_->count; ++i)
@@ -438,7 +466,8 @@ dlg_refresh_hdd_info (HWND dlg)
 		    }
 		  ListView_SetItemText (lvw, index, 1, details + 1);
 
-		  sprintf (details, "%ld MB", game->raw_size_in_kb / 1024);
+		  sprintf (details, "%lu MB",
+			   (unsigned long) game->raw_size_in_kb / 1024);
 		  ListView_SetItemText (lvw, index, 2, details);
 
 		  ++count;
@@ -480,20 +509,24 @@ fill_name_and_signature (HWND dlg,
       if (strlen (info.startup_elf) > 0)
 	{
 	  compat_flags_t flags;
+	  char volume_id[32 + 1];
 	  result = ddb_lookup (config_, info.startup_elf,
-			       info.volume_id, &flags);
+			       volume_id, &flags);
 	  if (result == RET_OK)
 	    {
 	      size_t i;
 	      for (i = 0; i < MAX_FLAGS; ++i)
-		CheckDlgButton (dlg, MODE_IDC[i], (flags & (1 << i) ?
-						   BST_CHECKED : BST_UNCHECKED));
+		CheckDlgButton (dlg, MODE_IDC[i],
+				(flags & (1 << i) ?
+				 BST_CHECKED : BST_UNCHECKED));
+	      strcpy (info.volume_id, volume_id);
 	    }
 	  else if (result == RET_DDB_INCOMPATIBLE)
 	    { /* marked as incompatible; warn */
 	      MessageBox (dlg, get_string (IDS_INCOMPATIBLE_GAME, 0),
 			  get_string (IDS_INCOMPATIBLE_GAME_TITLE, 1),
 			  MB_OK | MB_ICONWARNING);
+	      strcpy (info.volume_id, volume_id);
 	    }
 	}
 
@@ -522,7 +555,7 @@ show_source_info (HWND dlg)
   if (strlen (source) > 0)
     {
       iin_t *iin;
-      result = iin_probe (source, &iin);
+      result = iin_probe (config_, source, &iin);
       if (result == OSAL_OK)
 	{
 	  u_int32_t sector_size, num_sectors;
@@ -663,9 +696,9 @@ progress_cb (progress_t *pgs, void *data)
     { /* estimated available */
       char tmp [20];
       SetWindowText (estimated_wnd, pgs->estimated_text);
-      sprintf (tmp, "%.1f MBps", pgs->avg_bps / (1024.0 * 1024.0));
+      sprintf (tmp, "%.2f MBps", pgs->avg_bps / (1024.0 * 1024.0));
       SetWindowText (avg_data_rate, tmp);
-      sprintf (tmp, "%.1f MBps", pgs->curr_bps / (1024.0 * 1024.0));
+      sprintf (tmp, "%.2f MBps", pgs->curr_bps / (1024.0 * 1024.0));
       SetWindowText (curr_data_rate, tmp);
     }
   else
@@ -755,7 +788,7 @@ install (HWND dlg)
       strlen (source) > 0)
     {
       iin_t *iin;
-      int result = iin_probe (source, &iin);
+      int result = iin_probe (config_, source, &iin);
       if (result == RET_OK)
 	{
 	  progress_t *pgs;
@@ -920,8 +953,10 @@ dlg_init (HWND dlg)
     }
 
   /* limit maximal number of characters for the text boxes */
-  SendMessage (GetDlgItem (dlg, IDC_GAMENAME), EM_LIMITTEXT, HDL_GAME_NAME_MAX, 0);
-  SendMessage (GetDlgItem (dlg, IDC_SIGNATURE), EM_LIMITTEXT, 8 + 1 + 3 + 1, 0);
+  SendMessage (GetDlgItem (dlg, IDC_GAMENAME), EM_LIMITTEXT,
+	       HDL_GAME_NAME_MAX, 0);
+  SendMessage (GetDlgItem (dlg, IDC_SIGNATURE), EM_LIMITTEXT,
+	       8 + 1 + 3 + 1, 0);
 
   return (TRUE);
 }
@@ -1021,10 +1056,29 @@ main_dlg_proc (HWND dlg,
 	LPNMHDR nmh = (LPNMHDR) lparam;
 	switch (nmh->idFrom)
 	  {
-	    case IDC_PS2IP:
-	      /* IP address has changed */
-	      EnableWindow (GetDlgItem (dlg, IDC_NET_U2LINK), TRUE);
-	      break;
+	  case IDC_PS2IP:
+	    /* IP address has changed */
+	    EnableWindow (GetDlgItem (dlg, IDC_NET_U2LINK), TRUE);
+	    break;
+
+	  case IDC_CONTENTS:
+	    /* to enable rename append LVS_EDITLABELS to IDC_CONTENTS'
+	     * window styles (in rsrc.rc) */
+	    switch (nmh->code)
+	      {
+	      case LVN_BEGINLABELEDIT: return (TRUE); /* label edit allowed */
+	      case LVN_ENDLABELEDIT:
+		{
+		  LPNMLVDISPINFO info = (LPNMLVDISPINFO) lparam;
+		  if (info->item.pszText != NULL)
+		    { /* label of iItem changed */
+		      /* TODO: do rename */
+		      MessageBox (dlg, info->item.pszText, "Blah", MB_OK);
+		    }
+		  return (TRUE);
+		}
+	      }
+	    break;
 	  }
       }
       return (TRUE);
@@ -1059,6 +1113,7 @@ WinMain (HINSTANCE curr_inst,
   iccx.dwICC = ICC_WIN95_CLASSES | ICC_INTERNET_CLASSES;
   InitCommonControlsEx (&iccx);
 
+  /* accept a single device name from the command-line */
   if (cmd_line != NULL && *cmd_line != '\0')
     device_name = cmd_line;
 

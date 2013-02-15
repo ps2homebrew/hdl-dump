@@ -1,6 +1,6 @@
 /*
  * hio_udpnet.h - TCP/IP+UDP networking access to PS2 HDD
- * $Id: hio_udpnet.h,v 1.2 2006/06/18 13:11:00 bobi Exp $
+ * $Id: hio_udpnet.h,v 1.3 2006/09/01 17:26:45 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -34,7 +34,7 @@ C_START
    where a.b.c.d is a valid IP address */
 int hio_udpnet_probe (const dict_t *config,
 		      const char *path,
-		      hio_t **hio);
+		      /*@special@*/ hio_p_t *hio) /*@allocates *hio@*/ /*@defines *hio@*/;
 
 C_END
 

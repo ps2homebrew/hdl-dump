@@ -1,6 +1,6 @@
 /*
- * hio_probe.h
- * $Id: hio_probe.h,v 1.5 2006/06/18 13:10:28 bobi Exp $
+ * iin_hio.c, based on iin_net.c, v 1.7
+ * $Id: iin_hio.h,v 1.1 2006/09/01 17:37:58 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -21,19 +21,19 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#if !defined (_HIO_PROBE_H)
-#define _HIO_PROBE_H
+#if !defined (_IIN_HIO_H)
+#define _IIN_HIO_H
 
 #include "config.h"
-#include "hio.h"
-#include "dict.h"
+#include "iin.h"
 
 C_START
 
-int hio_probe (const dict_t *config,
-	       const char *path,
-	       hio_t **hio);
+/* would accept "partition@device" */
+int iin_hio_probe_path (const dict_t *config,
+			const char *path,
+			/*@special@*/ iin_p_t *iin) /*@allocates *iin@*/ /*@defines *iin@*/;
 
 C_END
 
-#endif /* _HIO_PROBE_H defined? */
+#endif /* _IIN_HIO_H defined? */

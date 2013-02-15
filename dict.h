@@ -1,6 +1,6 @@
 /*
  * dict.h
- * $Id: dict.h,v 1.2 2005/12/08 20:40:15 bobi Exp $
+ * $Id: dict.h,v 1.3 2006/09/01 17:31:33 bobi Exp $
  *
  * Copyright 2005 Bobi B., w1zard0f07@yahoo.com
  *
@@ -31,9 +31,10 @@ C_START
 typedef struct dict_type dict_t;
 
 /* returns NULL when out of memory */
-dict_t* dict_alloc (void);
+/*@special@*/ /*@only@*/ dict_t*
+dict_alloc (void) /*@allocates result@*/ /*@defines result@*/;
 
-void dict_free (dict_t *dict);
+void dict_free (/*@special@*/ /*@only@*/ dict_t *dict) /*@releases dict@*/;
 
 /* set or replace; returns non-zero on success */
 int dict_put (dict_t *dict,
@@ -41,8 +42,8 @@ int dict_put (dict_t *dict,
 	      const char *value);
 
 /* query; returns NULL if not found */
-const char* dict_lookup (const dict_t *dict,
-			 const char *key);
+/*@observer@*/ const char* dict_lookup (const dict_t *dict,
+					const char *key);
 
 int dict_put_flag (dict_t *dict,
 		   const char *key,
@@ -60,8 +61,9 @@ int dict_store (const dict_t *dict,
 		const char *filename);
 
 /* returns NULL on error or bad file format; src might be NULL */
-dict_t* dict_restore (dict_t *src,
-		      const char *filename);
+/*@special@*/ /*@only@*/ dict_t*
+dict_restore (dict_t *src,
+	      const char *filename) /*@allocates result@*/ /*@defines result@*/;
 
 /* returns non-zero on success */
 int dict_merge (dict_t *dst,

@@ -1,6 +1,6 @@
 /*
  * hio_dbg.c - debug dumps access
- * $Id: hio_dbg.c,v 1.1 2006/06/18 13:19:47 bobi Exp $
+ * $Id: hio_dbg.c,v 1.2 2006/09/01 17:27:32 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -58,7 +58,7 @@ clone_file (const char *fn,
 	  char buf[1024];
 	  size_t bytes;
 	  while ((bytes = fread (buf, 1, sizeof (buf), in)) > 0)
-	    fwrite (buf, 1, bytes, out);
+	    (void) fwrite (buf, 1, bytes, out);
 	  result = RET_OK;
 	  fclose (out);
 	}
@@ -71,7 +71,7 @@ clone_file (const char *fn,
 /**************************************************************/
 static int
 dbg_stat (hio_t *hio,
-	  u_int32_t *size_in_kb)
+	  /*@out@*/ u_int32_t *size_in_kb)
 {
   hio_dbg_t *dbg = (hio_dbg_t*) hio;
   *size_in_kb = dbg->size;
@@ -84,8 +84,8 @@ static int /* returns non-zero on success */
 remap_sector (const hio_dbg_t *dbg,
 	      u_int32_t start_sector,
 	      u_int32_t num_sectors,
-	      u_int32_t *offset,
-	      u_int32_t *len)
+	      /*@out@*/ u_int32_t *offset,
+	      /*@out@*/ u_int32_t *len)
 {
   static const u_int32_t HDL_HEADER_OFFS_IN_SECT =
     0x00101000 / HDD_SECTOR_SIZE;
@@ -116,8 +116,8 @@ static int
 dbg_read (hio_t *hio,
 	  u_int32_t start_sector,
 	  u_int32_t num_sectors,
-	  void *output,
-	  u_int32_t *bytes)
+	  /*@out@*/ void *output,
+	  /*@out@*/ u_int32_t *bytes)
 {
   hio_dbg_t *dbg = (hio_dbg_t*) hio;
   u_int32_t offset = 0, total_bytes = 0;
@@ -144,7 +144,7 @@ dbg_write (hio_t *hio,
 	   u_int32_t start_sector,
 	   u_int32_t num_sectors,
 	   const void *input,
-	   u_int32_t *bytes)
+	   /*@out@*/ u_int32_t *bytes)
 {
   hio_dbg_t *dbg = (hio_dbg_t*) hio;
   u_int32_t offset = 0, total_bytes = 0;
@@ -184,7 +184,7 @@ dbg_flush (hio_t *hio)
 
 /**************************************************************/
 static int
-dbg_close (hio_t *hio)
+dbg_close (/*@special@*/ /*@only@*/ hio_t *hio) /*@releases hio@*/
 {
   hio_dbg_t *dbg = (hio_dbg_t*) hio;
   fclose (dbg->in);
@@ -205,7 +205,7 @@ dbg_last_error (hio_t *hio)
 /**************************************************************/
 static void
 dbg_dispose_error (hio_t *hio,
-		   char* error)
+		   /*@only@*/ char* error)
 {
   osal_dispose_error_msg (error);
 }

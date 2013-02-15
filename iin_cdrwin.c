@@ -1,6 +1,6 @@
 /*
  * iin_cdrwin.c
- * $Id: iin_cdrwin.c,v 1.11 2006/06/18 13:11:32 bobi Exp $
+ * $Id: iin_cdrwin.c,v 1.12 2006/09/01 17:26:06 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -31,13 +31,13 @@
 #include "common.h"
 
 
-typedef enum data_mode_type
+typedef enum cdrwin_data_mode_type
   {
-    dm_mode1_plain = 0,
-    dm_mode1_raw = 1,
-    dm_mode2_plain = 2,
-    dm_mode2_raw = 3
-  } data_mode_t;
+    cdm_mode1_plain = 0,
+    cdm_mode1_raw = 1,
+    cdm_mode2_plain = 2,
+    cdm_mode2_raw = 3
+  } cdrwin_data_mode_t;
 
 /* values for CDRWIN found out by building test images and by looking at
    http://www.disctronics.co.uk/technology/cd-rom/cdrom_spec.htm */
@@ -51,7 +51,7 @@ static const u_int32_t RAW_SKIP_OFFSET [4] = {    0,   16,    8,   24 };
 static int /* would also check whether file exists or not */
 cue_parse_file_line (const char *cuesheet_path,
 		     char *line,
-		     char source [MAX_PATH])
+		     char source[MAX_PATH])
 {
   /* FILE xxx BINARY or FILE "xx xx" BINARY accepted */
   int result;
@@ -108,7 +108,7 @@ cue_parse_file_line (const char *cuesheet_path,
 /**************************************************************/
 static int
 cue_parse_track_line (char *line,
-		      data_mode_t *mode)
+		      /*@out@*/ cdrwin_data_mode_t *mode)
 {
   int result;
   char *p = line;
@@ -143,16 +143,16 @@ cue_parse_track_line (char *line,
 	    /* mode 1 */
 	    switch (sector_size)
 	      {
-	      case 2048: *mode = dm_mode1_plain; break;
-	      case 2352: *mode = dm_mode1_raw; break;
+	      case 2048: *mode = cdm_mode1_plain; break;
+	      case 2352: *mode = cdm_mode1_raw; break;
 	      default: result = RET_BAD_COMPAT;
 	      }
 	  else
 	    /* mode 2 */
 	    switch (sector_size)
 	      {
-	      case 2336: *mode = dm_mode2_plain; break;
-	      case 2352: *mode = dm_mode2_raw; break;
+	      case 2336: *mode = cdm_mode2_plain; break;
+	      case 2352: *mode = cdm_mode2_raw; break;
 	      default: result = RET_BAD_COMPAT;
 	      }
 	}
@@ -182,7 +182,7 @@ cue_parse_index_line (char *line)
 static int
 cue_parse (const char *path,
 	   char source [MAX_PATH],
-	   data_mode_t *mode)
+	   cdrwin_data_mode_t *mode)
 {
   osal_handle_t in;
   u_int64_t file_size = 0;
@@ -190,7 +190,7 @@ cue_parse (const char *path,
   if (result == OSAL_OK)
     { /* get file size */
       result = osal_get_file_size (in, &file_size);
-      osal_close (in);
+      osal_close (&in);
     }
   if (result == OSAL_OK)
     result = file_size < 1024 ? OSAL_OK : RET_NOT_COMPAT; /* a cuesheet up to 1KB is accepted */
@@ -247,7 +247,7 @@ iin_cdrwin_probe_path (const char *path,
 		       iin_t **iin)
 {
   char source [MAX_PATH];
-  data_mode_t mode;
+  cdrwin_data_mode_t mode;
 
   int result = cue_parse (path, source, &mode);
   if (result == RET_OK)
@@ -273,14 +273,18 @@ iin_cdrwin_probe_path (const char *path,
 	      *iin = (iin_t*) img_base;
 	      switch (mode)
 		{
-		case dm_mode1_plain:
-		  strcpy ((*iin)->source_type, "ISO Image, Mode 1, plain"); break;
-		case dm_mode1_raw:
-		  strcpy ((*iin)->source_type, "BIN Image, Mode 1, RAW"); break;
-		case dm_mode2_plain:
-		  strcpy ((*iin)->source_type, "BIN Image, Mode 2, plain"); break;
-		case dm_mode2_raw:
-		  strcpy ((*iin)->source_type, "BIN Image, Mode 2, RAW"); break;
+		case cdm_mode1_plain:
+		  strcpy ((*iin)->source_type, "ISO Image, Mode 1, plain");
+		  break;
+		case cdm_mode1_raw:
+		  strcpy ((*iin)->source_type, "BIN Image, Mode 1, RAW");
+		  break;
+		case cdm_mode2_plain:
+		  strcpy ((*iin)->source_type, "BIN Image, Mode 2, plain");
+		  break;
+		case cdm_mode2_raw:
+		  strcpy ((*iin)->source_type, "BIN Image, Mode 2, RAW");
+		  break;
 		}
 	    }
 	  else if (img_base != NULL)

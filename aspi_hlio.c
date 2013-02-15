@@ -1,6 +1,6 @@
 /*
  * aspi_hlio.c - ASPI high-level I/O
- * $Id: aspi_hlio.c,v 1.6 2006/05/21 21:35:29 bobi Exp $
+ * $Id: aspi_hlio.c,v 1.7 2006/09/01 17:33:01 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -25,7 +25,6 @@
 #include <windows.h>
 #include <stdio.h>
 #include <time.h>
-#include "wnaspi32.h"
 #include "osal.h"
 #include "retcodes.h"
 
@@ -109,8 +108,10 @@ aspi_load (void)
     aspi_lib = LoadLibrary ("WNASPI32.DLL");
   if (aspi_lib != NULL)
     {
-      aspi_send_cmd = (aspi_send_cmd_t) GetProcAddress (aspi_lib, "SendASPI32Command");
-      aspi_get_info = (aspi_get_info_t) GetProcAddress (aspi_lib, "GetASPI32SupportInfo");
+      aspi_send_cmd =
+	(aspi_send_cmd_t) GetProcAddress (aspi_lib, "SendASPI32Command");
+      aspi_get_info =
+	(aspi_get_info_t) GetProcAddress (aspi_lib, "GetASPI32SupportInfo");
 
       if (aspi_send_cmd != NULL &&
 	  aspi_get_info != NULL)
@@ -397,33 +398,47 @@ aspi_dlist_free (scsi_devices_list_t *list)
 
 
 /**************************************************************/
+static SRB_ExecSCSICmd*
+aspi_prepare_inquiry (int host,
+		      int scsi_id,
+		      int lun,
+		      /*@out@*/ char buffer[37],
+		      /*@returned@*/ /*@out@*/ SRB_ExecSCSICmd *cmd)
+{
+  memset (cmd, 0, sizeof (SRB_ExecSCSICmd));
+  cmd->SRB_Cmd = SC_EXEC_SCSI_CMD;
+  cmd->SRB_HaId = host;
+  cmd->SRB_Flags = SRB_DIR_IN;
+  cmd->SRB_Target = scsi_id;
+  cmd->SRB_Lun = lun;
+  cmd->SRB_BufLen = 36;
+  cmd->SRB_BufPointer = (unsigned char*) buffer;
+  cmd->SRB_SenseLen = SENSE_LEN;
+  cmd->SRB_CDBLen = 6;
+
+  /* SPC-R11A.PDF, 7.5 INQUIRY command; mandatory */
+  cmd->CDBByte[0] = SCSI_INQUIRY;
+  cmd->CDBByte[4] = sizeof (buffer) - 1;
+
+  return (cmd);
+}
+
+
+/**************************************************************/
 static int
 aspi_inquiry (int host,
 	      int scsi_id,
 	      int lun,
-	      char device_name [28 + 1])
+	      /*@out@*/ char device_name[28 + 1])
 {
-  char buffer [37];
-  SRB_ExecSCSICmd exec;
-  memset (&exec, 0, sizeof (SRB_ExecSCSICmd));
-  exec.SRB_Cmd = SC_EXEC_SCSI_CMD;
-  exec.SRB_HaId = host;
-  exec.SRB_Flags = SRB_DIR_IN;
-  exec.SRB_Target = scsi_id;
-  exec.SRB_Lun = lun;
-  exec.SRB_BufLen = sizeof (buffer) - 1;
-  exec.SRB_BufPointer = (unsigned char*) buffer;
-  exec.SRB_SenseLen = SENSE_LEN;
-  exec.SRB_CDBLen = 6;
+  char buffer[37];
+  SRB_ExecSCSICmd inq;
 
-  /* SPC-R11A.PDF, 7.5 INQUIRY command; mandatory */
-  exec.CDBByte [0] = SCSI_INQUIRY;
-  exec.CDBByte [4] = sizeof (buffer) - 1;
-
-  if (aspi_exec_to (&exec, ASPI_TIMEOUT_IN_SEC * 1000) == RET_OK &&
-      exec.SRB_Status == SS_COMP)
+  (void) aspi_prepare_inquiry (host, scsi_id, lun, buffer, &inq);
+  if (aspi_exec_to (&inq, ASPI_TIMEOUT_IN_SEC * 1000) == RET_OK &&
+      inq.SRB_Status == SS_COMP)
     { /* 8-15: vendor Id; 16-31: product Id; 32-35: product revision */
-      buffer [32] = '\0';
+      buffer[35] = '\0';
       copy_and_reduce_spaces (device_name, buffer + 8);
       return (RET_OK);
     }
@@ -495,34 +510,45 @@ aspi_scan_scsi_bus (scsi_devices_list_t **list)
 			  sector_size = size_in_sectors = -1;
 #if 1
 			  /* return codes are intentionately ignored */
-			  aspi_inquiry (host_adapter, scsi_id, lun, device_name);
-			  aspi_stat (host_adapter, scsi_id, lun, &sector_size, &size_in_sectors);
+			  (void) aspi_inquiry (host_adapter, scsi_id, lun,
+					       device_name);
+			  (void) aspi_stat (host_adapter, scsi_id, lun,
+					    &sector_size, &size_in_sectors);
 #endif
-			  result = aspi_dlist_add (*list, host_adapter, scsi_id, lun,
-						   dtype.SRB_DeviceType, alignment_mask,
-						   device_name, sector_size, size_in_sectors,
+			  result = aspi_dlist_add (*list, host_adapter,
+						   scsi_id, lun,
+						   dtype.SRB_DeviceType,
+						   alignment_mask, device_name,
+						   sector_size,
+						   size_in_sectors,
 						   aspi_get_last_error_code ());
 
 #if 0 /* left to see how it is done */
 			  const char *type;
-			  char device_name [42];
+			  /*char device_name [42];*/
 			  switch (dtype.SRB_DeviceType)
 			    {
-			    case DTYPE_DASD:  type = "Direct access storage device"; break;
-			    case DTYPE_SEQD:  type = "Sequential access storage device"; break;
+			    case DTYPE_DASD:
+			      type = "Direct access storage device"; break;
+			    case DTYPE_SEQD:
+			      type = "Sequential access storage device"; break;
 			    case DTYPE_PRNT:  type = "Printer device"; break;
 			    case DTYPE_PROC:  type = "Processor device"; break;
 			    case DTYPE_WORM:  type = "WORM device"; break;
 			    case DTYPE_CDROM: type = "CD-ROM device"; break;
 			    case DTYPE_SCAN:  type = "Scanner device"; break;
-			    case DTYPE_OPTI:  type = "Optical memory device"; break;
-			    case DTYPE_JUKE:  type = "Medium changer device"; break;
-			    case DTYPE_COMM:  type = "Communication device"; break;
+			    case DTYPE_OPTI:
+			      type = "Optical memory device"; break;
+			    case DTYPE_JUKE:
+			      type = "Medium changer device"; break;
+			    case DTYPE_COMM:
+			      type = "Communication device"; break;
 			    default: type = "Unknown type";
 			    }
 			  printf ("%d:%d:%d ",
 				  host_adapter, scsi_id, lun);
-			  if (aspi_inquiry (host_adapter, scsi_id, lun, device_name) == RET_OK)
+			  if (aspi_inquiry (host_adapter, scsi_id, lun,
+					    device_name) == RET_OK)
 			    printf ("\t%s: %s\n", device_name, type);
 			  else
 			    printf ("\t???: %s\n", type);
@@ -538,6 +564,32 @@ aspi_scan_scsi_bus (scsi_devices_list_t **list)
 
 
 /**************************************************************/
+SRB_ExecSCSICmd*
+aspi_prepare_stat (int host,
+		   int scsi_id,
+		   int lun,
+		   /*@out@*/ u_int8_t buf[8],
+		   /*@returned@*/ /*@out@*/ SRB_ExecSCSICmd *cmd)
+{
+  memset (cmd, 0, sizeof (SRB_ExecSCSICmd));
+  cmd->SRB_Cmd = SC_EXEC_SCSI_CMD;
+  cmd->SRB_HaId = host;
+  cmd->SRB_Flags = SRB_DIR_IN;
+  cmd->SRB_Target = scsi_id;
+  cmd->SRB_Lun = lun;
+  cmd->SRB_BufLen = 8;
+  cmd->SRB_BufPointer = buf;
+  cmd->SRB_SenseLen = SENSE_LEN;
+  cmd->SRB_CDBLen = 10;
+
+  /* MMC2R11A.PDF, 6.1.17 READ CAPACITY; mandatory */
+  cmd->CDBByte [0] = SCSI_RD_CAPAC;
+
+  return (cmd);
+}
+
+
+/**************************************************************/
 int
 aspi_stat (int host,
 	   int scsi_id,
@@ -546,34 +598,21 @@ aspi_stat (int host,
 	   u_int32_t *size_in_sectors)
 {
   SRB_ExecSCSICmd exec;
-  unsigned char capacity [8];
+  u_int8_t capacity [8];
   int result;
 
-  memset (&exec, 0, sizeof (SRB_ExecSCSICmd));
-  exec.SRB_Cmd = SC_EXEC_SCSI_CMD;
-  exec.SRB_HaId = host;
-  exec.SRB_Flags = SRB_DIR_IN;
-  exec.SRB_Target = scsi_id;
-  exec.SRB_Lun = lun;
-  exec.SRB_BufLen = sizeof (capacity);
-  exec.SRB_BufPointer = capacity;
-  exec.SRB_SenseLen = SENSE_LEN;
-  exec.SRB_CDBLen = 10;
-
-  /* MMC2R11A.PDF, 6.1.17 READ CAPACITY; mandatory */
-  exec.CDBByte [0] = SCSI_RD_CAPAC;
-
+  (void) aspi_prepare_stat (host, scsi_id, lun, capacity, &exec);
   result = aspi_exec_to (&exec, ASPI_TIMEOUT_IN_SEC * 1000);
   if (result == RET_OK)
     {
-      *size_in_sectors = (capacity [0] << 24 |
-			  capacity [1] << 16 |
-			  capacity [2] <<  8 |
-			  capacity [3] <<  0) + 1;
-      *sector_size = (capacity [4] << 24 |
-		      capacity [5] << 16 |
-		      capacity [6] <<  8 |
-		      capacity [7] <<  0);
+      *size_in_sectors = ((u_int32_t) capacity[0] << 24 |
+			  (u_int32_t) capacity[1] << 16 |
+			  (u_int32_t) capacity[2] <<  8 |
+			  (u_int32_t) capacity[3] <<  0) + 1;
+      *sector_size = ((u_int32_t) capacity[4] << 24 |
+		      (u_int32_t) capacity[5] << 16 |
+		      (u_int32_t) capacity[6] <<  8 |
+		      (u_int32_t) capacity[7] <<  0);
     }
   return (result);
 }
@@ -627,6 +666,46 @@ aspi_mmc_read_cd (int host,
 
 
 /**************************************************************/
+SRB_ExecSCSICmd*
+aspi_prepare_read_10 (int host,
+		      int scsi_id,
+		      int lun,
+		      u_int32_t start_sector,
+		      u_int32_t num_sectors,
+		      /*@out@*/ void *output,
+		      /*@returned@*/ /*@out@*/ SRB_ExecSCSICmd *cmd)
+{
+  memset (cmd, 0, sizeof (SRB_ExecSCSICmd));
+  cmd->SRB_Cmd = SC_EXEC_SCSI_CMD;
+  cmd->SRB_HaId = host;
+  cmd->SRB_Flags = SRB_DIR_IN;
+  cmd->SRB_Target = scsi_id;
+  cmd->SRB_Lun = lun;
+  cmd->SRB_BufLen = num_sectors * 2048; /* sector size is assumed to be 2048-bytes */
+  cmd->SRB_BufPointer = (unsigned char*) output;
+  cmd->SRB_SenseLen = SENSE_LEN;
+
+  /* SBC-R08C.PDF, 6.1.5 READ(10) command; mandatory for CD- and DVD-devices;
+     suitable for CD- and DVD-medias */
+  cmd->SRB_CDBLen = 12;
+  cmd->CDBByte [ 0] = 0x28;
+  cmd->CDBByte [ 1] = 0x00;
+  cmd->CDBByte [ 2] = (BYTE) ((start_sector >> 24) & 0xff);
+  cmd->CDBByte [ 3] = (BYTE) ((start_sector >> 16) & 0xff);
+  cmd->CDBByte [ 4] = (BYTE) ((start_sector >>  8) & 0xff);
+  cmd->CDBByte [ 5] = (BYTE) ((start_sector >>  0) & 0xff);
+  cmd->CDBByte [ 6] = 0x00;
+  cmd->CDBByte [ 7] = (BYTE) ((num_sectors >>  8) & 0xff);
+  cmd->CDBByte [ 8] = (BYTE) ((num_sectors >>  0) & 0xff);
+  cmd->CDBByte [ 9] = 0x00;
+  cmd->CDBByte [10] = 0x00;
+  cmd->CDBByte [11] = 0x00;
+
+  return (cmd);
+}
+
+
+/**************************************************************/
 int
 aspi_read_10 (int host,
 	      int scsi_id,
@@ -636,33 +715,8 @@ aspi_read_10 (int host,
 	      void *output)
 {
   SRB_ExecSCSICmd exec;
-
-  memset (&exec, 0, sizeof (SRB_ExecSCSICmd));
-  exec.SRB_Cmd = SC_EXEC_SCSI_CMD;
-  exec.SRB_HaId = host;
-  exec.SRB_Flags = SRB_DIR_IN;
-  exec.SRB_Target = scsi_id;
-  exec.SRB_Lun = lun;
-  exec.SRB_BufLen = num_sectors * 2048; /* sector size is assumed to be 2048-bytes */
-  exec.SRB_BufPointer = (unsigned char*) output;
-  exec.SRB_SenseLen = SENSE_LEN;
-
-  /* SBC-R08C.PDF, 6.1.5 READ(10) command; mandatory for CD- and DVD-devices;
-     suitable for CD- and DVD-medias */
-  exec.SRB_CDBLen = 12;
-  exec.CDBByte [ 0] = 0x28;
-  exec.CDBByte [ 1] = 0x00;
-  exec.CDBByte [ 2] = (BYTE) ((start_sector >> 24) & 0xff);
-  exec.CDBByte [ 3] = (BYTE) ((start_sector >> 16) & 0xff);
-  exec.CDBByte [ 4] = (BYTE) ((start_sector >>  8) & 0xff);
-  exec.CDBByte [ 5] = (BYTE) ((start_sector >>  0) & 0xff);
-  exec.CDBByte [ 6] = 0x00;
-  exec.CDBByte [ 7] = (BYTE) ((num_sectors >>  8) & 0xff);
-  exec.CDBByte [ 8] = (BYTE) ((num_sectors >>  0) & 0xff);
-  exec.CDBByte [ 9] = 0x00;
-  exec.CDBByte [10] = 0x00;
-  exec.CDBByte [11] = 0x00;
-
+  (void) aspi_prepare_read_10 (host, scsi_id, lun, start_sector,
+			       num_sectors, output, &exec);
   return (aspi_exec_to (&exec, ASPI_TIMEOUT_IN_SEC * 1000));
 }
 

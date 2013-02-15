@@ -1,6 +1,6 @@
 /*
  * osal_win32.c
- * $Id: osal_win32.c,v 1.13 2006/06/18 13:12:33 bobi Exp $
+ * $Id: osal_win32.c,v 1.14 2006/09/01 17:21:16 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -339,9 +339,9 @@ osal_write (osal_handle_t handle,
 
 /**************************************************************/
 int /* OSAL_OK, OSAL_ERR */
-osal_close (osal_handle_t handle)
+osal_close (osal_handle_t *handle)
 {
-  return (CloseHandle (handle) ? OSAL_OK : OSAL_ERR);
+  return (CloseHandle (*handle) ? OSAL_OK : OSAL_ERR);
 }
 
 

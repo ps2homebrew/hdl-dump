@@ -1,6 +1,6 @@
 /*
  * hio_trace.h - decorator to trace HIO access
- * $Id: hio_trace.h,v 1.1 2006/06/18 13:15:07 bobi Exp $
+ * $Id: hio_trace.h,v 1.2 2006/09/01 17:27:06 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -34,7 +34,7 @@ C_START
    "trace:<real hio path>" */
 int hio_trace_probe (const dict_t *config,
 		     const char *path,
-		     hio_t **hio);
+		     /*@special@*/ hio_p_t *hio) /*@allocates *hio@*/ /*@defines *hio@*/;
 
 C_END
 

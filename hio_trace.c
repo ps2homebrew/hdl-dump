@@ -1,6 +1,6 @@
 /*
  * hio_trace.c - decorator to trace HIO access
- * $Id: hio_trace.c,v 1.1 2006/06/18 13:15:05 bobi Exp $
+ * $Id: hio_trace.c,v 1.2 2006/09/01 17:27:18 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -22,7 +22,7 @@
  */
 
 #include "hio_trace.h"
-#include "hio_probe.h"
+#include "hio.h"
 #include "net_io.h"
 #include "osal.h"
 #include "retcodes.h"
@@ -42,7 +42,7 @@ typedef struct hio_trace_type
 /**************************************************************/
 static int
 trace_stat (hio_t *hio,
-	    u_int32_t *size_in_kb)
+	    /*@out@*/ u_int32_t *size_in_kb)
 {
   hio_trace_t *trace = (hio_trace_t*) hio;
   int result;
@@ -59,8 +59,8 @@ static int
 trace_read (hio_t *hio,
 	    u_int32_t start_sector,
 	    u_int32_t num_sectors,
-	    void *output,
-	    u_int32_t *bytes)
+	    /*@out@*/ void *output,
+	    /*@out@*/ u_int32_t *bytes)
 {
   hio_trace_t *trace = (hio_trace_t*) hio;
   int result;
@@ -80,7 +80,7 @@ trace_write (hio_t *hio,
 	     u_int32_t start_sector,
 	     u_int32_t num_sectors,
 	     const void *input,
-	     u_int32_t *bytes)
+	     /*@out@*/ u_int32_t *bytes)
 {
   hio_trace_t *trace = (hio_trace_t*) hio;
   int result;
@@ -122,7 +122,7 @@ trace_flush (hio_t *hio)
 
 /**************************************************************/
 static int
-trace_close (hio_t *hio)
+trace_close (/*@special@*/ /*@only@*/ hio_t *hio) /*@releases hio@*/
 {
   hio_trace_t *trace = (hio_trace_t*) hio;
   int result;
@@ -152,7 +152,7 @@ trace_last_error (hio_t *hio)
 /**************************************************************/
 static void
 trace_dispose_error (hio_t *hio,
-		     char* error)
+		     /*@only@*/ char* error)
 {
   hio_trace_t *trace = (hio_trace_t*) hio;
   fprintf (trace->log, "hio->dispose_error (%p, \"%s\")\n",

@@ -1,6 +1,6 @@
 /*
  * apa.h
- * $Id: apa.h,v 1.10 2006/06/18 13:08:14 bobi Exp $
+ * $Id: apa.h,v 1.11 2006/09/01 17:33:15 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -52,18 +52,17 @@ typedef struct apa_partition_type
 typedef struct apa_slice_type
 {
   int slice_index;
-
   u_int32_t size_in_mb;
+
   u_int32_t total_chunks;
   u_int32_t allocated_chunks;
   u_int32_t free_chunks;
-
-  char *chunks_map;
+  /*@only@*/ char *chunks_map;
 
   /* existing partitions */
   u_int32_t part_alloc_;
   u_int32_t part_count;
-  apa_partition_t *parts;
+  /*@only@*/ apa_partition_t *parts;
 } apa_slice_t;
 
 typedef struct apa_toc_type
@@ -74,32 +73,33 @@ typedef struct apa_toc_type
 
   apa_slice_t slice[2];
 } apa_toc_t;
+typedef /*@out@*/ /*@only@*/ /*@null@*/ apa_toc_t* apa_toc_p_t;
 
 
 u_int32_t apa_partition_checksum (const ps2_partition_header_t *part);
 
 int is_apa_partitioned (osal_handle_t handle);
 
-void apa_toc_free (apa_toc_t *toc);
+void apa_toc_free (/*@special@*/ /*@only@*/ apa_toc_t *toc) /*@releases toc@*/;
 
 int apa_toc_read (const dict_t *config,
 		  const char *device,
-		  apa_toc_t **toc);
+		  /*@special@*/ apa_toc_p_t *toc) /*@allocates *toc@*/ /*@defines *toc@*/;
 
 int apa_toc_read_ex (hio_t *hio,
-		     apa_toc_t **toc);
+		     /*@special@*/ apa_toc_p_t *toc) /*@allocates *toc@*/ /*@defines *toc@*/;
 
 int apa_find_partition (const apa_toc_t *toc,
 			const char *partition_name,
-			int *slice_index,
-			u_int32_t *partition_index);
+			/*@out@*/ int *slice_index,
+			/*@out@*/ u_int32_t *partition_index);
 
 /* slice_index is a hint for where to try first: slice 0 or 1 */
 int apa_allocate_space (apa_toc_t *toc,
 			const char *partition_name,
 			u_int32_t size_in_mb,
-			int *slice_index,
-			u_int32_t *new_partition_start,
+			/*@in@*/ /*@out@*/ int *slice_index,
+			/*@out@*/ u_int32_t *new_partition_start,
 			int decreasing_size);
 
 int apa_delete_partition (apa_toc_t *toc,
@@ -114,11 +114,11 @@ int apa_commit_ex (hio_t *hio,
 
 int apa_diag (const dict_t *config,
 	      const char *device,
-	      char *buffer,
+	      /*@out@*/ char *buffer,
 	      size_t buffer_size);
 
 int apa_diag_ex (hio_t *hio,
-		 char *buffer,
+		 /*@out@*/ char *buffer,
 		 size_t buffer_size);
 
 int apa_initialize (const dict_t *config,
