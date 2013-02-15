@@ -1,6 +1,6 @@
 /*
  * progress.h
- * $Id: progress.h,v 1.6 2004/09/12 17:25:27 b081 Exp $
+ * $Id: progress.h,v 1.7 2004/12/04 10:20:52 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -56,25 +56,25 @@ typedef int (*progress_cb_t) (progress_t *);
 /* TODO: check overflow with big files */
 struct progress_type
 { /* "private" */
-  bigint_t start_, elapsed_;  /* highres_time_val */
-  bigint_t offset_; /* of the current block, absolute */
+  u_int64_t start_, elapsed_;  /* highres_time_val */
+  u_int64_t offset_; /* of the current block, absolute */
   progress_cb_t progress_cb_;
   int last_elapsed_; /* last time when the estimated has been calculated */
 
   /* history/histogram to track current speed */
   struct hist_t
   { 
-    size_t how_much;
-    bigint_t when; /* highres_time_val */
+    u_int32_t how_much;
+    u_int64_t when; /* highres_time_val */
   } history_ [PG_HIST_SIZE];
-  size_t hist_pos_;
-  bigint_t hist_sum_; /* = select sum (how_much) from history_ */
+  u_int32_t hist_pos_;
+  u_int64_t hist_sum_; /* = select sum (how_much) from history_ */
 
   /* last major values when callback has been called */
   int call_pc_completed_, call_elapsed_, call_estimated_, call_remaining_;
 
   /* "public" */
-  bigint_t total, curr; /* in bytes */
+  u_int64_t total, curr; /* in bytes */
   long avg_bps, curr_bps; /* avg and curr bps (since the begining) */
   int pc_completed; /* in % */
   int elapsed, estimated, remaining; /* in seconds or -1 */
@@ -87,12 +87,12 @@ progress_t* pgs_alloc (progress_cb_t progress_cb);
 void pgs_free (progress_t *pgs);
 
 void pgs_prepare (progress_t *pgs,
-		  bigint_t total);
+		  u_int64_t total);
 
 void pgs_chunk_complete (progress_t *pgs);
 
 int pgs_update (progress_t *pgs,
-		bigint_t curr);
+		u_int64_t curr);
 
 
 #endif /* _PROGRESS_H defined? */

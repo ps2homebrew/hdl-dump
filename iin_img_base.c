@@ -1,6 +1,6 @@
 /*
  * iin_img_base.c
- * $Id: iin_img_base.c,v 1.6 2004/08/20 12:35:17 b081 Exp $
+ * $Id: iin_img_base.c,v 1.7 2004/12/04 10:20:52 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -36,10 +36,10 @@
 
 typedef struct part_type
 {
-  size_t offset_s, length_s; /* in IIN_SECTOR_SIZE-based sectors */
-  bigint_t skip; /* number of bytes to skip at the begining of the input (header?) */
+  u_int32_t offset_s, length_s; /* in IIN_SECTOR_SIZE-based sectors */
+  u_int64_t skip; /* number of bytes to skip at the begining of the input (header?) */
   char *input_path;
-  size_t device_sector_size; /* sector size of the device where the input is located */
+  u_int32_t device_sector_size; /* sector size of the device where the input is located */
 } part_t;
 
 struct iin_img_base_type
@@ -51,10 +51,10 @@ struct iin_img_base_type
   aligned_t *al;
 
   char *unaligned, *buffer;
-  size_t raw_sector_size, raw_skip_offset;
-  size_t offset_s;
+  u_int32_t raw_sector_size, raw_skip_offset;
+  u_int32_t offset_s;
 
-  size_t num_parts, alloc_parts;
+  u_int32_t num_parts, alloc_parts;
   part_t *parts;
 
   unsigned long error_code; /* against osal_... */
@@ -78,15 +78,15 @@ close_current (iin_img_base_t *img_base)
 int
 img_base_add_part (iin_img_base_t *img_base,
 		   const char *input_path,
-		   size_t length_s,
-		   bigint_t skip,
-		   size_t device_sector_size)
+		   u_int32_t length_s,
+		   u_int64_t skip,
+		   u_int32_t device_sector_size)
 {
   part_t *prev, *dest;
-  size_t len;
+  u_int32_t len;
   if (img_base->num_parts == img_base->alloc_parts)
     { /* (re)alloc memory */
-      size_t bytes = (img_base->alloc_parts + PARTS_GROW) * sizeof (part_t);
+      u_int32_t bytes = (img_base->alloc_parts + PARTS_GROW) * sizeof (part_t);
       part_t *tmp = (part_t*) osal_alloc (bytes);
       if (tmp != NULL)
 	{
@@ -124,7 +124,7 @@ img_base_add_part (iin_img_base_t *img_base,
 /**************************************************************/
 void
 img_base_add_gap (iin_img_base_t *img_base,
-		  size_t length_s)
+		  u_int32_t length_s)
 {
   img_base->offset_s += length_s;
 }
@@ -133,8 +133,8 @@ img_base_add_gap (iin_img_base_t *img_base,
 /**************************************************************/
 static int
 img_base_stat (iin_t *iin,
-	       size_t *sector_size,
-	       size_t *num_sectors)
+	       u_int32_t *sector_size,
+	       u_int32_t *num_sectors)
 {
   iin_img_base_t *img_base = (iin_img_base_t*) iin;
   *sector_size = IIN_SECTOR_SIZE;
@@ -150,10 +150,10 @@ img_base_stat (iin_t *iin,
 /**************************************************************/
 static int
 img_base_read (iin_t *iin,
-	       size_t start_sector,
-	       size_t num_sectors,
+	       u_int32_t start_sector,
+	       u_int32_t num_sectors,
 	       const char **data,
-	       size_t *length)
+	       u_int32_t *length)
 {
   iin_img_base_t *img_base = (iin_img_base_t*) iin;
   int result = OSAL_OK;
@@ -166,7 +166,7 @@ img_base_read (iin_t *iin,
     { /* locate the part containing the requested data */
       part_t *prev = NULL, *part;
       int found = 0, gap = 0;
-      size_t i;
+      u_int32_t i;
       for (i=0; i<img_base->num_parts; ++i)
 	{
 	  part = img_base->parts + i;
@@ -189,7 +189,7 @@ img_base_read (iin_t *iin,
 	  else
 	    { /* open the new input */
 	      osal_handle_t in;
-	      size_t cache_size =
+	      u_int32_t cache_size =
 		((img_base->raw_sector_size * IIN_NUM_SECTORS + img_base->raw_sector_size - 1) /
 		 part->device_sector_size);
 	      result = osal_open (part->input_path, &in, 1); /* with no cache */
@@ -212,9 +212,9 @@ img_base_read (iin_t *iin,
 	}
       else if (gap == 1)
 	{ /* a gap between "prev" and "part" */
-	  size_t gap_start_s = prev != NULL ? prev->offset_s + prev->length_s : 0;
-	  size_t gap_length_s = part->offset_s - gap_start_s;
-	  size_t til_end_s = gap_start_s + gap_length_s - start_sector;
+	  u_int32_t gap_start_s = prev != NULL ? prev->offset_s + prev->length_s : 0;
+	  u_int32_t gap_length_s = part->offset_s - gap_start_s;
+	  u_int32_t til_end_s = gap_start_s + gap_length_s - start_sector;
 
 	  *length = (num_sectors > til_end_s ? til_end_s : num_sectors) * IIN_SECTOR_SIZE;
 	  if (*length > IIN_NUM_SECTORS * IIN_SECTOR_SIZE)
@@ -232,23 +232,23 @@ img_base_read (iin_t *iin,
 
   if (result == OSAL_OK)
     {
-      bigint_t offset =
+      u_int64_t offset =
 	img_base->current->skip +
-	(bigint_t) (start_sector - img_base->current->offset_s) * img_base->raw_sector_size;
-      size_t len;
+	(u_int64_t) (start_sector - img_base->current->offset_s) * img_base->raw_sector_size;
+      u_int32_t len;
       const char *raw_data;
       int result = al_read (img_base->al, offset, &raw_data,
 			    num_sectors * img_base->raw_sector_size, &len);
       if (result == OSAL_OK)
 	{
-	  size_t num_sect = (len + img_base->raw_sector_size - 1) / img_base->raw_sector_size;
-	  size_t uncomplete =
+	  u_int32_t num_sect = (len + img_base->raw_sector_size - 1) / img_base->raw_sector_size;
+	  u_int32_t uncomplete =
 	    (img_base->raw_sector_size - len % img_base->raw_sector_size) %
 	    img_base->raw_sector_size;
 
 	  if (start_sector + num_sectors > img_base->current->length_s)
 	    { /* check if read after the end has not been tried */
-	      size_t sectors_til_end =
+	      u_int32_t sectors_til_end =
 		img_base->current->offset_s + img_base->current->length_s - start_sector;
 	      if (num_sect > sectors_til_end)
 		num_sect = sectors_til_end;
@@ -260,7 +260,7 @@ img_base_read (iin_t *iin,
 	    *data = raw_data;
 	  else
 	    {
-	      size_t i;
+	      u_int32_t i;
 	      for (i=0; i<num_sect; ++i)
 		memcpy (img_base->buffer + i * IIN_SECTOR_SIZE,
 			raw_data + i * img_base->raw_sector_size + img_base->raw_skip_offset,
@@ -275,7 +275,7 @@ img_base_read (iin_t *iin,
 	    { /* fill last sector with zeroes */
 	      if (uncomplete > img_base->raw_skip_offset)
 		{ /* last sector is incomplete */
-		  size_t len_to_zero = uncomplete + img_base->raw_skip_offset;
+		  u_int32_t len_to_zero = uncomplete + img_base->raw_skip_offset;
 		  memset ((char*) *data + *length - len_to_zero, 0, len_to_zero);
 		}
 	      else
@@ -295,7 +295,7 @@ static int
 img_base_close (iin_t *iin)
 {
   iin_img_base_t *img_base = (iin_img_base_t*) iin;
-  size_t i;
+  u_int32_t i;
   close_current (img_base);
   osal_free (img_base->unaligned);
   for (i=0; i<img_base->num_parts; ++i)
@@ -326,14 +326,14 @@ img_base_dispose_error (iin_t *iin,
 
 /**************************************************************/
 iin_img_base_t*
-img_base_alloc (size_t raw_sector_size,
-		size_t raw_skip_offset)
+img_base_alloc (u_int32_t raw_sector_size,
+		u_int32_t raw_skip_offset)
 {
   iin_img_base_t *img_base = (iin_img_base_t*) osal_alloc (sizeof (iin_img_base_t));
   if (img_base != NULL)
     {
       iin_t *iin = &img_base->iin;
-      size_t buffer_size = (IIN_NUM_SECTORS + 1) * IIN_SECTOR_SIZE;
+      u_int32_t buffer_size = (IIN_NUM_SECTORS + 1) * IIN_SECTOR_SIZE;
       char *buffer = osal_alloc (buffer_size);
       if (buffer != NULL)
 	{ /* success */

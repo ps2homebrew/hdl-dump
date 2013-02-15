@@ -1,6 +1,6 @@
 /*
  * iin_gi.c
- * $Id: iin_gi.c,v 1.7 2004/09/12 17:25:26 b081 Exp $
+ * $Id: iin_gi.c,v 1.8 2004/12/04 10:20:52 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -41,10 +41,10 @@ typedef enum data_mode_type
   } data_mode_t;
 
 /* values for Global Image found out by building test images */
-static const size_t RAW_SECTOR_SIZE [2] = { 2048, 2336 };
-static const size_t RAW_SKIP_OFFSET [2] = {    0,    8 }; 
-static const size_t FILE_SIZES_OFFSET [4] = { 0x9c, 0xa0, 0xa4, 0xa8 }; /* BE, in sectors */
-static const size_t FILE_NAMES_OFFSET [4] = { 0x00b0, 0x01b4, 0x02b8, 0x03bd };
+static const u_int32_t RAW_SECTOR_SIZE [2] = { 2048, 2336 };
+static const u_int32_t RAW_SKIP_OFFSET [2] = {    0,    8 }; 
+static const u_int32_t FILE_SIZES_OFFSET [4] = { 0x9c, 0xa0, 0xa4, 0xa8 }; /* BE, in sectors */
+static const u_int32_t FILE_NAMES_OFFSET [4] = { 0x00b0, 0x01b4, 0x02b8, 0x03bd };
 
 
 /**************************************************************/
@@ -52,7 +52,7 @@ int
 iin_gi_probe_path (const char *path,
 		   iin_t **iin)
 {
-  size_t device_sector_size;
+  u_int32_t device_sector_size;
   osal_handle_t in;
   int result = osal_get_volume_sect_size (path, &device_sector_size);
   if (result == OSAL_OK)
@@ -61,10 +61,10 @@ iin_gi_probe_path (const char *path,
     {
       int single_file = 0;
       data_mode_t mode;
-      size_t len;
+      u_int32_t len;
       unsigned char header [1476];
       iin_img_base_t *img_base = NULL;
-      size_t num_sectors;
+      u_int32_t num_sectors;
 
       result = osal_read (in, header, 1476, &len);
       if (result == OSAL_OK)
@@ -134,14 +134,14 @@ iin_gi_probe_path (const char *path,
 	  if (single_file)
 	    /* single file only -> CD image or DVD image with size less than 2GB */
 	    result = img_base_add_part (img_base, path, num_sectors,
-					(bigint_t) 152, device_sector_size);
+					(u_int64_t) 152, device_sector_size);
 	  else
 	    { /* multiple files */
-	      size_t num_files = header [0x98], i;
+	      u_int32_t num_files = header [0x98], i;
 	      for (i=0; i<num_files; ++i)
 		{
 		  char source [MAX_PATH];
-		  size_t length_s = (header [FILE_SIZES_OFFSET [i] + 3] << 24 |
+		  u_int32_t length_s = (header [FILE_SIZES_OFFSET [i] + 3] << 24 |
 				     header [FILE_SIZES_OFFSET [i] + 2] << 16 |
 				     header [FILE_SIZES_OFFSET [i] + 1] <<  8 |
 				     header [FILE_SIZES_OFFSET [i]]);
@@ -158,7 +158,7 @@ iin_gi_probe_path (const char *path,
 		    result = osal_get_volume_sect_size (source, &device_sector_size);
 		  if (result == RET_OK)
 		    result = img_base_add_part (img_base, source, length_s,
-						(bigint_t) 0, device_sector_size);
+						(u_int64_t) 0, device_sector_size);
 		}
 	    }
 	}

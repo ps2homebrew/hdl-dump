@@ -1,6 +1,6 @@
 /*
  * iin_aspi.h
- * $Id: iin_aspi.h,v 1.3 2004/08/20 12:35:17 b081 Exp $
+ * $Id: iin_aspi.h,v 1.4 2004/12/04 10:20:52 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *

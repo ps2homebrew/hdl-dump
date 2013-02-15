@@ -1,6 +1,6 @@
 /*
  * common.c
- * $Id: common.c,v 1.12 2004/09/26 19:39:39 b081 Exp $
+ * $Id: common.c,v 1.13 2004/12/04 10:20:53 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -94,20 +94,20 @@ caseless_compare (const char *s1,
 int /* would copy until EOF if bytes == 0 */
 copy_data (osal_handle_t in,
 	   osal_handle_t out,
-	   bigint_t bytes,
-	   size_t buff_size,
+	   u_int64_t bytes,
+	   u_int32_t buff_size,
 	   progress_t *pgs)
 {
   void *buffer = osal_alloc (buff_size);
   if (buffer != NULL)
     {
-      bigint_t copied = 0;
+      u_int64_t copied = 0;
       int result, copy_til_eof = (bytes == 0);
-      size_t len;
+      u_int32_t len;
       do
 	{
-	  size_t chunk_size = (copy_til_eof ? buff_size :
-			       ((bigint_t) buff_size < bytes) ? buff_size : (size_t) bytes);
+	  u_int32_t chunk_size = (copy_til_eof ? buff_size :
+			       ((u_int64_t) buff_size < bytes) ? buff_size : (u_int32_t) bytes);
 	  result = osal_read (in, buffer, chunk_size, &len);
 	  if (result == OSAL_OK && len > 0)
 	    {
@@ -134,23 +134,23 @@ copy_data (osal_handle_t in,
 int
 read_file (const char *file_name,
 	   char **data,
-	   size_t *len)
+	   u_int32_t *len)
 {
   osal_handle_t file;
   int result = osal_open (file_name, &file, 0);
   *data = NULL;
   if (result == OSAL_OK)
     {
-      bigint_t size;
+      u_int64_t size;
       result = osal_get_file_size (file, &size);
       if (result == OSAL_OK)
 	{
 	  if (size <= MAX_READ_FILE_SIZE)
 	    {
-	      *data = osal_alloc ((size_t) (size + 1));
+	      *data = osal_alloc ((u_int32_t) (size + 1));
 	      if (*data != NULL)
 		{
-		  result = osal_read (file, *data, (size_t) size, len);
+		  result = osal_read (file, *data, (u_int32_t) size, len);
 		  (*data) [*len] = '\0'; /* zero-terminate */
 		}
 	      else
@@ -172,13 +172,13 @@ read_file (const char *file_name,
 int
 write_file (const char *file_name,
 	    const void *data,
-	    size_t len)
+	    u_int32_t len)
 {
   osal_handle_t handle;
-  int result = osal_create_file (file_name, &handle, (bigint_t) len);
+  int result = osal_create_file (file_name, &handle, (u_int64_t) len);
   if (result == OSAL_OK)
     {
-      size_t bytes;
+      u_int32_t bytes;
       result = osal_write (handle, data, len, &bytes);
       result = osal_close (handle) == OSAL_OK ? result : OSAL_ERR;
     }
@@ -190,14 +190,14 @@ write_file (const char *file_name,
 int
 dump_device (const char *device_name,
 	     const char *output_file,
-	     bigint_t max_size,
+	     u_int64_t max_size,
 	     progress_t *pgs)
 {
   osal_handle_t device;
   int result = osal_open (device_name, &device, 1);
   if (result == OSAL_OK)
     {
-      bigint_t size_in_bytes = 0;
+      u_int64_t size_in_bytes = 0;
       result = osal_get_estimated_device_size (device, &size_in_bytes);
       if (result == OSAL_OK)
 	{
@@ -213,7 +213,7 @@ dump_device (const char *device_name,
 	  result = osal_create_file (output_file, &file, size_in_bytes);
 	  if (result == OSAL_OK)
 	    {
-	      result = copy_data (device, file, (bigint_t) 0, 1 _MB, pgs);
+	      result = copy_data (device, file, (u_int64_t) 0, 1 _MB, pgs);
 	      /* TODO: store GetLastError () on error */
 	      result = osal_close (file) == OSAL_OK ? result : OSAL_ERR;
 	    }
@@ -254,7 +254,7 @@ lookup_file (char original_file [MAX_PATH],
       char tmp [MAX_PATH];
       const char *src_fname_start, *cue_path_end;
       char *p;
-      size_t len;
+      u_int32_t len;
 
       strcpy (tmp, original_file);
       src_fname_start = strrchr (tmp, '\\'); /* windowz-style */
@@ -281,24 +281,24 @@ lookup_file (char original_file [MAX_PATH],
 int
 iin_copy (iin_t *iin,
 	  osal_handle_t out,
-	  size_t start_sector,
-	  size_t num_sectors,
+	  u_int32_t start_sector,
+	  u_int32_t num_sectors,
 	  progress_t *pgs)
 {
   int result = OSAL_OK;
-  bigint_t copied = 0;
-  size_t data_len = 1;
+  u_int64_t copied = 0;
+  u_int32_t data_len = 1;
   while (result == OSAL_OK && num_sectors > 0 && data_len > 0)
     {
       const char *data;
-      size_t bytes_written;
-      size_t sectors = num_sectors > IIN_NUM_SECTORS ? IIN_NUM_SECTORS : num_sectors;
+      u_int32_t bytes_written;
+      u_int32_t sectors = num_sectors > IIN_NUM_SECTORS ? IIN_NUM_SECTORS : num_sectors;
       result = iin->read (iin, start_sector, sectors, &data, &data_len);
       if (result == OSAL_OK)
 	result = osal_write (out, data, data_len, &bytes_written);
       if (result == OSAL_OK)
 	{
-	  size_t sectors_read = data_len / IIN_SECTOR_SIZE;
+	  u_int32_t sectors_read = data_len / IIN_SECTOR_SIZE;
 	  num_sectors -= sectors_read;
 	  start_sector += sectors_read;
 	  copied += data_len;
@@ -314,20 +314,20 @@ iin_copy (iin_t *iin,
 int
 iin_copy_ex (iin_t *iin,
 	     hio_t *hio,
-	     size_t input_start_sector,
-	     size_t output_start_sector,
-	     size_t num_sectors,
+	     u_int32_t input_start_sector,
+	     u_int32_t output_start_sector,
+	     u_int32_t num_sectors,
 	     progress_t *pgs)
 {
   int result = OSAL_OK;
-  bigint_t copied = 0;
-  size_t data_len = 1;
+  u_int64_t copied = 0;
+  u_int32_t data_len = 1;
   while (result == OSAL_OK && num_sectors > 0 && data_len > 0)
     {
       const char *data;
-      size_t bytes_written;
-      size_t sectors_read;
-      size_t sectors = num_sectors > IIN_NUM_SECTORS ? IIN_NUM_SECTORS : num_sectors;
+      u_int32_t bytes_written;
+      u_int32_t sectors_read;
+      u_int32_t sectors = num_sectors > IIN_NUM_SECTORS ? IIN_NUM_SECTORS : num_sectors;
       result = iin->read (iin, input_start_sector, sectors, &data, &data_len);
       if (result == OSAL_OK)
 	{

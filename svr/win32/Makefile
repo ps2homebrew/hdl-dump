@@ -1,6 +1,6 @@
 ##
 ## svr/win32/Makefile
-## $Id: Makefile,v 1.4 2004/09/26 19:39:40 b081 Exp $
+## $Id: Makefile,v 1.5 2004/12/04 10:28:47 b081 Exp $
 ##
 ## Copyright 2004 Bobi B., w1zard0f07@yahoo.com
 ##
@@ -28,7 +28,7 @@ LDFLAGS =
 
 OBJECTS = hdld_svr_win32.o ../net_server.o ../../hio_probe.o \
 	../../hio_win32.o ../../hio_net.o \
-	../../net_io.o ../../apa.o ../../common.o ../../progress.o
+	../../net_io.o ../../apa.o ../../common.o ../../progress.o ../../byteseq.o
 
 # "autodetect" Windows builds
 ifdef SYSTEMROOT

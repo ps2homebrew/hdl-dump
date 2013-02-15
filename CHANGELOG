@@ -1,3 +1,7 @@
+0.8-pre
+	~ endianess-neutral
+	~ fixed a bug with small cue-sheet files (move file ptr before file start)
+
 0.7.3
 	+ poweroff and hdl_toc commands
 	~ transfer speed raised up to 30% (special thanks to dayv)

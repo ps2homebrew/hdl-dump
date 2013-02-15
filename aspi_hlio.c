@@ -1,6 +1,6 @@
 /*
  * aspi_hlio.c - ASPI high-level I/O
- * $Id: aspi_hlio.c,v 1.3 2004/08/20 12:35:17 b081 Exp $
+ * $Id: aspi_hlio.c,v 1.4 2004/12/04 10:20:53 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -339,10 +339,10 @@ aspi_dlist_add (scsi_devices_list_t *list,
 		int scsi_id,
 		int lun,
 		int type,
-		size_t align,
+		u_int32_t align,
 		const char *name,
-		size_t sector_size,
-		size_t size_in_sectors)
+		u_int32_t sector_size,
+		u_int32_t size_in_sectors)
 {
   scsi_device_t *dev;
   if (list->used == list->alloc)
@@ -456,7 +456,7 @@ aspi_scan_scsi_bus (scsi_devices_list_t **list)
 	  if (inq.SRB_Status == SS_COMP)
 	    {
 	      int scsi_id, scsi_ids_cnt = inq.HA_Unique [3] == 0 ? 8 : inq.HA_Unique [3];
-	      size_t alignment_mask = (inq.HA_Unique [1] << 8) | inq.HA_Unique [0];
+	      u_int32_t alignment_mask = (inq.HA_Unique [1] << 8) | inq.HA_Unique [0];
 
 	      switch (alignment_mask)
 		{
@@ -482,7 +482,7 @@ aspi_scan_scsi_bus (scsi_devices_list_t **list)
 		      if (dtype.SRB_Status == SS_COMP)
 			{ /* device found */
 			  char device_name [28 + 1];
-			  size_t sector_size, size_in_sectors;
+			  u_int32_t sector_size, size_in_sectors;
 
 			  /* prepare for an error */
 			  strcpy (device_name, "???");
@@ -535,8 +535,8 @@ int
 aspi_stat (int host,
 	   int scsi_id,
 	   int lun,
-	   size_t *sector_size,
-	   size_t *size_in_sectors)
+	   u_int32_t *sector_size,
+	   u_int32_t *size_in_sectors)
 {
   SRB_ExecSCSICmd exec;
   unsigned char capacity [8];
@@ -577,9 +577,9 @@ int
 aspi_mmc_read_cd (int host,
 		  int scsi_id,
 		  int lun,
-		  size_t start_sector,
-		  size_t num_sectors,
-		  size_t sector_size,
+		  u_int32_t start_sector,
+		  u_int32_t num_sectors,
+		  u_int32_t sector_size,
 		  void *output)
 {
   SRB_ExecSCSICmd exec;
@@ -624,8 +624,8 @@ int
 aspi_read_10 (int host,
 	      int scsi_id,
 	      int lun,
-	      size_t start_sector,
-	      size_t num_sectors,
+	      u_int32_t start_sector,
+	      u_int32_t num_sectors,
 	      void *output)
 {
   SRB_ExecSCSICmd exec;

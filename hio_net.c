@@ -1,6 +1,6 @@
 /*
  * hio_net.c - TCP/IP networking access to PS2 HDD
- * $Id: hio_net.c,v 1.6 2004/09/26 19:39:39 b081 Exp $
+ * $Id: hio_net.c,v 1.7 2004/12/04 10:20:52 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -22,8 +22,12 @@
  */
 
 #if defined (_BUILD_WIN32)
+#  if defined (_MSC_VER) && defined (_WIN32)
+#    include <winsock2.h> /* Microsoft Visual C/C++ compiler */
+#  else
+#    include <winsock.h> /* GNU C/C++ compiler */
+#  endif
 #  include <windows.h>
-#  include <winsock.h>
 #elif defined (_BUILD_UNIX)
 #  include <errno.h>
 #  include <unistd.h>
@@ -37,8 +41,9 @@ typedef int SOCKET;
 #include <assert.h>
 #include <string.h>
 #include <stdlib.h>
-#include "hio_net.h"
 #include "osal.h"
+#include "hio_net.h"
+#include "byteseq.h"
 #include "net_io.h"
 #include "retcodes.h"
 
@@ -48,7 +53,7 @@ typedef struct hio_net_type
   hio_t hio;
   SOCKET sock;
   unsigned char *compressed;
-  size_t compr_alloc, compr_used;
+  u_int32_t compr_alloc, compr_used;
   unsigned long error_code;
 } hio_net_t;
 
@@ -62,7 +67,7 @@ static int net_init = 0;
 static int
 recv_exact (SOCKET s,
 	    char *outp,
-	    size_t bytes,
+	    u_int32_t bytes,
 	    int flags)
 {
   int total = 0, result = 1;
@@ -91,16 +96,16 @@ query (SOCKET s,
        char output [HDD_SECTOR_SIZE * NET_NUM_SECTORS]) /* or NULL */
 {
   unsigned char cmd [NET_IO_CMD_LEN + HDD_SECTOR_SIZE * NET_NUM_SECTORS];
-  size_t cmd_length = NET_IO_CMD_LEN;
+  u_int32_t cmd_length = NET_IO_CMD_LEN;
   int result;
-  put_ulong (cmd +  0, command);
-  put_ulong (cmd +  4, sector);
-  put_ulong (cmd +  8, num_sectors);
-  put_ulong (cmd + 12, 0x003a2d29);
+  set_u32 (cmd +  0, command);
+  set_u32 (cmd +  4, sector);
+  set_u32 (cmd +  8, num_sectors);
+  set_u32 (cmd + 12, 0x003a2d29);
   if (input != NULL)
     { /* probably a write operation */
       int compressed_data = (num_sectors & 0xffffff00) != 0;
-      size_t bytes = compressed_data ? num_sectors >> 8 : num_sectors * HDD_SECTOR_SIZE;
+      u_int32_t bytes = compressed_data ? num_sectors >> 8 : num_sectors * HDD_SECTOR_SIZE;
       memcpy (cmd + NET_IO_CMD_LEN, input, bytes);
       cmd_length += bytes;
     }
@@ -111,9 +116,9 @@ query (SOCKET s,
       result = recv_exact (s, (char*) cmd, NET_IO_CMD_LEN, 0);
       if (result == NET_IO_CMD_LEN)
 	{ /* response successfully received */
-	  *response = get_ulong (cmd + 12);
+	  *response = get_u32 (cmd + 12);
 	  if (output != NULL &&
-	      *response != (size_t) -1)
+	      *response != (u_int32_t) -1)
 	    { /* receive additional information */
 	      result = recv_exact (s, output, HDD_SECTOR_SIZE * num_sectors, 0);
 	      result = result == HDD_SECTOR_SIZE * num_sectors ? RET_OK : RET_ERR;
@@ -141,16 +146,16 @@ execute (SOCKET s,
 	 const char input [HDD_SECTOR_SIZE * NET_NUM_SECTORS])
 {
   unsigned char cmd [NET_IO_CMD_LEN + HDD_SECTOR_SIZE * NET_NUM_SECTORS];
-  size_t cmd_length = NET_IO_CMD_LEN;
+  u_int32_t cmd_length = NET_IO_CMD_LEN;
   int result;
-  put_ulong (cmd +  0, command);
-  put_ulong (cmd +  4, sector);
-  put_ulong (cmd +  8, num_sectors);
-  put_ulong (cmd + 12, 0x7d3a2d29);
+  set_u32 (cmd +  0, command);
+  set_u32 (cmd +  4, sector);
+  set_u32 (cmd +  8, num_sectors);
+  set_u32 (cmd + 12, 0x7d3a2d29);
   if (input != NULL)
     { /* probably a write operation */
       int compressed_data = (num_sectors & 0xffffff00) != 0;
-      size_t bytes = compressed_data ? num_sectors >> 8 : num_sectors * HDD_SECTOR_SIZE;
+      u_int32_t bytes = compressed_data ? num_sectors >> 8 : num_sectors * HDD_SECTOR_SIZE;
       memcpy (cmd + NET_IO_CMD_LEN, input, bytes);
       cmd_length += bytes;
     }
@@ -163,7 +168,7 @@ execute (SOCKET s,
 /**************************************************************/
 static int
 net_stat (hio_t *hio,
-	  size_t *size_in_kb)
+	  u_int32_t *size_in_kb)
 {
   hio_net_t *net = (hio_net_t*) hio;
   unsigned long size_in_kb2;
@@ -179,10 +184,10 @@ net_stat (hio_t *hio,
 /**************************************************************/
 static int
 net_read (hio_t *hio,
-	  size_t start_sector,
-	  size_t num_sectors,
+	  u_int32_t start_sector,
+	  u_int32_t num_sectors,
 	  void *output,
-	  size_t *bytes)
+	  u_int32_t *bytes)
 {
   hio_net_t *net = (hio_net_t*) hio;
   unsigned long response;
@@ -192,7 +197,7 @@ net_read (hio_t *hio,
   *bytes = 0;
   do
     {
-      size_t at_once_s = num_sectors > NET_NUM_SECTORS ? NET_NUM_SECTORS : num_sectors;
+      u_int32_t at_once_s = num_sectors > NET_NUM_SECTORS ? NET_NUM_SECTORS : num_sectors;
       result = query (net->sock, CMD_HIO_READ, start_sector, at_once_s,
 		      &response, NULL, outp);
       if (result == OSAL_OK)
@@ -219,17 +224,17 @@ net_read (hio_t *hio,
 /**************************************************************/
 static int
 net_write (hio_t *hio,
-	   size_t start_sector,
-	   size_t num_sectors,
+	   u_int32_t start_sector,
+	   u_int32_t num_sectors,
 	   const void *input,
-	   size_t *bytes)
+	   u_int32_t *bytes)
 {
   hio_net_t *net = (hio_net_t*) hio;
   unsigned long response;
   int result = RET_OK;
   char *inp = (char*) input;
   /* hm... the overhead should be at most 1 byte on each 128 bytes... but just to be sure */
-  size_t avg_compressed_len = NET_NUM_SECTORS * HDD_SECTOR_SIZE * 2;
+  u_int32_t avg_compressed_len = NET_NUM_SECTORS * HDD_SECTOR_SIZE * 2;
 
   if (net->compr_alloc < avg_compressed_len)
     { /* allocate memory to keep compressed data */
@@ -250,18 +255,18 @@ net_write (hio_t *hio,
       *bytes = 0;
       do
 	{
-	  size_t at_once_s = num_sectors > NET_NUM_SECTORS ? NET_NUM_SECTORS : num_sectors;
+	  u_int32_t at_once_s = num_sectors > NET_NUM_SECTORS ? NET_NUM_SECTORS : num_sectors;
 	  const void *data_to_send;
-	  size_t sectors_to_send;
+	  u_int32_t sectors_to_send;
 #if defined (COMPRESS_DATA)
-	  size_t compr_len;
+	  u_int32_t compr_len;
 	  const double SMALLEST_PC_FOR_COMPRESSION = 0.64;
 
 	  /* compress input data */
 	  rle_compress ((const unsigned char*) inp, at_once_s * HDD_SECTOR_SIZE,
 			net->compressed, &compr_len);
 	  assert (compr_len < net-> compr_alloc);
-	  if (compr_len < (size_t) ((at_once_s * HDD_SECTOR_SIZE) * SMALLEST_PC_FOR_COMPRESSION))
+	  if (compr_len < (u_int32_t) ((at_once_s * HDD_SECTOR_SIZE) * SMALLEST_PC_FOR_COMPRESSION))
 	    { /* < 100% remaining => send compressed */
 	      data_to_send = net->compressed;
 	      sectors_to_send = compr_len << 8 | at_once_s;

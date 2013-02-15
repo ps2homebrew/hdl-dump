@@ -1,6 +1,6 @@
 /*
- * hio_probe.c
- * $Id: hio_probe.c,v 1.3 2004/12/04 10:20:52 b081 Exp $
+ * byteseq.h
+ * $Id: byteseq.h,v 1.2 2004/12/04 10:20:53 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -21,20 +21,16 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "hio_win32.h"
-#include "hio_net.h"
-#include "retcodes.h"
+#if !defined (_BYTESEQ_H)
+#define _BYTESEQ_H
+
+#include "config.h"
 
 
-/**************************************************************/
-int
-hio_probe (const char *path,
-	   hio_t **hio)
-{
-  int result = RET_NOT_COMPAT;
-  if (result == RET_NOT_COMPAT)
-    result = hio_win32_probe (path, hio);
-  if (result == RET_NOT_COMPAT)
-    result = hio_net_probe (path, hio);
-  return (result);
-}
+u_int32_t get_u32 (const void *buffer);
+void set_u32 (void *buffer, u_int32_t val);
+
+u_int16_t get_u16 (const void *buffer);
+void set_u16 (void *buffer, u_int16_t val);
+
+#endif /* _BYTESEQ_H defined? */

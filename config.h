@@ -1,6 +1,6 @@
 /*
  * config.h
- * $Id: config.h,v 1.6 2004/09/26 19:39:39 b081 Exp $
+ * $Id: config.h,v 1.7 2004/12/04 10:20:53 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -24,22 +24,45 @@
 #if !defined (_CONFIG_H)
 #define _CONFIG_H
 
-#if !defined (_BUILD_WIN32) && !defined (_BUILD_UNIX)
-#  error Either _BUILD_WIN32 or _BUILD_UNIX should be defined
+#if !defined (_BUILD_WIN32) && !defined (_BUILD_UNIX) && !defined (_BUILD_PS2)
+#  error One of _BUILD_WIN32, _BUILD_UNIX or _BUILD_PS2 should be defined
+#endif
+
+#if defined (_BUILD_WIN32)
+typedef unsigned char u_int8_t;
+typedef unsigned short u_int16_t;
+typedef unsigned long u_int32_t;
+#  if defined (_MSC_VER) && defined (_WIN32)
+typedef unsigned __int64 u_int64_t; /* Microsoft Visual C/C++ compiler */
+#  else
+typedef unsigned long long u_int64_t; /* GNU C/C++ compiler */
+#  endif
+
+#elif defined (_BUILD_UNIX)
+#  include <sys/types.h>
+
+#elif defined (_BUILD_PS2)
+#  if defined (_EE)
+#    include <tamtypes.h>
+#  else
+#    include <types.h>
+#  endif
+typedef  u8  u_int8_t;
+typedef u16 u_int16_t;
+typedef u32 u_int32_t;
+typedef u64 u_int64_t;
 #endif
 
 
-typedef long long bigint_t;
-
 /* control whether infrequently-used commands to be built */
 #define INCLUDE_DUMP_CMD
-/* #define INCLUDE_COMPARE_CMD */
+#define INCLUDE_COMPARE_CMD
 #define INCLUDE_COMPARE_IIN_CMD
-/* #define INCLUDE_MAP_CMD */
-/* #define INCLUDE_INFO_CMD */
-/* #define INCLUDE_ZERO_CMD */
-/* #define INCLUDE_CUTOUT_CMD */
-/* #define INCLUDE_READ_TEST_CMD */
+#define INCLUDE_MAP_CMD
+#define INCLUDE_INFO_CMD
+#define INCLUDE_ZERO_CMD
+#define INCLUDE_CUTOUT_CMD
+#define INCLUDE_READ_TEST_CMD
 
 
 /*

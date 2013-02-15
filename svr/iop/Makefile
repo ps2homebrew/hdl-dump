@@ -1,6 +1,6 @@
 ##
 ## svr/iop/Makefile
-## $Id: Makefile,v 1.3 2004/09/26 19:39:40 b081 Exp $
+## $Id: Makefile,v 1.4 2004/12/04 10:28:45 b081 Exp $
 ##
 ## Copyright 2004 Bobi B., w1zard0f07@yahoo.com
 ##
@@ -23,7 +23,7 @@
 
 IOP_BIN = hdld_svr.irx
 
-IOP_OBJS = hdld_svr_iop.o hio_iop.o imports.o net_server.o net_io.o
+IOP_OBJS = hdld_svr_iop.o hio_iop.o imports.o net_server.o net_io.o byteseq.o
 
 IOP_LIBS =
 
@@ -41,6 +41,10 @@ net_server.o: ../net_server.c
 	@$(IOP_CC) $(IOP_CFLAGS) $< -o $@
 
 net_io.o: ../../net_io.c
+	@echo -e "\tIOP-CC $<"
+	@$(IOP_CC) $(IOP_CFLAGS) $< -o $@
+
+byteseq.o: ../../byteseq.c
 	@echo -e "\tIOP-CC $<"
 	@$(IOP_CC) $(IOP_CFLAGS) $< -o $@
 

@@ -1,6 +1,6 @@
 /*
  * apa.h
- * $Id: apa.h,v 1.6 2004/08/15 16:44:19 b081 Exp $
+ * $Id: apa.h,v 1.7 2004/12/04 10:20:53 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -48,16 +48,16 @@ typedef struct apa_partition_type
 
 typedef struct apa_partition_table_type
 {
-  size_t device_size_in_mb;
-  size_t total_chunks;
-  size_t allocated_chunks;
-  size_t free_chunks;
+  u_int32_t device_size_in_mb;
+  u_int32_t total_chunks;
+  u_int32_t allocated_chunks;
+  u_int32_t free_chunks;
 
   char *chunks_map;
 
   /* existing partitions */
-  size_t part_alloc_;
-  size_t part_count;
+  u_int32_t part_alloc_;
+  u_int32_t part_count;
   apa_partition_t *parts;
 } apa_partition_table_t;
 
@@ -76,12 +76,12 @@ int apa_ptable_read_ex (hio_t *hio,
 
 int apa_find_partition (const apa_partition_table_t *table,
 			const char *partition_name,
-			size_t *partition_index);
+			u_int32_t *partition_index);
 
 int apa_allocate_space (apa_partition_table_t *table,
 			const char *partition_name,
-			size_t size_in_mb,
-			size_t *new_partition_start,
+			u_int32_t size_in_mb,
+			u_int32_t *new_partition_start,
 			int decreasing_size);
 
 int apa_delete_partition (apa_partition_table_t *table,

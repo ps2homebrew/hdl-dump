@@ -1,6 +1,6 @@
 /*
  * svr/net_server.c
- * $Id: net_server.c,v 1.5 2004/09/26 19:39:40 b081 Exp $
+ * $Id: net_server.c,v 1.6 2004/12/04 10:28:43 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -68,6 +68,7 @@
 #include "../net_io.h"
 #include "../hio.h"
 #include "../retcodes.h"
+#include "../byteseq.h"
 
 
 /**************************************************************/
@@ -82,10 +83,10 @@ respond (int s,
   unsigned char __attribute__((aligned(16))) resp [NET_IO_CMD_LEN];
   int bytes;
 
-  put_ulong (resp +  0, command);
-  put_ulong (resp +  4, sector);
-  put_ulong (resp +  8, num_sect);
-  put_ulong (resp + 12, response);
+  set_u32 (resp +  0, command);
+  set_u32 (resp +  4, sector);
+  set_u32 (resp +  8, num_sect);
+  set_u32 (resp + 12, response);
   bytes = send (s, (char*) resp, NET_IO_CMD_LEN, 0);
   if (bytes == NET_IO_CMD_LEN)
     {
@@ -148,15 +149,15 @@ handle_client (int s,
       int result = recv_exact (s, (char*) cmd_buff, NET_IO_CMD_LEN, 0);
       if (result == RET_OK)
 	{
-	  unsigned long command = get_ulong (cmd_buff + 0);
-	  unsigned long sector = get_ulong (cmd_buff + 4);
-	  unsigned long num_sect = get_ulong (cmd_buff + 8);
+	  unsigned long command = get_u32 (cmd_buff + 0);
+	  unsigned long sector = get_u32 (cmd_buff + 4);
+	  unsigned long num_sect = get_u32 (cmd_buff + 8);
 
 	  switch (command)
 	    {
 	    case CMD_HIO_STAT:
 	      { /* get unit size */
-		size_t size_in_kb;
+		u_int32_t size_in_kb;
 		result = hio->stat (hio, &size_in_kb);
 		if (result == RET_OK)
 		  /* success */
@@ -170,7 +171,7 @@ handle_client (int s,
 
 	    case CMD_HIO_READ:
 	      { /* read sector(s) */
-		size_t bytes_read;
+		u_int32_t bytes_read;
 		result = hio->read (hio, sector, num_sect, sect_data, &bytes_read);
 		if (result == RET_OK)
 		  {
@@ -198,12 +199,12 @@ handle_client (int s,
 		  result = respond (s, command, sector, num_sect, 0, NULL);
 
 		if (compressed_data)
-		  { /* accept compressed data into a temporary buffer and expand to target one */
+		  { /* accept compressed data into a temp buffer and expand to target one */
 		    size_t bytes = num_sect >> 8;
 		    result = recv_exact (s, (char*) compressed, bytes, 0);
 		    if (result == RET_OK)
 		      { /* expand data */
-			size_t data_len;
+			u_int32_t data_len;
 			rle_expand (compressed, bytes, sect_data, &data_len);
 			result = (data_len == (num_sect & 0xff) * HDD_SECTOR_SIZE ?
 				  RET_OK : RET_ERR);
@@ -214,7 +215,7 @@ handle_client (int s,
 
 		if (result == RET_OK)
 		  {
-		    size_t bytes_written, sectors_written;
+		    u_int32_t bytes_written, sectors_written;
 
 		    if (command == CMD_HIO_WRITE_RACK)
 		      /* send back dummy ACK to shake the line */

@@ -1,6 +1,6 @@
 /*
  * iin_probe.c
- * $Id: iin_probe.c,v 1.5 2004/09/12 17:25:27 b081 Exp $
+ * $Id: iin_probe.c,v 1.6 2004/12/04 10:20:52 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *

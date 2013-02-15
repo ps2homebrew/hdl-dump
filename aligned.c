@@ -1,6 +1,6 @@
 /*
  * aligned.c
- * $Id: aligned.c,v 1.5 2004/08/20 12:35:17 b081 Exp $
+ * $Id: aligned.c,v 1.6 2004/12/04 10:20:53 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -32,16 +32,16 @@ struct aligned_type
 {
   osal_handle_t in;
   char *unaligned, *buffer;
-  size_t sector_size, buffer_size, data_length;
-  bigint_t offset;
+  u_int32_t sector_size, buffer_size, data_length;
+  u_int64_t offset;
 };
 
 
 /**************************************************************/
 aligned_t*
 al_alloc (osal_handle_t in,
-	  size_t sector_size,
-	  size_t buffer_size_in_sectors)
+	  u_int32_t sector_size,
+	  u_int32_t buffer_size_in_sectors)
 {
   aligned_t *al = osal_alloc (sizeof (aligned_t));
   if (al != NULL)
@@ -56,7 +56,7 @@ al_alloc (osal_handle_t in,
 				& ~(sector_size - 1));
 	  assert (al->buffer >= al->unaligned);
 	  al->sector_size = sector_size;
-	  al->offset = -1;
+	  al->offset = (u_int64_t) -1;
 	}
       else
 	{
@@ -83,10 +83,10 @@ al_free (aligned_t *al)
 /**************************************************************/
 int
 al_read (aligned_t *al,
-	 bigint_t offset,
+	 u_int64_t offset,
 	 const char **data,
-	 size_t bytes,
-	 size_t *data_length)
+	 u_int32_t bytes,
+	 u_int32_t *data_length)
 {
   int result = OSAL_OK;
 
@@ -98,16 +98,16 @@ al_read (aligned_t *al,
     }
   else
     { /* buffer does not contains all or any of the requested data */
-      bigint_t aligned_offset = offset & ~((bigint_t) al->sector_size - 1);
-      size_t correction = 0;
+      u_int64_t aligned_offset = offset & ~((u_int64_t) al->sector_size - 1);
+      u_int32_t correction = 0;
       assert (aligned_offset <= offset);
 
       /* check whether cache contains some usable data */
       if (al->offset <= aligned_offset &&
 	  aligned_offset < al->offset + al->data_length)
 	{ /* arrange data inside the cache and correct the offset */
-	  size_t usable_data_offs = (size_t) (aligned_offset - al->offset);
-	  size_t usable_data_len = (size_t) (al->offset + al->data_length - aligned_offset);
+	  u_int32_t usable_data_offs = (u_int32_t) (aligned_offset - al->offset);
+	  u_int32_t usable_data_len = (u_int32_t) (al->offset + al->data_length - aligned_offset);
 	  memmove (al->buffer, al->buffer + usable_data_offs, usable_data_len);
 	  correction = usable_data_len;
 	}
@@ -125,7 +125,7 @@ al_read (aligned_t *al,
 	}
       if (result == OSAL_OK)
 	{ /* success */
-	  size_t skip = (size_t) (offset - aligned_offset);
+	  u_int32_t skip = (u_int32_t) (offset - aligned_offset);
 	  al->offset = aligned_offset;
 	  *data = al->buffer + skip;
 	  *data_length = bytes > al->data_length - skip ? al->data_length - skip : bytes;

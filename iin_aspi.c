@@ -1,6 +1,6 @@
 /*
  * iin_aspi.c
- * $Id: iin_aspi.c,v 1.4 2004/08/20 12:35:17 b081 Exp $
+ * $Id: iin_aspi.c,v 1.5 2004/12/04 10:20:52 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -43,7 +43,7 @@ typedef struct iin_aspi_type
 {
   iin_t iin;
   int host, scsi_id, lun;
-  size_t size_in_sectors, sector_size; /* cached; can be obtained always, by calling aspi_stat */
+  u_int32_t size_in_sectors, sector_size; /* cached; can be obtained always, by calling aspi_stat */
   char *unaligned, *buffer;
   unsigned long error_code; /* against aspi_... */
 } iin_aspi_t;
@@ -52,8 +52,8 @@ typedef struct iin_aspi_type
 /**************************************************************/
 static int
 aspicd_stat (iin_t *iin,
-	     size_t *sector_size,
-	     size_t *size_in_sectors)
+	     u_int32_t *sector_size,
+	     u_int32_t *size_in_sectors)
 {
   const iin_aspi_t *aspi = (const iin_aspi_t*) iin;
   *sector_size = aspi->sector_size;
@@ -65,10 +65,10 @@ aspicd_stat (iin_t *iin,
 /**************************************************************/
 static int
 aspicd_read (iin_t *iin,
-	     size_t start_sector,
-	     size_t num_sectors,
+	     u_int32_t start_sector,
+	     u_int32_t num_sectors,
 	     const char **data,
-	     size_t *length)
+	     u_int32_t *length)
 {
   iin_aspi_t *aspi = (iin_aspi_t*) iin;
   int result;
@@ -122,9 +122,9 @@ aspicd_dispose_error (iin_t *iin,
 /**************************************************************/
 static iin_t*
 aspicd_alloc (int host, int scsi_id, int lun,
-	      size_t size_in_sectors,
-	      size_t sector_size,
-	      size_t reqd_alignment)
+	      u_int32_t size_in_sectors,
+	      u_int32_t sector_size,
+	      u_int32_t reqd_alignment)
 {
   iin_aspi_t *aspi;
 
@@ -196,7 +196,7 @@ iin_aspi_probe_path (const char *path,
 
   if (result == RET_OK)
     { /* pattern matched */
-      size_t size_in_sectors, sector_size;
+      u_int32_t size_in_sectors, sector_size;
       result = aspi_stat (host, scsi_id, lun, &sector_size, &size_in_sectors);
       if (result == RET_OK)
 	{ /* TODO: inquire SCSI host/device to ask the required alignment */

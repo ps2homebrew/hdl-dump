@@ -1,6 +1,6 @@
 /*
  * common.h
- * $Id: common.h,v 1.10 2004/09/26 19:39:39 b081 Exp $
+ * $Id: common.h,v 1.11 2004/12/04 10:20:53 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -45,22 +45,22 @@ int caseless_compare (const char *s1,
 /* would copy until EOF if bytes == 0 */
 int copy_data (osal_handle_t in,
 	       osal_handle_t out,
-	       bigint_t bytes,
-	       size_t buff_size,
+	       u_int64_t bytes,
+	       u_int32_t buff_size,
 	       progress_t *pgs);
 
 /* data buffer is zero-terminated */
 int read_file (const char *file_name,
 	       char **data,
-	       size_t *len);
+	       u_int32_t *len);
 
 int write_file (const char *file_name,
 		const void *data,
-		size_t len);
+		u_int32_t len);
 
 int dump_device (const char *device_name,
 		 const char *output_file,
-		 bigint_t max_size,
+		 u_int64_t max_size,
 		 progress_t *pgs);
 
 /* nonzero if file can be opened for reading, zero if none or on error */
@@ -74,15 +74,15 @@ int lookup_file (char original_file [MAX_PATH],
 
 int iin_copy (iin_t *iin,
 	      osal_handle_t out,
-	      size_t start_sector,
-	      size_t num_sectors,
+	      u_int32_t start_sector,
+	      u_int32_t num_sectors,
 	      progress_t *pgs);
 
 int iin_copy_ex (iin_t *iin,
 		 hio_t *hio,
-		 size_t input_start_sector,
-		 size_t output_start_sector,
-		 size_t num_sectors,
+		 u_int32_t input_start_sector,
+		 u_int32_t output_start_sector,
+		 u_int32_t num_sectors,
 		 progress_t *pgs);
 
 #endif /* _COMMON_H defined? */

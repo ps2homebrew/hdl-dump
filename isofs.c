@@ -1,6 +1,6 @@
 /*
  * isofs.c
- * $Id: isofs.c,v 1.6 2004/08/20 12:35:17 b081 Exp $
+ * $Id: isofs.c,v 1.7 2004/12/04 10:20:52 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -37,14 +37,14 @@
  */
 static int
 isofs_find_pvd_addr (iin_t *iin,
-		     bigint_t *pvd_start_addr,
-		     bigint_t *ptr_start_addr,
+		     u_int64_t *pvd_start_addr,
+		     u_int64_t *ptr_start_addr,
 		     char system_id [32 + 1],
 		     char volume_id [32 + 1])
 {
-  size_t start_sector = 16;
+  u_int32_t start_sector = 16;
   const char *data;
-  size_t len;
+  u_int32_t len;
   const unsigned char *buffer;
   int result = iin->read (iin, start_sector, 1, &data, &len);
   buffer = (const unsigned char*) data;
@@ -56,10 +56,10 @@ isofs_find_pvd_addr (iin_t *iin,
       if (buffer [0] == 0x01) /* primary volume descriptor set */
 	{
 	  *pvd_start_addr = start_sector * IIN_SECTOR_SIZE;
-	  *ptr_start_addr = (bigint_t) (buffer [143] << 24 |
+	  *ptr_start_addr = (u_int64_t) (buffer [143] << 24 |
 					buffer [142] << 16 |
 					buffer [141] <<  8 |
-					buffer [140] <<  0) * (bigint_t) CDVD_SECT_SIZE;
+					buffer [140] <<  0) * (u_int64_t) CDVD_SECT_SIZE;
 	  if (system_id != NULL)
 	    {
 	      memcpy (system_id, buffer + 8, 32);
@@ -82,12 +82,13 @@ isofs_find_pvd_addr (iin_t *iin,
 
 static int
 isofs_get_root_addr (iin_t *iin,
-		     bigint_t ptr_start_addr,
-		     bigint_t *root_start_addr)
+		     u_int64_t ptr_start_addr,
+		     u_int64_t *root_start_addr)
 {
-  size_t len;
+  u_int32_t len;
   const char *data;
-  int result = iin->read (iin, ptr_start_addr / IIN_SECTOR_SIZE, 1, &data, &len);
+  int result = iin->read (iin, (u_int32_t) (ptr_start_addr / IIN_SECTOR_SIZE),
+			  1, &data, &len);
   const unsigned char *buffer = (const unsigned char*) data;
   if (result == OSAL_OK)
     {
@@ -118,7 +119,7 @@ isofs_get_root_addr (iin_t *iin,
       while (1);
 
       if (found)
-	*root_start_addr = (bigint_t) dir_start_addr * CDVD_SECT_SIZE;
+	*root_start_addr = (u_int64_t) dir_start_addr * CDVD_SECT_SIZE;
       else
 	result = RET_BAD_ISOFS; /* root dir not found */
     }
@@ -128,15 +129,16 @@ isofs_get_root_addr (iin_t *iin,
 
 static int
 isofs_get_file_addr (iin_t *iin,
-		     bigint_t dir_start_addr,
+		     u_int64_t dir_start_addr,
 		     const char *file_name,
-		     bigint_t *file_start_addr,
-		     bigint_t *file_length)
+		     u_int64_t *file_start_addr,
+		     u_int64_t *file_length)
 {
-  size_t file_name_len = strlen (file_name);
-  size_t len;
+  u_int32_t file_name_len = strlen (file_name);
+  u_int32_t len;
   const char *data;
-  int result = iin->read (iin, dir_start_addr / IIN_SECTOR_SIZE, 1, &data, &len);
+  int result = iin->read (iin, (u_int32_t) (dir_start_addr / IIN_SECTOR_SIZE),
+			  1, &data, &len);
   const unsigned char *buffer = (const unsigned char*) data;
   if (result == OSAL_OK)
     {
@@ -170,7 +172,7 @@ isofs_get_file_addr (iin_t *iin,
 
       if (found)
 	{
-	  *file_start_addr = (bigint_t) start_addr * CDVD_SECT_SIZE;
+	  *file_start_addr = (u_int64_t) start_addr * CDVD_SECT_SIZE;
 	  *file_length = length;
 	}
       else
@@ -182,7 +184,7 @@ isofs_get_file_addr (iin_t *iin,
 
 static int
 parse_config_cnf (char *contents,
-		  size_t length,
+		  u_int32_t length,
 		  char signature [12 + 1])
 {
   int found = 0;
@@ -223,15 +225,16 @@ parse_config_cnf (char *contents,
 
 static int
 isofs_parse_config_cnf (iin_t *iin,
-			bigint_t file_start_addr,
-			bigint_t file_length,
+			u_int64_t file_start_addr,
+			u_int64_t file_length,
 			char signature [12 + 1])
 {
-  size_t len;
+  u_int32_t len;
   const char *data;
-  int result = iin->read (iin, file_start_addr / IIN_SECTOR_SIZE, 1, &data, &len);
+  int result = iin->read (iin, (u_int32_t) (file_start_addr / IIN_SECTOR_SIZE),
+			  1, &data, &len);
   if (result == OSAL_OK)
-    result = parse_config_cnf ((char*) data, (size_t) file_length, signature);
+    result = parse_config_cnf ((char*) data, (u_int32_t) file_length, signature);
   return (result);
 }
 
@@ -241,8 +244,8 @@ isofs_get_ps_cdvd_details (iin_t *iin,
 			   char volume_id [32 + 1],
 			   char signature [12 + 1])
 {
-  bigint_t pvd_start_addr, ptr_start_addr, root_start_addr;
-  bigint_t system_cnf_start_addr, system_cnf_length;
+  u_int64_t pvd_start_addr, ptr_start_addr, root_start_addr;
+  u_int64_t system_cnf_start_addr, system_cnf_length;
   char system_id [32 + 1];
   int result = isofs_find_pvd_addr (iin, &pvd_start_addr, &ptr_start_addr, system_id, volume_id);
   if (result == OSAL_OK)

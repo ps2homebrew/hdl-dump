@@ -1,6 +1,6 @@
 /*
  * svr/ee/loader.c
- * $Id: loader.c,v 1.6 2004/09/26 19:39:40 b081 Exp $
+ * $Id: loader.c,v 1.7 2004/12/04 10:28:44 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *

@@ -1,6 +1,6 @@
 /*
  * hdl.h
- * $Id: hdl.h,v 1.4 2004/09/26 19:39:39 b081 Exp $
+ * $Id: hdl.h,v 1.5 2004/12/04 10:20:52 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -54,10 +54,10 @@ typedef struct hdl_game_info_type
 
 typedef struct hdl_games_list_type
 {
-  size_t count;
+  u_int32_t count;
   hdl_game_info_t *games;
-  size_t total_chunks;
-  size_t free_chunks;
+  u_int32_t total_chunks;
+  u_int32_t free_chunks;
 } hdl_games_list_t;
 
 

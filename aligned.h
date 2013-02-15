@@ -1,6 +1,6 @@
 /*
  * aligned.h
- * $Id: aligned.h,v 1.2 2004/08/15 16:44:18 b081 Exp $
+ * $Id: aligned.h,v 1.3 2004/12/04 10:20:53 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -38,15 +38,15 @@ typedef struct aligned_type aligned_t;
 
 aligned_t*
 al_alloc (osal_handle_t in,
-	  size_t sector_size, /* device sector size - each file I/O should be aligned */
-	  size_t buffer_size_in_sectors); /* 32 is good enough */
+	  u_int32_t sector_size, /* device sector size - each file I/O should be aligned */
+	  u_int32_t buffer_size_in_sectors); /* 32 is good enough */
 
 int
 al_read (aligned_t *al,
-	 bigint_t offset,
+	 u_int64_t offset,
 	 const char **data, /* internal buffer, managed by aligned I/O */
-	 size_t dest_size,
-	 size_t *length);
+	 u_int32_t dest_size,
+	 u_int32_t *length);
 
 void
 al_free (aligned_t *al);
