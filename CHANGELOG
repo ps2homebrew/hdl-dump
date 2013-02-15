@@ -1,0 +1,32 @@
+0.7-pre
+	+ RLE compression
+
+0.6
+	+ cdvd_info command
+	+ networking installations
+
+0.5
+	+ CDRWIN images support, Nero images support (mode1 plain & RAW and mode2 plain & RAW)
+	+ transparent support for HD Loader images in the same way as ISO files
+	+ support for IML files (Intermediate file format by Sony CD/DVD Generator)
+	~ fixed bug in ISOFS parsing (sometimes fails to locate SYSTEM.CNF)
+	~ system partitions could not be deleted any longer
+
+0.4
+	~ dump fixed
+	+ automatic game name (from the media volume label) and signature
+
+0.3
+	- dump broken - DO NOT USE! forgot to erase some debug code, sorry
+	~ "__empty" partitions are now treated as an empty space
+	+ hdl_dumb GUI with install and delete games support
+
+0.2a
+	+ inject_cd and inject_dvd are not limited anymore
+
+0.2
+	+ inject_cd and inject_dvd support for a single game of up to 1GB
+	+ delete partition support
+
+0.1
+	+ toc, map, extract support

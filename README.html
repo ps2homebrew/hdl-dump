@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta name="robots" content="all" />
+<meta name="description" content="hdl_dump - Windows-based game installer for HD Loader" />
+<meta name="keywords" content="hdl_dump,source,hdl_dumb,PS2,HDD,harddrive,HD Loader,HD Advance" />
+<meta name="author" content="yahoo w1zard0f07" />
+<title>hdl_dump sources</title>
+</head>
+<body>
+
+<h1>hdl_dump sources</h1>
+
+<h2>TOC</h2>
+<ul>
+<li><a href="#background">Background</a></li>
+<li><a href="#compilers">Compilers</a></li>
+<li><a href="#iin">What is ISO input?</a></li>
+<li><a href="#hio">What is HDD I/O?</a></li>
+<li><a href="#apa">APA module</a></li>
+<li><a href="#hdl">HD Loader module</a></li>
+<li><a href="#net">Networking</a></li>
+<li><a href="#dd">Disclaimer and Download</a></li>
+</ul>
+
+<h2><a name="background">Background</a></h2>
+<p>As a general text editor I use
+<a href="http://www.gnu.org/software/emacs/" title="GNU Emacs homepage">GNU Emacs</a>,
+therefore I moved on to
+<a href="http://www.gnu.org/prep/standards_23.html">GNU coding standards for formatting the source code</a>. If you don't like it or prefer something else, use
+<a href="http://www.gnu.org/software/indent/indent.html">GNU indent</a>.
+And there was a long time since I abandoned Hungarian coding convention.</p>
+<p>Source code is strict ANSI C, compiling at maximum warning level with only a few warnings.
+Altough targeted to Win32, command-line version can be ported to alternative OS by replacing
+<code><abbr title="OS abstraction layer">osal</abbr>.h</code> and linking against alternative
+.c file (<code>osal_win32.c</code> for Win32 build). There are some Win32-specifics
+in other source files, but I guess they will probably continue to work.</p>
+
+<h2><a name="compilers">Compilers</a></h2>
+<p>I've used <a href="http://www.cygwin.com/">CYGWIN</a> and
+<a href="http://ps2dev.org/">ps2dev</a>'s toolchain scripts. Any ANSI C compiler should
+be fine for the Win32 part.</p>
+
+<h2><a name="iin">What is ISO input?</a></h2>
+<p>ISO Input is an interface to handle different kinds of CD-/DVD-discs and disk-based images.
+It is defined in <code>iin.h</code> and it basically uses 4 methods:</p>
+<ul>
+<li><code>iin_..._probe_path</code> - check whether input is supported and prepare
+  a class instance to process that input;</li>
+<li><code>iin-&gt;stat</code> - return input size in sectors;</li>
+<li><code>iin-&gt;read</code> - read one or more sectors from the input and return a const pointer
+  to a buffer owned by the class itself (that is, method reads in its own buffer);</li>
+<li><code>iin-&gt;close</code> - close input and delete class instance.</li>
+</ul>
+<p>Most disk-based inputs are handled via a general class <code>iin_img_base_t</code>
+which is set up using rules similar to <em>sectors <code>start</code> to <code>start + len</code>
+are located in a disk-based file (or device) <code>path</code> at offset <code>file_hdr_len</code>;
+size of each source sector is <code>raw_len</code> bytes and you should skip
+<code>sector_hdr_len</code> bytes to seek to 2048-bytes long sector data</em>.
+I guess that sounds too complex, so here is an example with CDRWIN BIN/CUE image:</p>
+<pre><code>FILE "REZ.BIN" BINARY
+  TRACK 01 MODE2/2352
+    INDEX 01 00:00:00</code></pre>
+<p><code>iin_img_base_t</code> would be setup to read sectors <code>0</code> to <code>98123</code>
+from file <code>REZ.BIN</code> starting at offset <code>0</code>; the size of each sector is
+<code>2352</code> bytes and <code>24</code> bytes sector header should be skipped before
+reading the actual 2048-bytes long sector data.</p>
+
+<table border="1">
+<caption>Supplied ISO Input implementations</caption>
+<tr><th>ISO Input name</th><th>sample input</th><th>sources</th></tr>
+<tr valign="baseline">
+  <td>Plain ISO file</td>
+  <td>c:\gt3.iso</td>
+  <td><code>iin_iso.h</code>, <code>iin_iso.c</code></td></tr>
+<tr valign="baseline">
+  <td>CDRWIN BIN/CUE</td>
+  <td>c:\mc.cue</td>
+  <td><code>iin_cdrwin.h</code>, <code>iin_cdrwin.c</code></td></tr>
+<tr valign="baseline">
+  <td>Nero Burning Rom image or track</td>
+  <td>c:\gt3.nrg</td>
+  <td><code>iin_nero.h</code>, <code>iin_nero.c</code></td></tr>
+<tr valign="baseline">
+  <td>RecordNow! Global Image</td>
+  <td>c:\gt3.gi</td>
+  <td><code>iin_gi.h</code>, <code>iin_gi.c</code></td></tr>
+<tr valign="baseline">
+  <td>Sony CD/DVD Generator's Intermediate file format location file</td>
+  <td>c:\xenosaga\xs.iml</td>
+  <td><code>iin_iml.h</code>, <code>iin_iml.c</code></td></tr>
+<tr valign="baseline">
+  <td>direct reading from an optical drive (which is tested with Windows XP only)</td>
+  <td>cd0:</td>
+  <td><code>iin_optical.h</code>, <code>iin_optical.c</code></td></tr>
+<tr valign="baseline">
+  <td>transparent reading of HD Loader partitions from locally attached Playstation 2 HDD</td>
+  <td>hdd1:Rez</td>
+  <td><code>iin_hdl.h</code>, <code>iin_hdl.c</code></td></tr>
+<tr valign="baseline">
+  <td>transparent reading of HD Loader partitions from a Playstation 2 via network</td>
+  <td>192.168.0.10:Rez</td>
+  <td><code>iin_net.h</code>, <code>iin_net.c</code></td></tr>
+</table>
+<p>Incomplete ISO Input implementations:</p>
+<ul>
+<li>direct reading from an optical drive via
+  <abbr title="Advanced SCSI Programming Interface">ASPI</abbr>,
+  <code>aspi_hlio.h</code>, <code>aspi_hlio.c</code>,
+  <code>iin_aspi.h</code> + <code>iin_aspi.c</code>;
+  <em>perhaps that would work with Windows 9x/ME</em></li>
+<li>direct reading from an optical drive via
+  <abbr title="SCSI Pass-Through Interface">SPTI</abbr>.</li>
+</ul>
+<p>Ideas:</p>
+<ul>
+<li>a working ASPI implementation can read DVD9 discs, therefore,
+  a file, similar to IML, could allow an ISO image (or HD Loader partition) to be created
+  directly from the original media; that is, instead of file names,
+  IML+ file could contain start and end sector to take input data from;</li>
+<li>transparently applying a PPF;</li>
+<li>for games using dummies, a set of IML files could be made, that doesn't include
+  dummy files, hence, you'll get more games on the HDD;
+  <em>credits goes to Kevo @ #ps2-scene</em></li>
+</ul>
+
+<h2><a name="hio">What is HDD I/O?</a></h2>
+<p>HDD I/O interface handles Playstation 2 storage. Similar to <code>iin_t</code>,
+<code>hio_t</code> uses 5 methods and the supplementary member is <code>write</code>.</p>
+<p>Supplied HDD I/O implementations:</p>
+<ul>
+<li>direct writing on a locally attached Playstation 2 HDD, Win32 implementation,
+  <code>hio_win32.h</code>, <code>hio_win32.c</code>;
+  <em>for Windows 9x/ME perhaps ASPI would work</em></li>
+<li>writing on a Playstation 2 HDD via network,
+  <code>hio_net.h</code>, <code>hio_net.c</code>;</li>
+<li>direct writing on a locally attached Playstation 2 HDD,
+  IOP implementation for the networking server,
+  <code>svr/iop/hio_iop.h</code>, <code>svr/iop/hio_iop.c</code>.</li>
+</ul>
+
+<h2><a name="apa">APA module</a></h2>
+<p>Against all expectations, APA module were written from scratch. The only two things used were
+a <code>ps2_partition_header_t</code> structure from <code>ps2fdisk</code> and a hex viewer.
+I suspect that this APA implementation is not absolutely correct, since it doesn't
+create <code>__empty</code> partitions to fill the gaps, but everything works,
+so why bother :-). APA is in <code>apa.h</code> and <code>apa.c</code>.</p>
+
+<h2><a name="hdl">HD Loader module</a></h2>
+<p>HD Loader module were implemented by experiments, hacking and hex viewing. Somewhat
+incomplete main partition header structure could be found as a comment in the sources -
+<code>hdl.h</code> and <code>hdl.c</code>. There were some things I never did -
+renaming of a HD Loader game and setting modes for a HD Loader game, but you can do it
+from the HD Loader itself, anyway.</p>
+
+<h2><a name="net">Networking</a></h2>
+<p>I've been working on a networking installations from about three weeks, however, I have
+quite a problems finding the stable TCP/IP modules. In the end, the combination one should use
+perhaps is ps2sdk-1.0alpha-bin + ps2smap compiled from CVS.</p>
+<p>Networking server is quite dumb, it supports RAW disk access only and is working on IOP.
+There are 4 commands supported: <code>stat</code>, <code>read</code>, <code>write</code>
+and <code>poweroff</code>, where first three are used for HDD I/O compatibility and the last
+one were going to be used to power off the console after long transfers (during the night,
+for example), but were never completed.</p>
+<p>Current sources include experimental <abbr title="Run-Length Encoding">RLE</abbr> compression
+that is supposed to speed up the transfers and it usually is. At least games with big dummy files
+are going up to 1,25MB per second. A better approach would be to use excellent
+<a href="http://www.oberhumer.com/opensource/lzo/" title="LZO home">LZO</a>.</p>
+<p>A Win32-implementation of networking server is also included.
+I've used it mainly for debugging purposes.</p>
+<p>And lastly, I think accusing me of stealing FAPlink source code is really lame.</p>
+
+<h2><a name="dd">Disclaimer and Download</a></h2>
+<p>hdl_dump, Copyright 2004 Bobi B., w1zard0f07 at (I hate SPAM) yahoo.</p>
+<p>Use at your own risk. Sources are covered by <abbr title="GNU Public License">GPL</abbr>.
+<a href="http://www.gnu.org/licenses/licenses.html#GPL">Read more about GPL</a>.</p>
+<p><a href="hdl_dump-0.7pre-src.tgz">Download hdl_dump-0.7 prerelease sources</a>.</p>
+
+</body>
+</html>

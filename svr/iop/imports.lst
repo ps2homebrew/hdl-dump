@@ -1,0 +1,55 @@
+
+stdio_IMPORTS_start
+I_printf
+stdio_IMPORTS_end
+
+sysmem_IMPORTS_start
+I_AllocSysMemory
+I_FreeSysMemory
+sysmem_IMPORTS_end
+
+sysclib_IMPORTS_start
+I_memset
+I_memcpy
+I_strlen
+I_strncpy
+I_strncmp
+I_tolower
+sysclib_IMPORTS_end
+
+thbase_IMPORTS_start
+I_CreateThread
+I_StartThread 
+I_DelayThread 
+thbase_IMPORTS_end
+
+ps2ip_IMPORTS_start
+I_lwip_send
+I_lwip_sendto
+I_lwip_socket
+I_lwip_listen
+I_lwip_recv
+I_lwip_close
+I_lwip_bind
+I_lwip_accept
+ps2ip_IMPORTS_end
+
+sifcmd_IMPORTS_start
+I_sceSifInitRpc
+sifcmd_IMPORTS_end
+
+DECLARE_IMPORT_TABLE(atad, 1, 1)// temp!
+DECLARE_IMPORT(4, atadInit)
+DECLARE_IMPORT(9, atadDmaTransfer)
+DECLARE_IMPORT(11, atadSceUnlock)
+DECLARE_IMPORT(13, atadIdle)
+DECLARE_IMPORT(14, atadSceIdentifyDrive)
+DECLARE_IMPORT(15, atadGetStatus)
+DECLARE_IMPORT(16, atadUpdateAttrib)
+DECLARE_IMPORT(17, atadFlushCache)
+END_IMPORT_TABLE
+
+dev9_IMPORTS_start
+I_dev9Shutdown
+I_dev9IntrDisable
+dev9_IMPORTS_end
