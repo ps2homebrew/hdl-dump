@@ -1,6 +1,6 @@
 /*
  * ps2_hdd.h
- * $Id: ps2_hdd.h,v 1.3 2004/08/20 12:35:17 b081 Exp $
+ * $Id: ps2_hdd.h,v 1.4 2004/12/04 10:20:52 b081 Exp $
  *
  * borrowed from ps2fdisk
  */
@@ -8,17 +8,10 @@
 #if !defined (_PS2_HDD_H)
 #define _PS2_HDD_H
 
-#if defined(_BUILD_WIN32)
-typedef unsigned char u_int8_t;
-typedef unsigned short u_int16_t;
-typedef unsigned long u_int32_t;
-
-#elif defined (_BUILD_UNIX)
-#  include <sys/types.h>
-#endif
+#include "config.h"
 
 /* Various PS2 partition constants */
-#define PS2_PARTITION_MAGIC	0x00415041	/* "APA\0" */
+#define PS2_PARTITION_MAGIC	"APA"	/* "APA\0" */
 #define PS2_PART_IDMAX		32
 #define PS2_PART_NAMEMAX	128
 #define PS2_PART_MAXSUB		64	/* Maximum # of sub-partitions */
@@ -47,7 +40,7 @@ typedef struct ps2fs_datetime_type
 typedef struct ps2_partition_header_type
 {
   u_int32_t checksum;	/* Sum of all 256 words, assuming checksum==0 */
-  u_int32_t magic;	/* PS2_PARTITION_MAGIC */
+  u_int8_t magic [4];	/* PS2_PARTITION_MAGIC */
   u_int32_t next;	/* Sector address of next partition */
   u_int32_t prev;	/* Sector address of previous partition */
   char id [PS2_PART_IDMAX];

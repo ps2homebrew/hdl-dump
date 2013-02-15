@@ -1,6 +1,6 @@
 /*
  * iin_nero.c
- * $Id: iin_nero.c,v 1.6 2004/08/20 12:35:17 b081 Exp $
+ * $Id: iin_nero.c,v 1.7 2004/12/04 10:20:52 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -45,23 +45,28 @@ typedef enum data_mode_type
   } data_mode_t;
 
 /* values for Nero found out by building test images */
-static const size_t RAW_SECTOR_SIZE [4] = { 2048, 2352, 2048, 2352 };
-static const size_t RAW_SKIP_OFFSET [4] = {    0,   16,    0,   24 }; 
+static const u_int32_t RAW_SECTOR_SIZE [4] = { 2048, 2352, 2048, 2352 };
+static const u_int32_t RAW_SKIP_OFFSET [4] = {    0,   16,    0,   24 }; 
 
 
 /**************************************************************/
 static int
 probe_nero_image (osal_handle_t in,
-		  bigint_t file_size,
+		  u_int64_t file_size,
 		  data_mode_t *mode,
-		  size_t *header_length,
-		  size_t *footer_length)
+		  u_int32_t *header_length,
+		  u_int32_t *footer_length)
 {
   char header [156];
-  int result = osal_seek (in, file_size - 156);
+  int result;
+
+  if (file_size < 156)
+    return (RET_NOT_COMPAT);
+
+  result = osal_seek (in, file_size - 156);
   if (result == OSAL_OK)
     { /* read header (located 156 bytes before end-of-file during my tests :-) ) */
-      size_t len;
+      u_int32_t len;
       result = osal_read (in, header, 156, &len);
       if (result == OSAL_OK)
 	result = len == 156 ? OSAL_OK : RET_NOT_COMPAT;
@@ -106,17 +111,22 @@ probe_nero_image (osal_handle_t in,
 /**************************************************************/
 static int
 probe_nero_track (osal_handle_t in,
-		  bigint_t file_size,
+		  u_int64_t file_size,
 		  data_mode_t *mode,
-		  size_t *header_length,
-		  size_t *footer_length)
+		  u_int32_t *header_length,
+		  u_int32_t *footer_length)
 {
   /* NOTE: by some reason, Nero track file is one sector shorter than the Nero image file */
   char header [72];
-  int result = osal_seek (in, file_size - 72);
+  int result;
+
+  if (file_size < 72)
+    return (RET_NOT_COMPAT);
+
+  result = osal_seek (in, file_size - 72);
   if (result == OSAL_OK)
     { /* read header (located 72 bytes before end-of-file during my tests :-) ) */
-      size_t len;
+      u_int32_t len;
       result = osal_read (in, header, 72, &len);
       if (result == OSAL_OK)
 	result = len == 72 ? OSAL_OK : RET_NOT_COMPAT;
@@ -151,10 +161,10 @@ int
 iin_nero_probe_path (const char *path,
 		     iin_t **iin)
 {
-  size_t device_sector_size;
+  u_int32_t device_sector_size;
   osal_handle_t in;
-  bigint_t file_size;
-  size_t header_size, footer_size;
+  u_int64_t file_size;
+  u_int32_t header_size, footer_size;
   data_mode_t mode;
   int result = osal_get_volume_sect_size (path, &device_sector_size);
   if (result == OSAL_OK)
@@ -177,9 +187,9 @@ iin_nero_probe_path (const char *path,
 	img_base_alloc (RAW_SECTOR_SIZE [mode], RAW_SKIP_OFFSET [mode]);
       if (img_base != NULL)
 	result = img_base_add_part (img_base, path,
-				    (file_size - header_size - footer_size) /
-				    RAW_SECTOR_SIZE [mode],
-				    (bigint_t) header_size, device_sector_size);
+				    (u_int32_t) ((file_size - header_size - footer_size) /
+				                 RAW_SECTOR_SIZE [mode]),
+				    (u_int64_t) header_size, device_sector_size);
       else
 	/* img_base_alloc failed */
 	result = RET_NO_MEM;

@@ -1,6 +1,6 @@
 /*
  * iin.h
- * $Id: iin.h,v 1.5 2004/08/20 12:35:17 b081 Exp $
+ * $Id: iin.h,v 1.6 2004/12/04 10:20:52 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -24,8 +24,8 @@
 #if !defined (_IIN_H)
 #define _IIN_H
 
-#include <stddef.h>
 #include "config.h"
+#include <stddef.h>
 
 
 #define IIN_SECTOR_SIZE 2048 /* CD/DVD sector size */
@@ -35,6 +35,7 @@
 /*
  * ISO input interface below
  */
+
 typedef struct iin_type iin_t;
 
 
@@ -44,16 +45,16 @@ typedef int (*iin_probe_path_t) (const char *path,
 				 iin_t **iin);
 
 typedef int (*iin_stat_t) (iin_t *iin,
-			   size_t *sector_size,
-			   size_t *num_sectors);
+			   u_int32_t *sector_size,
+			   u_int32_t *num_sectors);
 
 /* read num_sectors starting from start_sector in an internal buffer;
    number of sectors read = *length / IIN_SECTOR_SIZE */
 typedef int (*iin_read_t) (iin_t *iin,
-			   size_t start_sector,
-			   size_t num_sectors,
+			   u_int32_t start_sector,
+			   u_int32_t num_sectors,
 			   const char **data,
-			   size_t *length);
+			   u_int32_t *length);
 
 /* return last error text in a memory buffer, that would be freed by calling iin_dispose_error_t */
 typedef char* (*iin_last_error_t) (iin_t *iin);

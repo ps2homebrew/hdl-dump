@@ -1,6 +1,6 @@
 /*
  * osal_win32.c
- * $Id: osal_win32.c,v 1.10 2004/09/12 17:25:27 b081 Exp $
+ * $Id: osal_win32.c,v 1.11 2004/12/04 10:20:52 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -33,7 +33,7 @@ static int osal_dlist_alloc (osal_dlist_t **dlist);
 
 static int osal_dlist_add (osal_dlist_t *dlist,
 			   const char *name,
-			   bigint_t capacity,
+			   u_int64_t capacity,
 			   int is_ps2,
 			   unsigned long status);
 
@@ -104,7 +104,7 @@ osal_open_device_for_writing (const char *device_name,
 int /* OSAL_OK, OSAL_ERR */
 osal_create_file (const char *path,
 		  osal_handle_t *handle,
-		  bigint_t estimated_size)
+		  u_int64_t estimated_size)
 {
   *handle = CreateFile (path, GENERIC_WRITE, FILE_SHARE_READ, NULL,
 			CREATE_NEW, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_NO_BUFFERING, NULL);
@@ -138,7 +138,7 @@ osal_create_file (const char *path,
 /**************************************************************/
 int /* OSAL_OK, OSAL_ERR */
 osal_get_estimated_device_size (osal_handle_t handle,
-				bigint_t *size_in_bytes)
+				u_int64_t *size_in_bytes)
 {
   DISK_GEOMETRY geo;
   DWORD len = 0;
@@ -158,7 +158,7 @@ osal_get_estimated_device_size (osal_handle_t handle,
 /**************************************************************/
 int /* OSAL_OK, OSAL_ERR */
 osal_get_device_size (osal_handle_t handle,
-		      bigint_t *size_in_bytes)
+		      u_int64_t *size_in_bytes)
 {
   int result = osal_get_estimated_device_size (handle, size_in_bytes);
   if (result == OSAL_OK)
@@ -167,7 +167,7 @@ osal_get_device_size (osal_handle_t handle,
       offs.QuadPart = *size_in_bytes;
       if (SetFilePointerEx (handle, offs, NULL, FILE_BEGIN)) /* seek to "end" */
 	{
-	  const size_t BUFF_SIZE = 1024 * 1024;
+	  const u_int32_t BUFF_SIZE = 1024 * 1024;
 	  void *buffer = LocalAlloc (LMEM_FIXED, BUFF_SIZE);
 	  if (buffer != NULL)
 	    {
@@ -199,7 +199,7 @@ osal_get_device_size (osal_handle_t handle,
 /**************************************************************/
 int
 osal_get_device_sect_size (osal_handle_t handle,
-			   size_t *size_in_bytes)
+			   u_int32_t *size_in_bytes)
 {
   DISK_GEOMETRY geo;
   DWORD len = 0;
@@ -218,7 +218,7 @@ osal_get_device_sect_size (osal_handle_t handle,
 /**************************************************************/
 int
 osal_get_volume_sect_size (const char *volume_root,
-			   size_t *size_in_bytes)
+			   u_int32_t *size_in_bytes)
 {
   char volume [10]; /* copy drive letter and a slash - "C:\" */
   char *p = volume, *end = volume + sizeof (volume) - 2;
@@ -253,7 +253,7 @@ osal_get_volume_sect_size (const char *volume_root,
 /**************************************************************/
 int
 osal_get_file_size (osal_handle_t handle,
-		    bigint_t *size_in_bytes)
+		    u_int64_t *size_in_bytes)
 {
   LARGE_INTEGER size;
   if (GetFileSizeEx (handle, &size))
@@ -269,7 +269,7 @@ osal_get_file_size (osal_handle_t handle,
 /**************************************************************/
 int
 osal_get_file_size_ex (const char *path,
-		       bigint_t *size_in_bytes)
+		       u_int64_t *size_in_bytes)
 {
   osal_handle_t in;
   int result = osal_open (path, &in, 1);
@@ -285,7 +285,7 @@ osal_get_file_size_ex (const char *path,
 /**************************************************************/
 int
 osal_seek (osal_handle_t handle,
-	   bigint_t abs_pos)
+	   u_int64_t abs_pos)
 {
   LARGE_INTEGER offs;
   offs.QuadPart = abs_pos;
@@ -297,8 +297,8 @@ osal_seek (osal_handle_t handle,
 int /* OSAL_OK, OSAL_ERR */
 osal_read (osal_handle_t handle,
 	   void *out,
-	   size_t bytes,
-	   size_t *stored)
+	   u_int32_t bytes,
+	   u_int32_t *stored)
 {
   DWORD len;
   if (ReadFile (handle, out, bytes, &len, NULL))
@@ -315,8 +315,8 @@ osal_read (osal_handle_t handle,
 int /* OSAL_OK, OSAL_ERR */
 osal_write (osal_handle_t handle,
 	    const void *in,
-	    size_t bytes,
-	    size_t *stored)
+	    u_int32_t bytes,
+	    u_int32_t *stored)
 {
   DWORD len;
   if (WriteFile (handle, in, bytes, &len, NULL))
@@ -339,7 +339,7 @@ osal_close (osal_handle_t handle)
 
 /**************************************************************/
 void*
-osal_alloc (size_t bytes)
+osal_alloc (u_int32_t bytes)
 {
   return (LocalAlloc (LMEM_FIXED, bytes));
 }
@@ -358,7 +358,7 @@ osal_free (void *ptr)
 int
 osal_query_hard_drives (osal_dlist_t **hard_drives)
 {
-  size_t i;
+  u_int32_t i;
   int result;
 
   *hard_drives = NULL;
@@ -367,16 +367,16 @@ osal_query_hard_drives (osal_dlist_t **hard_drives)
     {
       char device_name [20];
       HANDLE device;
-      sprintf (device_name, "\\\\.\\PhysicalDrive%d", i);
+      sprintf (device_name, "\\\\.\\PhysicalDrive%u", (unsigned int) i);
       if (osal_open (device_name, &device, TRUE) == OSAL_OK)
 	{ /* device exists */
-	  LONGLONG size_in_bytes;
-	  sprintf (device_name, "hdd%d:", i);
+	  u_int64_t size_in_bytes;
+	  sprintf (device_name, "hdd%u:", (unsigned int) i);
 	  if (osal_get_estimated_device_size (device, &size_in_bytes) == OSAL_OK)
 	    result = osal_dlist_add (*hard_drives, device_name, size_in_bytes,
 				     is_apa_partition (device), ERROR_SUCCESS);
 	  else
-	    result = osal_dlist_add (*hard_drives, device_name, (bigint_t) 0, 0, GetLastError ());
+	    result = osal_dlist_add (*hard_drives, device_name, (u_int64_t) 0, 0, GetLastError ());
 	  
 	  CloseHandle (device);
 	}
@@ -396,7 +396,7 @@ osal_query_hard_drives (osal_dlist_t **hard_drives)
 int
 osal_query_optical_drives (osal_dlist_t **optical_drives)
 {
-  size_t i;
+  u_int32_t i;
   int result;
 
   *optical_drives = NULL;
@@ -405,17 +405,17 @@ osal_query_optical_drives (osal_dlist_t **optical_drives)
     {
       char device_name [20];
       HANDLE device;
-      sprintf (device_name, "\\\\.\\CdRom%d", i);
+      sprintf (device_name, "\\\\.\\CdRom%u", (unsigned int) i);
       if (osal_open (device_name, &device, TRUE) == OSAL_OK)
 	{ /* device exists */
-	  LONGLONG size_in_bytes;
-	  sprintf (device_name, "cd%d:", i);
+	  u_int64_t size_in_bytes;
+	  sprintf (device_name, "cd%u:", (unsigned int) i);
 	  if (osal_get_estimated_device_size (device, &size_in_bytes) == OSAL_OK)
 	    result = osal_dlist_add (*optical_drives, device_name,
 				     size_in_bytes, 0, ERROR_SUCCESS);
 	  else
 	    result = osal_dlist_add (*optical_drives, device_name,
-				     (bigint_t) 0, 0, GetLastError ());
+				     (u_int64_t) 0, 0, GetLastError ());
 	  
 	  CloseHandle (device);
 	}
@@ -463,7 +463,7 @@ osal_dlist_alloc (osal_dlist_t **dlist)
 static int
 osal_dlist_add (osal_dlist_t *dlist,
 		const char *name,
-		bigint_t capacity,
+		u_int64_t capacity,
 		int is_ps2,
 		unsigned long status)
 {

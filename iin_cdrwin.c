@@ -1,6 +1,6 @@
 /*
  * iin_cdrwin.c
- * $Id: iin_cdrwin.c,v 1.8 2004/08/20 12:35:17 b081 Exp $
+ * $Id: iin_cdrwin.c,v 1.9 2004/12/04 10:20:52 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -41,8 +41,8 @@ typedef enum data_mode_type
 
 /* values for CDRWIN found out by building test images and by looking at
    http://www.disctronics.co.uk/technology/cd-rom/cdrom_spec.htm */
-static const size_t RAW_SECTOR_SIZE [4] = { 2048, 2352, 2336, 2352 };
-static const size_t RAW_SKIP_OFFSET [4] = {    0,   16,    8,   24 }; 
+static const u_int32_t RAW_SECTOR_SIZE [4] = { 2048, 2352, 2336, 2352 };
+static const u_int32_t RAW_SKIP_OFFSET [4] = {    0,   16,    8,   24 }; 
 
 
 /**************************************************************/
@@ -185,7 +185,7 @@ cue_parse (const char *path,
 	   data_mode_t *mode)
 {
   osal_handle_t in;
-  bigint_t file_size = 0;
+  u_int64_t file_size = 0;
   int result = osal_open (path, &in, 0);
   if (result == OSAL_OK)
     { /* get file size */
@@ -198,7 +198,7 @@ cue_parse (const char *path,
   if (result == OSAL_OK)
     {
       char *contents;
-      size_t length;
+      u_int32_t length;
       result = read_file (path, &contents, &length);
       if (result == OSAL_OK)
 	{
@@ -252,8 +252,8 @@ iin_cdrwin_probe_path (const char *path,
   int result = cue_parse (path, source, &mode);
   if (result == RET_OK)
     {
-      bigint_t file_size;
-      size_t device_sector_size;
+      u_int64_t file_size;
+      u_int32_t device_sector_size;
       result = osal_get_file_size_ex (source, &file_size);
       if (result == OSAL_OK)
 	result = osal_get_volume_sect_size (source, &device_sector_size);
@@ -263,8 +263,8 @@ iin_cdrwin_probe_path (const char *path,
 	    img_base_alloc (RAW_SECTOR_SIZE [mode], RAW_SKIP_OFFSET [mode]);
 	  if (img_base != NULL)
 	    result = img_base_add_part (img_base, source,
-					(size_t) (file_size / RAW_SECTOR_SIZE [mode]),
-					(bigint_t) 0, device_sector_size);
+					(u_int32_t) (file_size / RAW_SECTOR_SIZE [mode]),
+					(u_int64_t) 0, device_sector_size);
 	  else
 	    /* img_base_alloc failed */
 	    result = RET_NO_MEM;

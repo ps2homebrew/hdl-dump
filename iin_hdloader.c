@@ -1,6 +1,6 @@
 /*
  * iin_hdloader.c
- * $Id: iin_hdloader.c,v 1.9 2004/09/12 17:25:27 b081 Exp $
+ * $Id: iin_hdloader.c,v 1.10 2004/12/04 10:20:52 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -55,8 +55,8 @@ iin_hdloader_probe_path (const char *path,
       const char *partition_name = strchr (path, ':') + 1;
       osal_handle_t device = OSAL_HANDLE_INIT;
       apa_partition_table_t *table = NULL;
-      size_t partition_index;
-      size_t device_sector_size;
+      u_int32_t partition_index;
+      u_int32_t device_sector_size;
       int result;
       hio_t *hio = NULL;
 
@@ -98,7 +98,7 @@ iin_hdloader_probe_path (const char *path,
 	  if (buffer != NULL)
 	    { /* get HD Loader header */
 	      iin_img_base_t *img_base = NULL;
-	      size_t len;
+	      u_int32_t len;
 	      const ps2_partition_header_t *part =
 		&table->parts [partition_index].header;
 	      result = hio->read (hio, part->start,
@@ -118,15 +118,15 @@ iin_hdloader_probe_path (const char *path,
 		}
 	      if (result == OSAL_OK)
 		{ /* that is a HD Loader partition */
-		  size_t num_parts = buffer [0x001010f0];
-		  const size_t *data = (size_t*) (buffer + 0x001010f5);
-		  size_t i;
+		  u_int32_t num_parts = buffer [0x001010f0];
+		  const u_int32_t *data = (u_int32_t*) (buffer + 0x001010f5);
+		  u_int32_t i;
 		  for (i=0; result == OSAL_OK && i<num_parts; ++i)
 		    {
-		      bigint_t start = ((bigint_t) data [i * 3 + 1] << 8) *512;
-		      bigint_t length = (bigint_t) data [i * 3 + 2] * 256;
+		      u_int64_t start = ((u_int64_t) data [i * 3 + 1] << 8) *512;
+		      u_int64_t length = (u_int64_t) data [i * 3 + 2] * 256;
 		      result = img_base_add_part (img_base, real_device_name,
-						  (size_t) (length / 2048),
+						  (u_int32_t) (length / 2048),
 						  start, device_sector_size);
 		    }
 		}

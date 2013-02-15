@@ -1,6 +1,6 @@
 /*
  * hio_win32.c - Win32 interface to locally connected PS2 HDD
- * $Id: hio_win32.c,v 1.5 2004/09/26 19:39:39 b081 Exp $
+ * $Id: hio_win32.c,v 1.6 2004/12/04 10:20:52 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -39,17 +39,17 @@ typedef struct hio_win32_type
 /**************************************************************/
 static int
 win32_stat (hio_t *hio,
-	    size_t *size_in_kb)
+	    u_int32_t *size_in_kb)
 {
   hio_win32_t *hw32 = (hio_win32_t*) hio;
-  bigint_t size_in_bytes;
+  u_int64_t size_in_bytes;
   int result = osal_get_estimated_device_size (hw32->device, &size_in_bytes);
   if (result == OSAL_OK)
     {
-      if (size_in_bytes / 1024 < (size_t) 0xffffffff)
-	*size_in_kb = (size_t) (size_in_bytes / 1024);
+      if (size_in_bytes / 1024 < (u_int32_t) 0xffffffff)
+	*size_in_kb = (u_int32_t) (size_in_bytes / 1024);
       else
-	*size_in_kb = (size_t) 0xffffffff;
+	*size_in_kb = (u_int32_t) 0xffffffff;
     }
   else
     hw32->error_code = osal_get_last_error_code ();
@@ -60,13 +60,13 @@ win32_stat (hio_t *hio,
 /**************************************************************/
 static int
 win32_read (hio_t *hio,
-	    size_t start_sector,
-	    size_t num_sectors,
+	    u_int32_t start_sector,
+	    u_int32_t num_sectors,
 	    void *output,
-	    size_t *bytes)
+	    u_int32_t *bytes)
 {
   hio_win32_t *hw32 = (hio_win32_t*) hio;
-  int result = osal_seek (hw32->device, (bigint_t) start_sector * 512);
+  int result = osal_seek (hw32->device, (u_int64_t) start_sector * 512);
   if (result == OSAL_OK)
     result = osal_read (hw32->device, output, num_sectors * 512, bytes);
   if (result == OSAL_OK)
@@ -80,13 +80,13 @@ win32_read (hio_t *hio,
 /**************************************************************/
 static int
 win32_write (hio_t *hio,
-	     size_t start_sector,
-	     size_t num_sectors,
+	     u_int32_t start_sector,
+	     u_int32_t num_sectors,
 	     const void *input,
-	     size_t *bytes)
+	     u_int32_t *bytes)
 {
   hio_win32_t *hw32 = (hio_win32_t*) hio;
-  int result = osal_seek (hw32->device, (bigint_t) start_sector * 512);
+  int result = osal_seek (hw32->device, (u_int64_t) start_sector * 512);
   if (result == OSAL_OK)
     result = osal_write (hw32->device, input, num_sectors * 512, bytes);
   if (result == OSAL_OK)

@@ -1,6 +1,6 @@
 /*
  * iin_img_base.h
- * $Id: iin_img_base.h,v 1.4 2004/08/15 16:44:19 b081 Exp $
+ * $Id: iin_img_base.h,v 1.5 2004/12/04 10:20:52 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -31,20 +31,20 @@
 typedef struct iin_img_base_type iin_img_base_t;
 
 iin_img_base_t*
-img_base_alloc (size_t raw_sector_size,
-		size_t raw_skip_offset);
+img_base_alloc (u_int32_t raw_sector_size,
+		u_int32_t raw_skip_offset);
 
 /* input is guaranteed to be upsized to one sector only (that is if input size is not
    aligned on sector size, the rest up to sector size would be zero-filled) */
 int img_base_add_part (iin_img_base_t *img_base,
 		       const char *input_path,
-		       size_t length_s, /* input length in sectors */
-		       bigint_t skip,   /* bytes to skip in the begining of the input */
-		       size_t device_sector_size); /* to align reads on */
+		       u_int32_t length_s, /* input length in sectors */
+		       u_int64_t skip,   /* bytes to skip in the begining of the input */
+		       u_int32_t device_sector_size); /* to align reads on */
 
 /* gap is only allowed IN THE BEGINING OR BETWEEN files and cannot exist behind the last file */
 void img_base_add_gap (iin_img_base_t *img_base,
-		       size_t length_s);
+		       u_int32_t length_s);
 
 
 #endif /* _IIN_IMG_BASE_H defined? */

@@ -1,6 +1,6 @@
 /*
  * svr/win32/hdld_svr_win32.c
- * $Id: hdld_svr_win32.c,v 1.3 2004/09/12 17:23:02 b081 Exp $
+ * $Id: hdld_svr_win32.c,v 1.4 2004/12/04 10:28:47 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *

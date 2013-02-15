@@ -1,6 +1,6 @@
 /*
  * aspi_hlio.h - ASPI high-level I/O
- * $Id: aspi_hlio.h,v 1.3 2004/08/20 12:35:17 b081 Exp $
+ * $Id: aspi_hlio.h,v 1.4 2004/12/04 10:20:53 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -34,15 +34,15 @@ struct scsi_device_type
 {
   int host, scsi_id, lun;
   int type; /* 0: probably a HDD; 5: MMC device (CD- or DVD-drive) */
-  size_t align;
+  u_int32_t align;
   char name [28 + 1];
-  size_t sector_size, size_in_sectors;
+  u_int32_t sector_size, size_in_sectors;
   unsigned long status;
 };
 
 struct scsi_devices_list_type
 {
-  size_t used, alloc;
+  u_int32_t used, alloc;
   scsi_device_t *device;
 };
 
@@ -56,22 +56,22 @@ void aspi_dlist_free (scsi_devices_list_t *list);
 int aspi_stat (int host,
 	       int scsi_id,
 	       int lun,
-	       size_t *sector_size,
-	       size_t *size_in_sectors);
+	       u_int32_t *sector_size,
+	       u_int32_t *size_in_sectors);
 
 int aspi_mmc_read_cd (int host,
 		      int scsi_id,
 		      int lun,
-		      size_t start_sector,
-		      size_t num_sectors,
-		      size_t sector_size,
+		      u_int32_t start_sector,
+		      u_int32_t num_sectors,
+		      u_int32_t sector_size,
 		      void *output);
 
 int aspi_read_10 (int host,
 		  int scsi_id,
 		  int lun,
-		  size_t start_sector,
-		  size_t num_sectors,
+		  u_int32_t start_sector,
+		  u_int32_t num_sectors,
 		  void *output);
 
 /* pointer should be passed to aspi_dispose_error_msg when no longer needed */

@@ -1,6 +1,6 @@
 /*
  * iin_optical.c
- * $Id: iin_optical.c,v 1.7 2004/09/12 17:25:27 b081 Exp $
+ * $Id: iin_optical.c,v 1.8 2004/12/04 10:20:52 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -42,16 +42,16 @@ typedef struct iin_optical_type
 /**************************************************************/
 static int
 opt_stat (iin_t *iin,
-	  size_t *sector_size,
-	  size_t *num_sectors)
+	  u_int32_t *sector_size,
+	  u_int32_t *num_sectors)
 {
   iin_optical_t *opt = (iin_optical_t*) iin;
-  bigint_t size_in_bytes;
+  u_int64_t size_in_bytes;
   int result = osal_get_device_size (opt->device, &size_in_bytes);
   if (result == OSAL_OK)
     {
       *sector_size = IIN_SECTOR_SIZE;
-      *num_sectors = (size_t) (size_in_bytes / IIN_SECTOR_SIZE);
+      *num_sectors = (u_int32_t) (size_in_bytes / IIN_SECTOR_SIZE);
     }
   else
     opt->error_code = osal_get_last_error_code ();
@@ -62,15 +62,15 @@ opt_stat (iin_t *iin,
 /**************************************************************/
 static int
 opt_read (iin_t *iin,
-	  size_t start_sector,
-	  size_t num_sectors,
+	  u_int32_t start_sector,
+	  u_int32_t num_sectors,
 	  const char **data,
-	  size_t *length)
+	  u_int32_t *length)
 {
   iin_optical_t *opt = (iin_optical_t*) iin;
-  int result = al_read (opt->al, (bigint_t) start_sector * IIN_SECTOR_SIZE, data,
+  int result = al_read (opt->al, (u_int64_t) start_sector * IIN_SECTOR_SIZE, data,
 			num_sectors * IIN_SECTOR_SIZE, length);
-  if (result != RET_OK)
+  if (result == RET_OK)
     ;
   else
     opt->error_code = osal_get_last_error_code ();
@@ -116,7 +116,7 @@ opt_dispose_error (iin_t *iin,
 /**************************************************************/
 static iin_optical_t*
 opt_alloc (osal_handle_t device,
-	   size_t device_sector_size)
+	   u_int32_t device_sector_size)
 {
   iin_optical_t *opt = (iin_optical_t*) osal_alloc (sizeof (iin_optical_t));
   if (opt != NULL)
@@ -168,7 +168,7 @@ iin_optical_probe_path (const char *path,
 	  result = osal_open (device_name, &device, 1);
 	  if (result == OSAL_OK)
 	    {
-	      size_t sector_size;
+	      u_int32_t sector_size;
 	      result = osal_get_device_sect_size (device, &sector_size);
 	      if (result == OSAL_OK)
 		{

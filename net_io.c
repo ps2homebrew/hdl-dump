@@ -1,6 +1,6 @@
 /*
  * net_io.c
- * $Id: net_io.c,v 1.4 2004/09/26 19:39:40 b081 Exp $
+ * $Id: net_io.c,v 1.5 2004/12/04 10:20:52 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -22,44 +22,20 @@
  */
 
 #include "net_io.h"
-
-
-/**************************************************************/
-unsigned long
-get_ulong (const void *buffer)
-{
-  const unsigned char *p = buffer;
-  return ((unsigned long) p [3] << 24 |
-	  (unsigned long) p [2] << 16 |
-	  (unsigned long) p [1] <<  8 |
-	  (unsigned long) p [0] <<  0);
-}
-
-
-/**************************************************************/
-void
-put_ulong (void *buffer,
-	   unsigned long val)
-{
-  unsigned char *p = buffer;
-  p [3] = (unsigned char) (val >> 24);
-  p [2] = (unsigned char) (val >> 16);
-  p [1] = (unsigned char) (val >>  8);
-  p [0] = (unsigned char) (val >>  0);
-}
+#include "byteseq.h"
 
 
 /**************************************************************/
 void /* sort-of optimal RLE compression (will not change mode unless there would be some gain) */
-rle_compress (const unsigned char *input,
-	      size_t ilength,
-	      unsigned char *output,
-	      size_t *olength) /* should have at least one byte extra for each 128 bytes */
+rle_compress (const u_int8_t *input,
+	      u_int32_t ilength,
+	      u_int8_t *output,
+	      u_int32_t *olength) /* should have at least one byte extra for each 128 bytes */
 {
-  const unsigned char *run_start = input;
+  const u_int8_t *run_start = input;
   enum curr_mode_type { cm_diff, cm_repeat } new_mode, last_mode;
-  unsigned char *out = output;
-  size_t run_len;
+  u_int8_t *out = output;
+  u_int32_t run_len;
 
   /* prepare */
   run_len = 0;
@@ -90,9 +66,9 @@ rle_compress (const unsigned char *input,
 	    {
 	      while (run_len > 0)
 		{
-		  size_t len = run_len > 128 ? 128 : run_len;
-		  size_t i;
-		  *out++ = 0x00 | (len - 1);
+		  u_int32_t len = run_len > 128 ? 128 : run_len;
+		  u_int32_t i;
+		  *out++ = (u_int8_t) (0x00 | (len - 1));
 		  for (i=0; i<len; ++i)
 		    *out++ = *run_start++;
 		  run_len -= len;
@@ -102,8 +78,8 @@ rle_compress (const unsigned char *input,
 	    {
 	      while (run_len > 0)
 		{
-		  size_t len = run_len > 128 ? 128 : run_len;
-		  *out++ = 0x80 | (len - 1);
+		  u_int32_t len = run_len > 128 ? 128 : run_len;
+		  *out++ = (u_int8_t) (0x80 | (len - 1));
 		  *out++ = *run_start;
 		  run_len -= len;
 		}
@@ -126,19 +102,19 @@ rle_compress (const unsigned char *input,
 
 /**************************************************************/
 void /* RLE decompression */
-rle_expand (const unsigned char *input,
-	    size_t ilength,
-	    unsigned char *output,
-	    size_t *olength)
+rle_expand (const u_int8_t *input,
+	    u_int32_t ilength,
+	    u_int8_t *output,
+	    u_int32_t *olength)
 {
-  const unsigned char *in = input, *end = input + ilength;
-  unsigned char *out = output;
+  const u_int8_t *in = input, *end = input + ilength;
+  u_int8_t *out = output;
 
   while (in < end)
     {
-      unsigned char rpt_byte;
+      u_int8_t rpt_byte;
       int mode = *in++;
-      size_t i, length = (mode & ~0x80) + 1;
+      u_int32_t i, length = (mode & ~0x80) + 1;
       switch (mode & 0x80)
 	{
 	case 0x00: /* difference */

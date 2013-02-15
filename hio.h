@@ -1,6 +1,6 @@
 /*
  * hio.h - PS2 HDD I/O
- * $Id: hio.h,v 1.4 2004/09/26 19:39:39 b081 Exp $
+ * $Id: hio.h,v 1.5 2004/12/04 10:20:52 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -24,28 +24,34 @@
 #if !defined (_HIO_H)
 #define _HIO_H
 
+#include "config.h"
 #include <stddef.h>
 
 
+/*
+ * HD Loader I/O interface below
+ */
+
 typedef struct hio_type hio_t;
+
 
 typedef int (*hio_probe_t) (const char *path,
 			    hio_t **hio);
 
 typedef int (*hio_stat_t) (hio_t *hio,
-			   size_t *size_in_kb);
+			   u_int32_t *size_in_kb);
 
 typedef int (*hio_read_t) (hio_t *hio,
-			   size_t start_sector,
-			   size_t num_sectors,
+			   u_int32_t start_sector,
+			   u_int32_t num_sectors,
 			   void *output,
-			   size_t *bytes);
+			   u_int32_t *bytes);
 
 typedef int (*hio_write_t) (hio_t *hio,
-			    size_t start_sector,
-			    size_t num_sectors,
+			    u_int32_t start_sector,
+			    u_int32_t num_sectors,
 			    const void *input,
-			    size_t *bytes);
+			    u_int32_t *bytes);
 
 typedef int (*hio_flush_t) (hio_t *hio);
 

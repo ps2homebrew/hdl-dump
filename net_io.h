@@ -1,6 +1,6 @@
 /*
  * net_io.h
- * $Id: net_io.h,v 1.4 2004/09/26 19:39:40 b081 Exp $
+ * $Id: net_io.h,v 1.5 2004/12/04 10:20:52 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -24,6 +24,7 @@
 #if !defined (_NET_IO_H)
 #define _NET_IO_H
 
+#include "config.h"
 #include <stddef.h>
 
 
@@ -58,20 +59,14 @@
 #endif
 
 
-/* pack & unpack doublewords */
-unsigned long get_ulong (const void *buffer);
-
-void put_ulong (void *buffer,
-		unsigned long val);
-
 void rle_compress (const unsigned char *input,
-		   size_t ilength,
+		   u_int32_t ilength,
 		   unsigned char *output,
-		   size_t *olength); /* should have at least one byte extra for each 128 bytes */
+		   u_int32_t *olength); /* should have at least one byte extra for each 128 bytes */
 
 void rle_expand (const unsigned char *input,
-		 size_t ilength,
+		 u_int32_t ilength,
 		 unsigned char *output,
-		 size_t *olength);
+		 u_int32_t *olength);
 
 #endif /* _NET_IO_H defined? */

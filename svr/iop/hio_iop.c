@@ -1,6 +1,6 @@
 /*
  * hio_iop.c
- * $Id: hio_iop.c,v 1.3 2004/09/26 19:39:40 b081 Exp $
+ * $Id: hio_iop.c,v 1.4 2004/12/04 10:28:45 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *

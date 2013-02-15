@@ -1,6 +1,6 @@
 /*
  * progress.c
- * $Id: progress.c,v 1.7 2004/09/12 17:25:27 b081 Exp $
+ * $Id: progress.c,v 1.8 2004/12/04 10:20:52 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -35,7 +35,7 @@ highres_time (highres_time_t *cl)
   *cl = clock ();
 }
 
-static bigint_t
+static u_int64_t
 highres_time_val (const highres_time_t *cl)
 {
   return (*cl);
@@ -49,10 +49,10 @@ highres_time (highres_time_t *cl)
   gettimeofday (cl, NULL /* ignore time zone */);
 }
 
-static bigint_t
+static u_int64_t
 highres_time_val (const highres_time_t *cl)
 {
-  return ((bigint_t) cl->tv_sec * HIGHRES_TO_SEC + cl->tv_usec);
+  return ((u_int64_t) cl->tv_sec * HIGHRES_TO_SEC + cl->tv_usec);
 }
 #endif
 
@@ -83,7 +83,7 @@ pgs_free (progress_t *pgs)
 /**************************************************************/
 void
 pgs_prepare (progress_t *pgs,
-	     bigint_t total)
+	     u_int64_t total)
 {
   if (pgs != NULL)
     {
@@ -140,14 +140,14 @@ fmt_time (char *buffer,
 /**************************************************************/
 int
 pgs_update (progress_t *pgs,
-	    bigint_t curr)
+	    u_int64_t curr)
 { /* TODO: pgs_update: check math for overflows! */
   if (pgs != NULL && pgs->total > 0)
     {
       highres_time_t tmp;
-      bigint_t now;
+      u_int64_t now;
       struct hist_t *hist = pgs->history_ + pgs->hist_pos_;
-      bigint_t prev = pgs->curr;
+      u_int64_t prev = pgs->curr;
 
       highres_time (&tmp);
       now = highres_time_val (&tmp);
@@ -158,13 +158,13 @@ pgs_update (progress_t *pgs,
 
       /* calculate current speed */
       if (hist->when > 0)
-	pgs->curr_bps = (size_t) ((pgs->hist_sum_ * HIGHRES_TO_SEC) /
-				  (now - hist->when + 1));
+	pgs->curr_bps = (u_int32_t) ((pgs->hist_sum_ * HIGHRES_TO_SEC) /
+				     (now - hist->when + 1));
       else
-	pgs->curr_bps = (size_t) ((pgs->hist_sum_ * HIGHRES_TO_SEC) /
-				  (now - pgs->start_ + 1));
+	pgs->curr_bps = (u_int32_t) ((pgs->hist_sum_ * HIGHRES_TO_SEC) /
+				     (now - pgs->start_ + 1));
       pgs->hist_sum_ += (pgs->curr - prev) - hist->how_much;
-      hist->how_much = (pgs->curr - prev);
+      hist->how_much = (u_int32_t) (pgs->curr - prev);
       hist->when = now;
       pgs->hist_pos_ = (++pgs->hist_pos_) % PG_HIST_SIZE;
 
@@ -173,7 +173,7 @@ pgs_update (progress_t *pgs,
       if (pgs->elapsed_ > 0)
 	{
 	  pgs->avg_bps = (long) (pgs->curr * HIGHRES_TO_SEC / pgs->elapsed_);
-	  pgs->elapsed = pgs->elapsed_ / HIGHRES_TO_SEC;
+	  pgs->elapsed = (u_int32_t) (pgs->elapsed_ / HIGHRES_TO_SEC);
 	  fmt_time (pgs->elapsed_text, pgs->elapsed);
 
 	  if (((pgs->elapsed > 10 && pgs->pc_completed > 0) ||

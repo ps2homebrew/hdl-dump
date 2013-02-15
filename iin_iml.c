@@ -1,6 +1,6 @@
 /*
  * iin_iml.c
- * $Id: iin_iml.c,v 1.5 2004/08/20 12:35:17 b081 Exp $
+ * $Id: iin_iml.c,v 1.6 2004/12/04 10:20:52 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -37,14 +37,14 @@
 
 typedef struct iml_file_type
 {
-  bigint_t offset; /* relative to the begining of the file */
-  size_t start_s, end_s;
+  u_int64_t offset; /* relative to the begining of the file */
+  u_int32_t start_s, end_s;
   char *path;
 } iml_file_t;
 
 typedef struct iml_files_type
 {
-  size_t used, alloc;
+  u_int32_t used, alloc;
   iml_file_t *files;
 } iml_files_t;
 
@@ -73,7 +73,7 @@ list_alloc (void)
 static void
 list_free (iml_files_t *list)
 {
-  size_t i;
+  u_int32_t i;
   for (i=0; i<list->used; ++i)
     osal_free (list->files [i].path);
   osal_free (list->files);
@@ -107,16 +107,16 @@ list_grow (iml_files_t *list)
 static int
 list_add_file (iml_files_t *list,
 	       const char *path,
-	       size_t start_s,
-	       size_t end_s,
-	       bigint_t offset)
+	       u_int32_t start_s,
+	       u_int32_t end_s,
+	       u_int64_t offset)
 {
   int result = OSAL_OK;
   if (list->used == list->alloc)
     result = list_grow (list);
   if (result == OSAL_OK)
     {
-      size_t len = strlen (path);
+      u_int32_t len = strlen (path);
       iml_file_t *dest;
       dest = list->files + list->used;
       dest->offset = offset;
@@ -144,8 +144,8 @@ process_loc_line (iml_files_t *list,
 		  char *line)
 { /* 322 322 0.0 0 "SYSTEM.CNF" */
   int result = OSAL_OK;
-  bigint_t offset;
-  size_t start_s, end_s;
+  u_int64_t offset;
+  u_int32_t start_s, end_s;
   char *path, *endp;
 
   start_s = strtoul (line, &endp, 10); /* start */
@@ -221,7 +221,7 @@ static int
 build_file_list (const char *iml_path,
 		 iml_files_t **list2)
 {
-  bigint_t file_size;
+  u_int64_t file_size;
   int result;
   iml_files_t *list = list_alloc ();
 
@@ -233,7 +233,7 @@ build_file_list (const char *iml_path,
   if (result == OSAL_OK)
     {
       char *data;
-      size_t length;
+      u_int32_t length;
       result = read_file (iml_path, &data, &length);
       if (result == OSAL_OK)
 	{
@@ -291,18 +291,18 @@ iin_iml_probe_path (const char *path,
   int result = build_file_list (path, &list);
   if (result == OSAL_OK)
     { /* gaps are automagically handled by iin_img_base_t */
-      size_t i;
+      u_int32_t i;
       iml_file_t *prev = NULL;
       iin_img_base_t *img_base = img_base_alloc (2048 /* RAW sect size */, 0 /* skip per sect */);
       char source [MAX_PATH];
-      size_t device_sector_size;
+      u_int32_t device_sector_size;
 
       if (img_base != NULL)
 	{
 	  for (i=0; result == OSAL_OK && i<list->used; ++i)
 	    {
 	      iml_file_t *curr = list->files + i;
-	      size_t gap_s = prev != NULL ? curr->start_s - (prev->end_s + 1) : 0;
+	      u_int32_t gap_s = prev != NULL ? curr->start_s - (prev->end_s + 1) : 0;
 	      if (gap_s == 0)
 		;
 	      else

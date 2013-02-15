@@ -1,6 +1,6 @@
 #!/bin/bash
 # test.sh - perform basic tests
-# $Id: test.sh,v 1.3 2004/08/15 16:44:19 b081 Exp $
+# $Id: test.sh,v 1.4 2004/12/04 10:20:52 b081 Exp $
 
 # Beware! This one executes about 1,5-2 hours!
 

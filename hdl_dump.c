@@ -1,6 +1,6 @@
 /*
  * hdl_dump.c
- * $Id: hdl_dump.c,v 1.12 2004/09/26 19:39:39 b081 Exp $
+ * $Id: hdl_dump.c,v 1.13 2004/12/04 10:20:52 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -31,7 +31,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include "config.h"
+#include "byteseq.h"
 #include "retcodes.h"
 #include "osal.h"
 #include "apa.h"
@@ -88,28 +88,30 @@
 static void
 show_apa_toc (const apa_partition_table_t *table)
 {
-  size_t i;
+  u_int32_t i;
 
   for (i=0; i<table->part_count; ++i)
     {
       const ps2_partition_header_t *part = &table->parts [i].header;
 	  
       fprintf (stdout, "%06lx00%c%c %5luMB ",
-	       (unsigned long) (part->start >> 8),
+	       (unsigned long) (get_u32 (&part->start) >> 8),
 	       table->parts [i].existing ? '.' : '*',
 	       table->parts [i].modified ? '*' : ':',
-	       (unsigned long) (part->length / 2048));
-      if (part->main == 0)
+	       (unsigned long) (get_u32 (&part->length) / 2048));
+      if (get_u32 (&part->main) == 0)
 	fprintf (stdout, "%4x [%-*s]\n",
-		 part->type, PS2_PART_IDMAX, part->id);
+		 get_u16 (&part->type), PS2_PART_IDMAX, part->id);
       else
 	fprintf (stdout, "      part # %2lu in %06lx00\n",
-		 (unsigned long) (part->number),
-		 (unsigned long) (part->main >> 8));
+		 (unsigned long) (get_u32 (&part->number)),
+		 (unsigned long) (get_u32 (&part->main) >> 8));
     }
 
   fprintf (stdout, "Total device size: %uMB, used: %uMB, available: %uMB\n",
-	   table->device_size_in_mb, table->allocated_chunks * 128, table->free_chunks * 128);
+	   (unsigned int) table->device_size_in_mb,
+	   (unsigned int) (table->allocated_chunks * 128),
+	   (unsigned int) (table->free_chunks * 128));
 }
 
 
@@ -120,13 +122,15 @@ show_apa_map (const apa_partition_table_t *table)
 {
   /* show device map */
   const char *map = table->chunks_map;
-  const size_t GIGS_PER_ROW = 8;
-  size_t i, count = 0;
+  const u_int32_t GIGS_PER_ROW = 8;
+  u_int32_t i, count = 0;
 
   for (i=0; i<table->total_chunks; ++i)
     {
       if (count == 0)
-	fprintf (stdout, "%3uGB: ", (i / ((GIGS_PER_ROW * 1024) / 128)) * GIGS_PER_ROW);
+	fprintf (stdout, "%3uGB: ",
+		 (unsigned int) ((i / ((GIGS_PER_ROW * 1024) / 128)) *
+				 GIGS_PER_ROW));
 
       fputc (map [i], stdout);
       if ((count & 0x07) == 0x07)
@@ -140,7 +144,9 @@ show_apa_map (const apa_partition_table_t *table)
     }
 
   fprintf (stdout, "\nTotal device size: %uMB, used: %uMB, available: %uMB\n",
-	   table->device_size_in_mb, table->allocated_chunks * 128, table->free_chunks * 128);
+	   (unsigned int) table->device_size_in_mb,
+	   (unsigned int) (table->allocated_chunks * 128),
+	   (unsigned int) (table->free_chunks * 128));
 }
 #endif /* INCLUDE_MAP_CMD defined? */
 
@@ -172,7 +178,7 @@ show_hdl_toc (const char *device_name)
       result = hdl_glist_read (hio, &glist);
       if (result == RET_OK)
 	{
-	  size_t i;
+	  u_int32_t i;
 	  printf ("%-4s%9s %-5s %-12s %s\n",
 		  "type", "size", "flags", "startup", "name");
 	  for (i=0; i<glist->count; ++i)
@@ -193,9 +199,10 @@ show_hdl_toc (const char *device_name)
 		      game->name);
 	    }
 	  printf ("total %uMB, used %uMB, available %uMB\n",
-		  glist->total_chunks * 128,
-		  (glist->total_chunks - glist->free_chunks) * 128,
-		  glist->free_chunks * 128);
+		  (unsigned int) (glist->total_chunks * 128),
+		  (unsigned int) ((glist->total_chunks -
+				   glist->free_chunks) * 128),
+		  (unsigned int) (glist->free_chunks * 128));
 	  hdl_glist_free (glist);
 	}
       hio->close (hio);
@@ -234,7 +241,7 @@ show_hdl_game_info (const char *device_name,
       result = apa_ptable_read_ex (hio, &table);
       if (result == RET_OK)
 	{
-	  size_t partition_index;
+	  u_int32_t partition_index;
 	  result = apa_find_partition (table, game_name, &partition_index);
 	  if (result == RET_NOT_FOUND)
 	    { /* use heuristics - look among the HD Loader partitions */
@@ -246,28 +253,29 @@ show_hdl_game_info (const char *device_name,
 
 	  if (result == RET_OK)
 	    { /* partition found */
-	      const size_t PART_SYSDATA_SIZE = 4 * 1024 * 1024;
+	      const u_int32_t PART_SYSDATA_SIZE = 4 * 1024 * 1024;
 	      unsigned char *buffer = osal_alloc (PART_SYSDATA_SIZE);
 	      if (buffer != NULL)
 		{
-		  size_t len;
-		  result = hio->read (hio, table->parts [partition_index].header.start,
+		  u_int32_t len;
+		  result = hio->read (hio,
+				      get_u32 (&table->parts [partition_index].header.start),
 				      (4 _MB) / HDD_SECTOR_SIZE, buffer, &len);
 		  if (result == OSAL_OK)
 		    {
 		      const char *signature = (char*) buffer + 0x001010ac;
 		      const char *hdl_name = (char*) buffer + 0x00101008;
-		      size_t type = buffer [0x001010ec];
-		      size_t num_parts = buffer [0x001010f0];
-		      const size_t *data = (size_t*) (buffer + 0x001010f5);
-		      size_t i;
+		      u_int32_t type = buffer [0x001010ec];
+		      u_int32_t num_parts = buffer [0x001010f0];
+		      const u_int32_t *data = (u_int32_t*) (buffer + 0x001010f5);
+		      u_int32_t i;
 
 		      if (buffer [0x00101000] == 0xed &&
 			  buffer [0x00101001] == 0xfe &&
 			  buffer [0x00101002] == 0xad &&
 			  buffer [0x00101003] == 0xde)
 			{ /* 0xdeadfeed magic found */
-			  bigint_t total_size = 0;
+			  u_int64_t total_size = 0;
 
 #if 0
 			  /* save main partition incomplete header or debug purposes */
@@ -290,14 +298,17 @@ show_hdl_game_info (const char *device_name,
 			    }
 			  for (i=0; i<num_parts; ++i)
 			    {
-			      unsigned long start = get_ulong (data + (i * 3 + 1));
-			      unsigned long length = get_ulong (data + (i * 3 + 2));
-			      total_size += ((bigint_t) length) << 8;
+			      unsigned long start = get_u32 (data + (i * 3 + 1));
+			      unsigned long length = get_u32 (data + (i * 3 + 2));
+			      total_size += ((u_int64_t) length) << 8;
 			      fprintf (stdout,
-				       "\tpart %2u is from sector 0x%06lx00, %7luKB long\n",
-				       i + 1, start, length / 4);
+				       "\tpart %2u is from sector 0x%06lx00, "
+				       "%7luKB long\n",
+				       (unsigned int) (i + 1),
+				       start, length / 4);
 			    }
-			  fprintf (stdout, "Total size: %luKB (%luMB approx.)\n",
+			  fprintf (stdout,
+				   "Total size: %luKB (%luMB approx.)\n",
 				   (unsigned long) (total_size / 1024),
 				   (unsigned long) (total_size / (1024 * 1024)));
 			}
@@ -322,13 +333,13 @@ show_hdl_game_info (const char *device_name,
 #if defined (INCLUDE_CUTOUT_CMD)
 static int
 show_apa_cut_out_for_inject (const char *device_name,
-			     size_t size_in_mb)
+			     u_int32_t size_in_mb)
 {
   apa_partition_table_t *table;
   int result = apa_ptable_read (device_name, &table);
   if (result == RET_OK)
     {
-      size_t new_partition_index;
+      u_int32_t new_partition_index;
       result = apa_allocate_space (table,
 				   "<new partition>",
 				   size_in_mb,
@@ -383,11 +394,11 @@ compare (const char *file_name_1,
       result = osal_open (file_name_2, &file2, 1);
       if (result == OSAL_OK)
 	{
-	  const size_t BUFF_SIZE = 4 * 1024 * 1024;
+	  const u_int32_t BUFF_SIZE = 4 * 1024 * 1024;
 	  char *buffer = osal_alloc (BUFF_SIZE);
 	  if (buffer != NULL)
 	    {
-	      size_t read1 = 0, read2 = 0;
+	      u_int32_t read1 = 0, read2 = 0;
 	      do
 		{
 		  result = osal_read (file1, buffer + 0 * BUFF_SIZE / 2,
@@ -401,7 +412,7 @@ compare (const char *file_name_1,
 			  different = read1 != read2;
 			  if (!different)
 			    {
-			      size_t i;
+			      u_int32_t i;
 			      const char *p1 = buffer + 0 * BUFF_SIZE / 2;
 			      const char *p2 = buffer + 1 * BUFF_SIZE / 2;
 			      for (i=0; !different && i<read1; ++i)
@@ -435,7 +446,7 @@ zero_device (const char *device_name)
       void *buffer = osal_alloc (1 _MB);
       if (buffer != NULL)
 	{
-	  size_t bytes;
+	  u_int32_t bytes;
 	  memset (buffer, 0, 1 _MB);
 	  do
 	    {
@@ -462,7 +473,7 @@ query_devices (void)
   int result = osal_query_devices (&hard_drives, &optical_drives);
   if (result == RET_OK)
     {
-      size_t i;
+      u_int32_t i;
 
       fprintf (stdout, "Hard drives:\n");
       for (i=0; i<hard_drives->used; ++i)
@@ -521,7 +532,7 @@ query_devices (void)
       result = aspi_scan_scsi_bus (&dlist);
       if (result == RET_OK)
 	{
-	  size_t i;
+	  u_int32_t i;
 
 	  fprintf (stdout, "\nDrives via ASPI:\n");
 	  for (i=0; i<dlist->used; ++i)
@@ -545,7 +556,7 @@ query_devices (void)
 	      if (dlist->device [i].size_in_sectors != -1 &&
 		  dlist->device [i].sector_size != -1)
 		printf ("%lu MB\n",
-			(unsigned long) (((bigint_t) dlist->device [i].size_in_sectors *
+			(unsigned long) (((u_int64_t) dlist->device [i].size_in_sectors *
 					  dlist->device [i].sector_size) / (1024 * 1024)));
 	      else
 		printf ("Stat failed.\n");
@@ -574,14 +585,14 @@ cdvd_info (const char *path)
     {
       char volume_id [32 + 1];
       char signature [12 + 1];
-      size_t num_sectors, sector_size;
+      u_int32_t num_sectors, sector_size;
       result = iin->stat (iin, &sector_size, &num_sectors);
       if (result == OSAL_OK)
 	result = isofs_get_ps_cdvd_details (iin, volume_id, signature);
       if (result == OSAL_OK)
 	printf ("\"%s\" \"%s\" %luKB\n",
 		signature, volume_id,
-		(unsigned long) (((bigint_t) num_sectors * sector_size) / 1024));
+		(unsigned long) (((u_int64_t) num_sectors * sector_size) / 1024));
       iin->close (iin);
     }
   return (result);
@@ -598,23 +609,23 @@ read_test (const char *path,
   int result = iin_probe (path, &iin);
   if (result == OSAL_OK)
     {
-      size_t sector_size, num_sectors;
+      u_int32_t sector_size, num_sectors;
       result = iin->stat (iin, &sector_size, &num_sectors);
       if (result == OSAL_OK)
 	{
-	  size_t sector = 0;
-	  size_t len;
+	  u_int32_t sector = 0;
+	  u_int32_t len;
 
-	  pgs_prepare (pgs, (bigint_t) num_sectors * sector_size);
+	  pgs_prepare (pgs, (u_int64_t) num_sectors * sector_size);
 	  do
 	    {
 	      const char *data; /* not used */
-	      size_t sectors = (num_sectors > IIN_NUM_SECTORS ? IIN_NUM_SECTORS : num_sectors);
+	      u_int32_t sectors = (num_sectors > IIN_NUM_SECTORS ? IIN_NUM_SECTORS : num_sectors);
 	      /* TODO: would "buffer overflow" if read more than IIN_NUM_SECTORS? */
 	      result = iin->read (iin, sector, sectors, &data, &len);
 	      if (result == RET_OK)
 		{
-		  size_t sectors_read = len / IIN_SECTOR_SIZE;
+		  u_int32_t sectors_read = len / IIN_SECTOR_SIZE;
 		  sector += sectors_read;
 		  num_sectors -= sectors_read;
 		  pgs_update (pgs, sector * IIN_SECTOR_SIZE);
@@ -647,22 +658,22 @@ compare_iin (const char *path1,
       result = iin_probe (path2, &iin2);
       if (result == OSAL_OK)
 	{
-	  size_t len1, len2;
+	  u_int32_t len1, len2;
 	  const char *data1, *data2;
-	  size_t sector = 0;
-	  size_t sector_size1, num_sectors1;
-	  size_t sector_size2, num_sectors2;
-	  bigint_t size1, size2;
+	  u_int32_t sector = 0;
+	  u_int32_t sector_size1, num_sectors1;
+	  u_int32_t sector_size2, num_sectors2;
+	  u_int64_t size1, size2;
 
 	  result = iin1->stat (iin1, &sector_size1, &num_sectors1);
 	  if (result == OSAL_OK)
 	    {
-	      size1 = (bigint_t) num_sectors1 * sector_size1;
+	      size1 = (u_int64_t) num_sectors1 * sector_size1;
 	      result = iin2->stat (iin2, &sector_size2, &num_sectors2);
 	    }
 	  if (result == OSAL_OK)
 	    {
-	      size2 = (bigint_t) num_sectors2 * sector_size2;
+	      size2 = (u_int64_t) num_sectors2 * sector_size2;
 	      if (sector_size1 == IIN_SECTOR_SIZE &&
 		  sector_size2 == IIN_SECTOR_SIZE)
 		/* progress indicator is set up against the shorter file */
@@ -677,18 +688,18 @@ compare_iin (const char *path1,
 		 len1 / IIN_SECTOR_SIZE > 0 &&
 		 len2 / IIN_SECTOR_SIZE > 0)
 	    {
-	      size_t sectors1 = (num_sectors1 > IIN_NUM_SECTORS ?
+	      u_int32_t sectors1 = (num_sectors1 > IIN_NUM_SECTORS ?
 				 IIN_NUM_SECTORS : num_sectors1);
 	      result = iin1->read (iin1, sector, sectors1, &data1, &len1);
 	      if (result == OSAL_OK)
 		{
-		  size_t sectors2 = (num_sectors2 > IIN_NUM_SECTORS ?
+		  u_int32_t sectors2 = (num_sectors2 > IIN_NUM_SECTORS ?
 				     IIN_NUM_SECTORS : num_sectors2);
 		  result = iin2->read (iin2, sector, sectors2, &data2, &len2);
 		  if (result == OSAL_OK)
 		    {
-		      size_t len = (len1 <= len2 ? len1 : len2); /* lesser from the two */
-		      size_t len_s = len / IIN_SECTOR_SIZE;
+		      u_int32_t len = (len1 <= len2 ? len1 : len2); /* lesser from the two */
+		      u_int32_t len_s = len / IIN_SECTOR_SIZE;
 
 		      if (memcmp (data1, data2, len) != 0)
 			{
@@ -708,7 +719,7 @@ compare_iin (const char *path1,
 		      num_sectors1 -= len_s;
 		      num_sectors2 -= len_s;
 		      sector += len_s;
-		      pgs_update (pgs, (bigint_t) sector * IIN_SECTOR_SIZE);
+		      pgs_update (pgs, (u_int64_t) sector * IIN_SECTOR_SIZE);
 		    }
 		}
 	    } /* loop */

@@ -1,6 +1,6 @@
 /*
  * iin_iso.c
- * $Id: iin_iso.c,v 1.7 2004/09/12 17:25:27 b081 Exp $
+ * $Id: iin_iso.c,v 1.8 2004/12/04 10:20:52 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -35,15 +35,15 @@ iin_iso_probe_path (const char *path,
 		    iin_t **iin)
 {
   osal_handle_t file;
-  size_t size_in_sectors, volume_sector_size;
+  u_int32_t size_in_sectors, volume_sector_size;
   int result = osal_open (path, &file, 0); /* open with caching enabled */
   if (result == OSAL_OK)
     { /* at offset 0x00008000 there should be "\x01CD001" */
-      result = osal_seek (file, (bigint_t) 0x00008000);
+      result = osal_seek (file, (u_int64_t) 0x00008000);
       if (result == OSAL_OK)
 	{
 	  unsigned char buffer [6];
-	  size_t bytes;
+	  u_int32_t bytes;
 	  result = osal_read (file, buffer, sizeof (buffer), &bytes);
 	  if (result == OSAL_OK)
 	    {
@@ -58,10 +58,10 @@ iin_iso_probe_path (const char *path,
       size_in_sectors = 0;
       if (result == OSAL_OK)
 	{
-	  bigint_t size_in_bytes;
+	  u_int64_t size_in_bytes;
 	  result = osal_get_file_size (file, &size_in_bytes);
 	  if (result == OSAL_OK)
-	    size_in_sectors = (size_t) (size_in_bytes / 2048);
+	    size_in_sectors = (u_int32_t) (size_in_bytes / 2048);
 	}
 
       if (result == OSAL_OK)

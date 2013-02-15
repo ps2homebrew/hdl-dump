@@ -1,6 +1,6 @@
 /*
  * osal_unix.c
- * $Id: osal_unix.c,v 1.3 2004/09/26 19:39:40 b081 Exp $
+ * $Id: osal_unix.c,v 1.4 2004/12/04 10:20:52 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -92,7 +92,7 @@ osal_open_device_for_writing (const char *device_name,
 int /* OSAL_OK, OSAL_ERR */
 osal_create_file (const char *path,
 		  osal_handle_t *handle,
-		  bigint_t estimated_size)
+		  u_int64_t estimated_size)
 {
   int result = RET_ERR;
   handle->desc = open64 (path,
@@ -106,7 +106,7 @@ osal_create_file (const char *path,
 	  if (offs != -1)
 	    {
 	      char dummy = '\0';
-	      size_t bytes = write (handle->desc, &dummy, 1);
+	      u_int32_t bytes = write (handle->desc, &dummy, 1);
 	      if (bytes == 1)
 		{
 		  offs = lseek64 (handle->desc, 0, SEEK_SET);
@@ -136,7 +136,7 @@ osal_create_file (const char *path,
 /**************************************************************/
 int /* OSAL_OK, OSAL_ERR */
 osal_get_estimated_device_size (osal_handle_t handle,
-				bigint_t *size_in_bytes)
+				u_int64_t *size_in_bytes)
 {
   struct stat64 st;
   int result;
@@ -173,7 +173,7 @@ osal_get_estimated_device_size (osal_handle_t handle,
 /**************************************************************/
 int /* OSAL_OK, OSAL_ERR */
 osal_get_device_size (osal_handle_t handle,
-		      bigint_t *size_in_bytes)
+		      u_int64_t *size_in_bytes)
 {
   return (osal_get_estimated_device_size (handle, size_in_bytes));
 }
@@ -182,7 +182,7 @@ osal_get_device_size (osal_handle_t handle,
 /**************************************************************/
 int
 osal_get_device_sect_size (osal_handle_t handle,
-			   size_t *size_in_bytes)
+			   u_int32_t *size_in_bytes)
 { /* TODO: osal_get_device_sect_size */
   *size_in_bytes = 4096; /* that is a resonable sector size */
   return (OSAL_OK);
@@ -192,7 +192,7 @@ osal_get_device_sect_size (osal_handle_t handle,
 /**************************************************************/
 int
 osal_get_volume_sect_size (const char *volume_root,
-			   size_t *size_in_bytes)
+			   u_int32_t *size_in_bytes)
 {
   struct stat64 st;
   int result = stat64 (volume_root, &st) == 0 ? RET_OK : RET_ERR;
@@ -205,7 +205,7 @@ osal_get_volume_sect_size (const char *volume_root,
 /**************************************************************/
 int
 osal_get_file_size (osal_handle_t handle,
-		    bigint_t *size_in_bytes)
+		    u_int64_t *size_in_bytes)
 {
   off64_t offs_curr = lseek64 (handle.desc, 0, SEEK_CUR);
   if (offs_curr != -1)
@@ -227,7 +227,7 @@ osal_get_file_size (osal_handle_t handle,
 /**************************************************************/
 int
 osal_get_file_size_ex (const char *path,
-		       bigint_t *size_in_bytes)
+		       u_int64_t *size_in_bytes)
 {
   osal_handle_t in;
   int result = osal_open (path, &in, 1);
@@ -243,7 +243,7 @@ osal_get_file_size_ex (const char *path,
 /**************************************************************/
 int
 osal_seek (osal_handle_t handle,
-	   bigint_t abs_pos)
+	   u_int64_t abs_pos)
 {
   return (lseek64 (handle.desc, abs_pos, SEEK_SET) == -1 ? OSAL_ERR : OSAL_OK);
 }
@@ -253,8 +253,8 @@ osal_seek (osal_handle_t handle,
 int /* OSAL_OK, OSAL_ERR */
 osal_read (osal_handle_t handle,
 	   void *out,
-	   size_t bytes,
-	   size_t *stored)
+	   u_int32_t bytes,
+	   u_int32_t *stored)
 {
   int n = read (handle.desc, out, bytes);
   if (n != -1)
@@ -271,8 +271,8 @@ osal_read (osal_handle_t handle,
 int /* OSAL_OK, OSAL_ERR */
 osal_write (osal_handle_t handle,
 	    const void *in,
-	    size_t bytes,
-	    size_t *stored)
+	    u_int32_t bytes,
+	    u_int32_t *stored)
 {
   int n = write(handle.desc, in, bytes);
   if (n != -1)
@@ -295,7 +295,7 @@ osal_close (osal_handle_t handle)
 
 /**************************************************************/
 void*
-osal_alloc (size_t bytes)
+osal_alloc (u_int32_t bytes)
 {
   return (malloc (bytes));
 }

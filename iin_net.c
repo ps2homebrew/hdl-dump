@@ -1,6 +1,6 @@
 /*
  * iin_net.c, based on iin_hdloader.c, v 1.1
- * $Id: iin_net.c,v 1.3 2004/08/20 12:35:17 b081 Exp $
+ * $Id: iin_net.c,v 1.4 2004/12/04 10:20:52 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -39,8 +39,8 @@
 
 typedef struct hdl_part_type
 {
-  size_t start_s, length_s; /* in 512-byte long sectors, relative to the RAW HDD */
-  bigint_t offset; /* in bytes, relative to CD start */
+  u_int32_t start_s, length_s; /* in 512-byte long sectors, relative to the RAW HDD */
+  u_int64_t offset; /* in bytes, relative to CD start */
 } hdl_part_t;
 
 typedef struct iin_net_type
@@ -49,7 +49,7 @@ typedef struct iin_net_type
   hio_t *hio; /* hio_net_t, actually */
   char *unaligned, *buffer;
 
-  size_t num_parts;
+  u_int32_t num_parts;
   hdl_part_t *parts;
   const hdl_part_t *last_part; /* the last partition where requested sectors were */
 } iin_net_t;
@@ -58,16 +58,16 @@ typedef struct iin_net_type
 /**************************************************************/
 static int
 net_stat (iin_t *iin,
-	  size_t *sector_size,
-	  size_t *num_sectors)
+	  u_int32_t *sector_size,
+	  u_int32_t *num_sectors)
 {
   iin_net_t *net = (iin_net_t*) iin;
-  bigint_t total_size = 0;
-  size_t i;
+  u_int64_t total_size = 0;
+  u_int32_t i;
   for (i=0; i<net->num_parts; ++i)
-    total_size += (bigint_t) net->parts [i].length_s * HDD_SECTOR_SIZE;
+    total_size += (u_int64_t) net->parts [i].length_s * HDD_SECTOR_SIZE;
   *sector_size = IIN_SECTOR_SIZE;
-  *num_sectors = total_size / IIN_SECTOR_SIZE;
+  *num_sectors = (u_int32_t) (total_size / IIN_SECTOR_SIZE);
   return (OSAL_OK);
 }
 
@@ -75,29 +75,29 @@ net_stat (iin_t *iin,
 /**************************************************************/
 static int
 net_read (iin_t *iin,
-	  size_t start_sector,
-	  size_t num_sectors,
+	  u_int32_t start_sector,
+	  u_int32_t num_sectors,
 	  const char **data,
-	  size_t *length)
+	  u_int32_t *length)
 {
   int result;
   iin_net_t *net = (iin_net_t*) iin;
-  bigint_t start_offset = (bigint_t) start_sector * IIN_SECTOR_SIZE;
-  bigint_t abs_offset, bytes_til_part_end;
-  size_t data_len;
+  u_int64_t start_offset = (u_int64_t) start_sector * IIN_SECTOR_SIZE;
+  u_int64_t abs_offset, bytes_til_part_end;
+  u_int32_t data_len;
   /* find the partition where requested sectors are */
   if (net->last_part->offset <= start_offset &&
-      start_offset < net->last_part->offset + (bigint_t)net->last_part->length_s * HDD_SECTOR_SIZE)
+      start_offset < net->last_part->offset + (u_int64_t)net->last_part->length_s * HDD_SECTOR_SIZE)
     ; /* same partition as the last time */
   else
     { /* make a linear scan to locate the partition */
       int found = 0;
-      size_t i;
+      u_int32_t i;
       for (i=0; i<net->num_parts; ++i)
 	{
 	  const hdl_part_t *part = net->parts + i;
 	  if (part->offset <= start_offset &&
-	      start_offset < part->offset + (bigint_t) part->length_s * HDD_SECTOR_SIZE)
+	      start_offset < part->offset + (u_int64_t) part->length_s * HDD_SECTOR_SIZE)
 	    { /* found */
 	      net->last_part = part;
 	      found = 1;
@@ -111,13 +111,13 @@ net_read (iin_t *iin,
 	}
     }
 
-  abs_offset = ((bigint_t) net->last_part->start_s * HDD_SECTOR_SIZE +
+  abs_offset = ((u_int64_t) net->last_part->start_s * HDD_SECTOR_SIZE +
 		start_offset - net->last_part->offset);
-  bytes_til_part_end = ((bigint_t) net->last_part->length_s * HDD_SECTOR_SIZE -
+  bytes_til_part_end = ((u_int64_t) net->last_part->length_s * HDD_SECTOR_SIZE -
 			(start_offset - net->last_part->offset));
   data_len = num_sectors * IIN_SECTOR_SIZE;
   if (data_len > bytes_til_part_end)
-    data_len = bytes_til_part_end;
+    data_len = (u_int32_t) bytes_til_part_end;
   result = net->hio->read (net->hio, abs_offset / HDD_SECTOR_SIZE, data_len / HDD_SECTOR_SIZE,
 			   net->buffer, length);
   if (result == RET_OK)
@@ -161,7 +161,7 @@ net_dispose_error (iin_t *iin,
 /**************************************************************/
 static iin_net_t*
 net_alloc (hio_t *hio,
-	   size_t num_parts,
+	   u_int32_t num_parts,
 	   const hdl_part_t *parts)
 {
   iin_net_t *net = osal_alloc (sizeof (iin_net_t));
@@ -172,7 +172,7 @@ net_alloc (hio_t *hio,
       char *buffer = osal_alloc (IIN_SECTOR_SIZE * IIN_NUM_SECTORS + HDD_SECTOR_SIZE);
       if (parts2 != NULL && buffer != NULL)
 	{ /* success */
-	  size_t i;
+	  u_int32_t i;
 	  memset (net, 0, sizeof (iin_net_t));
 	  iin->stat = &net_stat;
 	  iin->read = &net_read;
@@ -241,7 +241,7 @@ iin_net_probe_path (const char *path,
 	{
 	  const char *partition_name = strchr (path, ':') + 1;
 	  apa_partition_table_t *table = NULL;
-	  size_t partition_index;
+	  u_int32_t partition_index;
 
 	  result = apa_ptable_read_ex (hio, &table);
 	  if (result == OSAL_OK)
@@ -259,7 +259,7 @@ iin_net_probe_path (const char *path,
 	      unsigned char *buffer = osal_alloc (4 _MB);
 	      if (buffer != NULL)
 		{ /* get HD Loader header */
-		  size_t len;
+		  u_int32_t len;
 		  const ps2_partition_header_t *part = &table->parts [partition_index].header;
 		  result = hio->read (hio, part->start, (4 _MB) / HDD_SECTOR_SIZE, buffer, &len);
 		  if (result == OSAL_OK)
@@ -271,19 +271,19 @@ iin_net_probe_path (const char *path,
 			      buffer [0x00101003] == 0xde) ? OSAL_OK : RET_NOT_HDL_PART;
 		  if (result == OSAL_OK)
 		    { /* that is a HD Loader partition */
-		      size_t num_parts = buffer [0x001010f0];
+		      u_int32_t num_parts = buffer [0x001010f0];
 		      hdl_part_t *parts = osal_alloc (sizeof (hdl_part_t) * num_parts);
 		      if (parts != NULL)
 			{
-			  bigint_t offset = 0;
-			  const size_t *data = (size_t*) (buffer + 0x001010f5);
-			  size_t i;
+			  u_int64_t offset = 0;
+			  const u_int32_t *data = (u_int32_t*) (buffer + 0x001010f5);
+			  u_int32_t i;
 			  for (i=0; i<num_parts; ++i)
 			    {
 			      parts [i].offset = offset;
 			      parts [i].start_s = data [i * 3 + 1] << 8;
 			      parts [i].length_s = data [i * 3 + 2] / 2;
-			      offset += (bigint_t) parts [i].length_s * HDD_SECTOR_SIZE;
+			      offset += (u_int64_t) parts [i].length_s * HDD_SECTOR_SIZE;
 			    }
 			  *iin = (iin_t*) net_alloc (hio, num_parts, parts);
 			  osal_free (parts);

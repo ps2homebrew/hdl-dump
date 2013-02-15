@@ -1,6 +1,6 @@
 /*
  * osal.h
- * $Id: osal.h,v 1.9 2004/09/12 17:25:27 b081 Exp $
+ * $Id: osal.h,v 1.10 2004/12/04 10:20:52 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -80,43 +80,43 @@ int osal_open_device_for_writing (const char *device_name,
 
 int osal_create_file (const char *path,
 		      osal_handle_t *handle,
-		      bigint_t estimated_size);
+		      u_int64_t estimated_size);
 
 int osal_get_estimated_device_size (osal_handle_t handle,
-				    bigint_t *size_in_bytes);
+				    u_int64_t *size_in_bytes);
 
 int osal_get_device_size (osal_handle_t handle,
-			  bigint_t *size_in_bytes);
+			  u_int64_t *size_in_bytes);
 
 int osal_get_device_sect_size (osal_handle_t handle,
-			       size_t *size_in_bytes);
+			       u_int32_t *size_in_bytes);
 
 int osal_get_volume_sect_size (const char *volume_root,
-			       size_t *size_in_bytes);
+			       u_int32_t *size_in_bytes);
 
 int osal_get_file_size_ex (const char *path,
-			   bigint_t *size_in_bytes);
+			   u_int64_t *size_in_bytes);
 
 int osal_get_file_size (osal_handle_t handle,
-			bigint_t *size_in_bytes);
+			u_int64_t *size_in_bytes);
 
 int osal_seek (osal_handle_t handle,
-	       bigint_t abs_pos);
+	       u_int64_t abs_pos);
 
 int osal_read (osal_handle_t handle,
 	       void *out,
-	       size_t bytes,
-	       size_t *stored);
+	       u_int32_t bytes,
+	       u_int32_t *stored);
 
 int osal_write (osal_handle_t handle,
 		const void *in,
-		size_t bytes,
-		size_t *stored);
+		u_int32_t bytes,
+		u_int32_t *stored);
 
 int osal_close (osal_handle_t handle);
 
 
-void* osal_alloc (size_t bytes);
+void* osal_alloc (u_int32_t bytes);
 void osal_free (void *ptr);
 
 
@@ -125,14 +125,14 @@ void osal_free (void *ptr);
 typedef struct osal_dev_type /* device */
 {
   char name [DEV_MAX_NAME_LEN];
-  bigint_t capacity; /* -1 if not ready */
+  u_int64_t capacity; /* -1 if not ready */
   int is_ps2;
   unsigned long status;
 } osal_dev_t;
 
 typedef struct osal_dlist_type /* devices list */
 {
-  size_t allocated, used;
+  u_int32_t allocated, used;
   osal_dev_t *device;
 } osal_dlist_t;
 

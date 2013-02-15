@@ -1,6 +1,6 @@
 ##
 ## Makefile
-## $Id: Makefile,v 1.13 2004/09/26 19:39:39 b081 Exp $
+## $Id: Makefile,v 1.14 2004/12/04 10:20:53 b081 Exp $
 ##
 ## Copyright 2004 Bobi B., w1zard0f07@yahoo.com
 ##
@@ -54,8 +54,8 @@ COMPRESS_DATA ?= yes
 
 # hdl_dump current version/release
 VER_MAJOR = 0
-VER_MINOR = 7
-VER_PATCH = 3
+VER_MINOR = 8
+VER_PATCH = 0
 
 # configuration end
 ###############################################################################
@@ -68,7 +68,7 @@ LDFLAGS =
 SOURCES = hdl_dump.c apa.c common.c progress.c hdl.c isofs.c \
 	iin_img_base.c iin_optical.c iin_iso.c iin_hdloader.c iin_cdrwin.c \
 	iin_nero.c iin_gi.c iin_iml.c iin_probe.c iin_net.c aligned.c \
-	hio_probe.c hio_win32.c hio_net.c net_io.c
+	hio_probe.c hio_win32.c hio_net.c net_io.c byteseq.c
 
 
 # "autodetect" Windows builds
