@@ -1,6 +1,6 @@
 /*
  * iin_aspi.c
- * $Id: iin_aspi.c,v 1.8 2006/05/21 21:38:06 bobi Exp $
+ * $Id: iin_aspi.c,v 1.9 2006/06/18 13:11:19 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -168,16 +168,17 @@ aspicd_alloc (int host, int scsi_id, int lun,
 
 /**************************************************************/
 int
-iin_aspi_probe_path (const dict_t *config,
-		     const char *path,
+iin_aspi_probe_path (const char *path,
 		     iin_t **iin)
 {
   int result = RET_NOT_COMPAT;
   int host, scsi_id, lun;
   int aspi_init = 0;
 
+#if 0
   if (!dict_get_flag (config, CONFIG_ENABLE_ASPI_FLAG, 0))
     return (result);
+#endif
 
   /* expected pattern is "cd0:2:0" */
   if (tolower (path [0]) == 'c' &&

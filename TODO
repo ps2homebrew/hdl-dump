@@ -1,3 +1,5 @@
  * access CD-/DVD-ROM drives by letter (to work under wine)
  * SPTI support for Windows NT+, disable ASPI support
- * auto-detect ToxicOS APAEXT, disable 128GB limitation
+ * PPF patching: test, mkundo, apply, undo
+ * fix iin: "hdd0:/partition name" && "192.168.0.10/partition name"
+ * extract for hdl_dumb

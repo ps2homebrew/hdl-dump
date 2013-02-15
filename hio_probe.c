@@ -1,6 +1,6 @@
 /*
  * hio_probe.c
- * $Id: hio_probe.c,v 1.6 2006/05/21 21:37:34 bobi Exp $
+ * $Id: hio_probe.c,v 1.7 2006/06/18 13:10:23 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -23,6 +23,8 @@
 
 #include "hio_win32.h"
 #include "hio_udpnet.h"
+#include "hio_dbg.h"
+#include "hio_trace.h"
 #include "retcodes.h"
 
 
@@ -34,8 +36,12 @@ hio_probe (const dict_t *config,
 {
   int result = RET_NOT_COMPAT;
   if (result == RET_NOT_COMPAT)
+    result = hio_trace_probe (config, path, hio);
+  if (result == RET_NOT_COMPAT)
+    result = hio_dbg_probe (config, path, hio);
+  if (result == RET_NOT_COMPAT)
     result = hio_udpnet_probe (config, path, hio);
   if (result == RET_NOT_COMPAT)
-    result = hio_win32_probe (path, hio);
+    result = hio_win32_probe (config, path, hio);
   return (result);
 }

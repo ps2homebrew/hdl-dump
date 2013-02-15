@@ -1,6 +1,6 @@
 /*
  * hdld_svr.c
- * $Id: hdld_svr.c,v 1.2 2006/05/21 21:48:22 bobi Exp $
+ * $Id: hdld_svr.c,v 1.3 2006/06/18 13:14:51 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -39,7 +39,7 @@
 /* #define FAKE_WRITES */
 
 
-#define MAX_RESP_SIZE (1460 * 2)
+#define MAX_RESP_SIZE (1460 * 1)
 
 
 #define SETBIT(mask, bit) (mask)[(bit) / 32] |= 1 << ((bit) % 32)
@@ -250,9 +250,33 @@ init_read (state_t *state,
   u_int32_t bytes_read;
   int result;
 
-  state->out = (unsigned char*) (((long) &state->_buffer[HDD_SECTOR_SIZE - 1]) &
+  state->out = (unsigned char*) (((long) &state->_buffer +
+				  HDD_SECTOR_SIZE - 1) &
 				 ~(HDD_SECTOR_SIZE - 1));
-  result = state->hio->read (state->hio, sector, num_sect, state->out, &bytes_read);
+#if 0
+  {
+    unsigned char *p = state->out;
+    u_int32_t s = sector, n = num_sect;
+    result = RET_OK;
+    bytes_read = 0;
+    while (n > 0 && result == RET_OK)
+      {
+	static const size_t N = 2;
+	u_int32_t cnt = (n > N ? N : n), b;
+	result = state->hio->read (state->hio, s, cnt, p, &b);
+	if (result == RET_OK)
+	  {
+	    p += b;
+	    s += b / 512;
+	    n -= b / 512;
+	    bytes_read += b;
+	  }
+      }
+  }
+#else
+  result = state->hio->read (state->hio, sector, num_sect,
+			     state->out, &bytes_read);
+#endif
   if (result == RET_OK)
     { /* success */
       size_t sectors_read = bytes_read / HDD_SECTOR_SIZE;

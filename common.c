@@ -1,6 +1,6 @@
 /*
  * common.c
- * $Id: common.c,v 1.15 2006/05/21 21:35:55 bobi Exp $
+ * $Id: common.c,v 1.16 2006/06/18 13:08:21 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -391,18 +391,10 @@ set_config_defaults (dict_t *config)
 {
   char disc_database[256], *p;
 
-  /* better safe than sorry: do not trash APA-EXT */
-  dict_put_flag (config, CONFIG_LIMIT_TO_28BIT_FLAG, 1);
-
 #if defined (_BUILD_WIN32)
   /* disable ASPI by default */
   dict_put_flag (config, CONFIG_ENABLE_ASPI_FLAG, 0);
 #endif
-
-  dict_put (config, CONFIG_PARTITION_NAMING,
-	    CONFIG_PARTITION_NAMING_TOXICOS);
-
-  dict_put (config, CONFIG_TARGET_KBPS, "2350");
 
   /* decide where disc compatibility database would be kept */
   strcpy (disc_database, "./hdl_dump.list"); /* default */
@@ -423,6 +415,9 @@ set_config_defaults (dict_t *config)
     }
 #endif
   dict_put (config, CONFIG_DISC_DATABASE_FILE, disc_database);
+
+  dict_put (config, CONFIG_TARGET_KBPS, "2300");
+  dict_put (config, CONFIG_AUTO_THROTTLE, "0");
 }
 
 

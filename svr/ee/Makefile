@@ -1,6 +1,6 @@
 ##
 ## svr/ee/Makefile
-## $Id: Makefile,v 1.6 2006/05/21 21:43:56 bobi Exp $
+## $Id: Makefile,v 1.7 2006/06/18 13:13:12 bobi Exp $
 ##
 ## Copyright 2004 Bobi B., w1zard0f07@yahoo.com
 ##
@@ -43,8 +43,8 @@ clean:
 	rm -f $(EE_BIN) $(EE_OBJS) *.s
 
 load: $(EE_BIN)
-	ps2client reset
-	sleep 3
+#	ps2client reset
+#	sleep 3
 	ps2client execee host:$(EE_BIN)
 
 iomanx.s: $(IRX_PATH)/iomanX.irx

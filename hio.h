@@ -1,6 +1,6 @@
 /*
  * hio.h - PS2 HDD I/O
- * $Id: hio.h,v 1.7 2005/07/10 21:06:48 bobi Exp $
+ * $Id: hio.h,v 1.8 2006/06/18 13:09:40 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -25,7 +25,6 @@
 #define _HIO_H
 
 #include "config.h"
-#include "dict.h"
 #include <stddef.h>
 
 C_START

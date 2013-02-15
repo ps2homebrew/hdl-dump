@@ -1,6 +1,6 @@
 /*
  * hio_win32.c - Win32 interface to locally connected PS2 HDD
- * $Id: hio_win32.c,v 1.6 2004/12/04 10:20:52 b081 Exp $
+ * $Id: hio_win32.c,v 1.7 2006/06/18 13:11:07 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -166,7 +166,8 @@ win32_alloc (osal_handle_t device)
 
 /**************************************************************/
 int
-hio_win32_probe (const char *path,
+hio_win32_probe (const dict_t *config,
+		 const char *path,
 		 hio_t **hio)
 {
   int result;

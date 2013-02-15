@@ -1,6 +1,6 @@
 /*
  * hio_probe.h
- * $Id: hio_probe.h,v 1.4 2005/07/10 21:06:48 bobi Exp $
+ * $Id: hio_probe.h,v 1.5 2006/06/18 13:10:28 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -26,6 +26,7 @@
 
 #include "config.h"
 #include "hio.h"
+#include "dict.h"
 
 C_START
 

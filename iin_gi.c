@@ -1,6 +1,6 @@
 /*
  * iin_gi.c
- * $Id: iin_gi.c,v 1.9 2005/07/10 21:06:48 bobi Exp $
+ * $Id: iin_gi.c,v 1.10 2006/06/18 13:11:34 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -49,8 +49,7 @@ static const u_int32_t FILE_NAMES_OFFSET [4] = { 0x00b0, 0x01b4, 0x02b8, 0x03bd 
 
 /**************************************************************/
 int
-iin_gi_probe_path (const dict_t *config,
-		   const char *path,
+iin_gi_probe_path (const char *path,
 		   iin_t **iin)
 {
   u_int32_t device_sector_size;

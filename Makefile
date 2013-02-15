@@ -1,6 +1,6 @@
 ##
 ## Makefile
-## $Id: Makefile,v 1.19 2006/05/21 21:34:59 bobi Exp $
+## $Id: Makefile,v 1.20 2006/06/18 13:07:39 bobi Exp $
 ##
 ## Copyright 2004 Bobi B., w1zard0f07@yahoo.com
 ##
@@ -41,7 +41,7 @@ IIN_OPTICAL_MMAP ?= yes
 # hdl_dump current version/release
 VER_MAJOR = 0
 VER_MINOR = 8
-VER_PATCH = 4
+VER_PATCH = 5
 
 # configuration end
 ###############################################################################
@@ -51,11 +51,12 @@ CFLAGS = -Wall -ansi -pedantic -Wno-long-long
 
 LDFLAGS =
 
+# iin_hdloader.c iin_net.c
 SOURCES = hdl_dump.c \
 	apa.c common.c progress.c hdl.c isofs.c aligned.c \
-	iin_img_base.c iin_optical.c iin_iso.c iin_hdloader.c iin_cdrwin.c \
-	iin_nero.c iin_gi.c iin_iml.c iin_probe.c iin_net.c \
-	hio_probe.c hio_win32.c \
+	iin_img_base.c iin_optical.c iin_iso.c iin_cdrwin.c \
+	iin_nero.c iin_gi.c iin_iml.c iin_probe.c \
+	hio_probe.c hio_win32.c hio_dbg.c hio_trace.c \
 	net_common.c byteseq.c dict.c hio_udpnet.c
 
 # "autodetect" Windows builds

@@ -1,3 +1,13 @@
+0.8.5
+	+ better differentiation between CD- and DVD-images/medias
+	+ server will look for IPCONFIG.DAT at mc0:/B?DATA-SYSTEM/, too
+	+ optional auto-tunning of throttling algorithm
+	+ partitioning type auto-detection
+	+ new command for hdl_dump: diag
+	~ minor fix of dual-layer support code
+	~ hdl_toc lists raw size now, not allocated size
+	~ extract can now be interrupted with Ctrl+C
+
 0.8.4
 	+ a new (throttling) algorithm to control network install speeds
 	+ memory-mapped I/O when reading CDs/DVDs on Linux
@@ -79,3 +89,5 @@
 
 0.1
 	+ toc, map, extract support
+
+$Id: CHANGELOG,v 1.13 2006/06/18 13:07:30 bobi Exp $

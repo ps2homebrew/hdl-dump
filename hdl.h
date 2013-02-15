@@ -1,6 +1,6 @@
 /*
  * hdl.h
- * $Id: hdl.h,v 1.7 2005/07/10 21:06:48 bobi Exp $
+ * $Id: hdl.h,v 1.8 2006/06/18 13:08:57 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -28,6 +28,7 @@
 #include "progress.h"
 #include "hio.h"
 #include "iin.h"
+#include "apa.h"
 #include "ps2_hdd.h"
 
 C_START
@@ -36,9 +37,9 @@ C_START
 
 typedef struct hdl_game_type
 {
-  char name [HDL_GAME_NAME_MAX + 1];
-  char partition_name [PS2_PART_IDMAX + 1];
-  char startup [8 + 1 + 3 + 1];
+  char name[HDL_GAME_NAME_MAX + 1];
+  char partition_name[PS2_PART_IDMAX + 1];
+  char startup[8 + 1 + 3 + 1];
   compat_flags_t compat_flags;
   int is_dvd;
   u_int32_t layer_break;
@@ -46,13 +47,15 @@ typedef struct hdl_game_type
 
 typedef struct hdl_game_info_type
 {
-  char partition_name [PS2_PART_IDMAX + 1];
-  char name [HDL_GAME_NAME_MAX + 1];
-  char startup [8 + 1 + 3 + 1];
+  char partition_name[PS2_PART_IDMAX + 1];
+  char name[HDL_GAME_NAME_MAX + 1];
+  char startup[8 + 1 + 3 + 1];
   unsigned char compat_flags;
   int is_dvd;
-  unsigned long start_sector;
-  unsigned long total_size_in_kb;
+  int slice_index;
+  u_int32_t start_sector;
+  u_int32_t raw_size_in_kb;
+  u_int32_t alloc_size_in_kb;
 } hdl_game_info_t;
 
 typedef struct hdl_games_list_type
@@ -67,27 +70,30 @@ typedef struct hdl_games_list_type
 void hdl_pname (const char *name,
 		char partition_name [PS2_PART_IDMAX + 1]);
 
+int hdl_extract_ex (hio_t *hio,
+		    const char *game_name,
+		    const char *output_file,
+		    progress_t *pgs);
+
 int hdl_extract (const dict_t *config,
 		 const char *device,
 		 const char *name,   /* of the game */
 		 const char *output, /* file */
 		 progress_t *pgs);
 
-int hdl_inject (const dict_t *config,
-		hio_t *hio,
+int hdl_inject (hio_t *hio,
 		iin_t *iin,
 		hdl_game_t *details,
+		int slice_index,
 		progress_t *pgs);
 
 
-int hdl_glist_read (const dict_t *config,
-		    hio_t *hio,
+int hdl_glist_read (hio_t *hio,
 		    hdl_games_list_t **glist);
 
 void hdl_glist_free (hdl_games_list_t *glist);
 
-int hdl_lookup_partition_ex (const dict_t *config,
-			     hio_t *hio,
+int hdl_lookup_partition_ex (hio_t *hio,
 			     const char *game_name,
 			     char partition_id [PS2_PART_IDMAX + 1]);
 
@@ -95,6 +101,22 @@ int hdl_lookup_partition (const dict_t *config,
 			  const char *device_name,
 			  const char *game_name,
 			  char partition_id [PS2_PART_IDMAX + 1]);
+
+typedef struct hdl_game_alloc_table_type
+{
+  u_int32_t count;
+  u_int32_t size_in_kb;
+  struct
+  { /* those are in 512-byte long sectors */
+    u_int32_t start, len;
+  } part[64];
+} hdl_game_alloc_table_t;
+
+int hdl_read_game_alloc_table (hio_t *hio,
+			       const apa_toc_t *toc,
+			       int slice_index,
+			       u_int32_t partition_index,
+			       hdl_game_alloc_table_t *gat);
 
 C_END
 
