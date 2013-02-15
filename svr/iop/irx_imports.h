@@ -13,6 +13,7 @@
 
 
 /* Please keep these in alphabetical order!  */
+#include <atad.h>
 #include <cdvdman.h>
 #include <dev9.h>
 #include <intrman.h>

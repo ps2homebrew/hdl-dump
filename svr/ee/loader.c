@@ -1,6 +1,6 @@
 /*
  * svr/ee/loader.c
- * $Id: loader.c,v 1.5 2004/09/12 17:23:59 b081 Exp $
+ * $Id: loader.c,v 1.6 2004/09/26 19:39:40 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -46,7 +46,7 @@
 
 
 #define APP_NAME "hdld_svr"
-#define VERSION "0.7"
+#define VERSION "0.7.3"
 
 
 #if 1 /* debugging */

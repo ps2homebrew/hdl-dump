@@ -1,6 +1,6 @@
 /*
  * common.c
- * $Id: common.c,v 1.11 2004/08/20 12:35:17 b081 Exp $
+ * $Id: common.c,v 1.12 2004/09/26 19:39:39 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -171,7 +171,7 @@ read_file (const char *file_name,
 /**************************************************************/
 int
 write_file (const char *file_name,
-	    const char *data,
+	    const void *data,
 	    size_t len)
 {
   osal_handle_t handle;

@@ -1,6 +1,6 @@
 /*
  * svr/net_server.c
- * $Id: net_server.c,v 1.4 2004/09/12 17:24:44 b081 Exp $
+ * $Id: net_server.c,v 1.5 2004/09/26 19:39:40 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -37,18 +37,33 @@
 #    define EWX_FORCEIFHUNG 0x00000010
 #  endif
 #endif
+
 #if defined (_BUILD_UNIX)
 #  include <sys/types.h>
 #  include <sys/socket.h>
 #  include <netinet/in.h>
+#  include <netinet/tcp.h>
+#  include <stdio.h>
 #  include <string.h>
 #endif
+
 #if defined (_BUILD_PS2)
 #  include <tamtypes.h>
 #  include <stdio.h>
 #  include <thbase.h>
 #  include <ps2ip.h>
-#endif
+#  include <sysclib.h>
+/* IPPROTO_TCP borrowed from ps2sdk/iop/tcpip/lwip/src/include/lwip/tcp.h */
+#  ifndef TCP_NODELAY
+#    define TCP_NODELAY 0x01
+#  endif
+/* IPPROTO_TCP borrowed from ps2sdk/iop/tcpip/lwip/src/include/lwip/tcp.h */
+#  ifndef TCP_ACKNODELAY
+#    define TCP_ACKNODELAY 0x04
+#  endif
+#  define setsockopt lwip_setsockopt
+#  define getsockopt lwip_getsockopt
+#endif /* _BUILD_PS2 defined? */
 
 #include "../net_io.h"
 #include "../hio.h"
@@ -56,9 +71,6 @@
 
 
 /**************************************************************/
-static unsigned char __attribute__((aligned(16))) resp_buff [NET_IO_CMD_LEN +
-							     HDD_SECTOR_SIZE * NET_NUM_SECTORS];
-
 static int /* returns 0 if all data has been sent, or -1 on error */
 respond (int s,
 	 unsigned long command,
@@ -67,23 +79,29 @@ respond (int s,
 	 unsigned long response,
 	 const char *data) /* if != NULL should be exactly num_sect * HDD_SECTOR_SIZE bytes */
 {
-  int length = NET_IO_CMD_LEN;
+  unsigned char __attribute__((aligned(16))) resp [NET_IO_CMD_LEN];
   int bytes;
 
-  put_ulong (resp_buff +  0, command);
-  put_ulong (resp_buff +  4, sector);
-  put_ulong (resp_buff +  8, num_sect);
-  put_ulong (resp_buff + 12, response);
-  if (data != NULL)
-    { /* append sector data */
-      memcpy (resp_buff + NET_IO_CMD_LEN, data, num_sect * HDD_SECTOR_SIZE);
-      length += num_sect * HDD_SECTOR_SIZE;
+  put_ulong (resp +  0, command);
+  put_ulong (resp +  4, sector);
+  put_ulong (resp +  8, num_sect);
+  put_ulong (resp + 12, response);
+  bytes = send (s, (char*) resp, NET_IO_CMD_LEN, 0);
+  if (bytes == NET_IO_CMD_LEN)
+    {
+      if (data != NULL)
+	{
+	  bytes = send (s, (/* why not const? */ char*) data,
+			num_sect * HDD_SECTOR_SIZE, 0);
+	  if (bytes == num_sect * HDD_SECTOR_SIZE)
+	    ; /* success */
+	  else
+	    return (RET_ERR);
+	}
+      return (RET_OK);
     }
-  bytes = send (s, (char*) resp_buff, length, 0);
-  if (bytes == length)
-    return (RET_OK); /* success */
   else
-    return (RET_ERR); /* failed */
+    return (RET_ERR);
 }
 
 
@@ -136,7 +154,7 @@ handle_client (int s,
 
 	  switch (command)
 	    {
-	    case CMD_STAT_UNIT:
+	    case CMD_HIO_STAT:
 	      { /* get unit size */
 		size_t size_in_kb;
 		result = hio->stat (hio, &size_in_kb);
@@ -150,7 +168,7 @@ handle_client (int s,
 		break;
 	      }
 
-	    case CMD_READ_SECTOR:
+	    case CMD_HIO_READ:
 	      { /* read sector(s) */
 		size_t bytes_read;
 		result = hio->read (hio, sector, num_sect, sect_data, &bytes_read);
@@ -168,9 +186,17 @@ handle_client (int s,
 		break;
 	      }
 
-	    case CMD_WRITE_SECTOR:
+	    case CMD_HIO_WRITE:       /* write sector, send ACK */
+	    case CMD_HIO_WRITE_NACK:  /* write sector, no ACK, quit on error */
+	    case CMD_HIO_WRITE_RACK:  /* send dummy ACK, write sector */
+	    case CMD_HIO_WRITE_QACK:  /* send dummy ACK before decompr. */
 	      { /* write sector(s) */
 		int compressed_data = (num_sect & 0xffffff00) != 0;
+
+		if (command == CMD_HIO_WRITE_QACK)
+		  /* send back dummy ACK before receiving & decompressing data */
+		  result = respond (s, command, sector, num_sect, 0, NULL);
+
 		if (compressed_data)
 		  { /* accept compressed data into a temporary buffer and expand to target one */
 		    size_t bytes = num_sect >> 8;
@@ -189,13 +215,28 @@ handle_client (int s,
 		if (result == RET_OK)
 		  {
 		    size_t bytes_written, sectors_written;
-		    result = hio->write (hio, sector, num_sect & 0xff, sect_data, &bytes_written);
+
+		    if (command == CMD_HIO_WRITE_RACK)
+		      /* send back dummy ACK to shake the line */
+		      result = respond (s, command, sector, num_sect, 0, NULL);
+
+#if 1 /* if 0, measure RAW net transfer speed */
+		    if (result == RET_OK)
+		      result = hio->write (hio, sector, num_sect & 0xff,
+					   sect_data, &bytes_written);
+#else
+		    bytes_written = (num_sect & 0xff) * HDD_SECTOR_SIZE;
+#endif
 		    sectors_written = bytes_written / HDD_SECTOR_SIZE;
-		    result = respond (s, command, sector, num_sect,
-				      result == RET_OK ? sectors_written : (unsigned long) -1,
-				      NULL);
+
+		    if (result == RET_OK &&
+			command == CMD_HIO_WRITE)
+		      /* send back real ACK */
+		      result = respond (s, command, sector, num_sect,
+					result == RET_OK ? sectors_written : (unsigned long) -1,
+					NULL);
 		    if (result != RET_OK)
-		      game_over = 1; /* if data cannot be send disconnect client */
+		      game_over = 1; /* disconnect client on error */
 		  }
 		else
 		  /* received less bytes than expected; terminate connection */
@@ -203,19 +244,56 @@ handle_client (int s,
 		break;
 	      }
 
-	    case CMD_POWEROFF:
-	      { /* poweroff system */
-#if defined (_BUILD_WIN32)
-		ExitWindowsEx (EWX_POWEROFF | EWX_FORCEIFHUNG, 0);
-#endif
-#if defined (_BUILD_PS2)
-		/* dev9 shutdown; borrowed from ps2link */
-		dev9IntrDisable (-1);
-		dev9Shutdown ();
+	    case CMD_HIO_G_TCPNODELAY:
+	      { /* get TCP_NODELAY sock option */
+	      	unsigned long ret;
+	      	unsigned int len = sizeof (ret);
+		result = getsockopt (s, IPPROTO_TCP, TCP_NODELAY, (void*) &ret, (void*) &len);
+		if (result != 0 || len != sizeof (ret))
+		  ret = -2;
+		result = respond (s, command, sector, num_sect, ret, NULL);
+		break;
+	      }
 
-		*((unsigned char *) 0xbf402017) = 0x00;
-		*((unsigned char *) 0xbf402016) = 0x0f;
+	    case CMD_HIO_S_TCPNODELAY:
+	      { /* set TCP_NODELAY sock option */
+		unsigned long ret = setsockopt (s, IPPROTO_TCP, TCP_NODELAY,
+						(void*) &sector, sizeof (sector));
+		result = respond (s, command, sector, num_sect, ret, NULL);
+		break;
+	      }
+
+	    case CMD_HIO_G_ACKNODELAY:
+	      { /* get ACK_NODELAY sock option */
+	      	unsigned long ret = 0;
+#if defined (_BUILD_PS2)
+	      	unsigned int len = sizeof (ret);
+		result = getsockopt (s, IPPROTO_TCP, TCP_ACKNODELAY,
+				     (void*) &ret, &len);
+		if (result != RET_OK || len != sizeof (ret))
+		  ret = -2;
 #endif
+		if (respond (s, command, sector, num_sect, ret, NULL) != RET_OK)
+		  game_over = 1;
+		break;
+	      }
+
+	    case CMD_HIO_S_ACKNODELAY:
+	      { /* set ACK_NODELAY sock option */
+		unsigned long ret = 0;
+#if defined (_BUILD_PS2)
+		ret = setsockopt (s, IPPROTO_TCP, TCP_ACKNODELAY,
+				  (void*) &sector, sizeof (sector));
+#endif
+		if (respond (s, command, sector, num_sect, ret, NULL) != RET_OK)
+		  game_over = 1;
+		break;
+	      }
+
+	    case CMD_HIO_POWEROFF:
+	      { /* poweroff system */
+		hio->flush (hio);
+		hio->poweroff (hio);
 		break;
 	      }
 	    }
@@ -225,6 +303,9 @@ handle_client (int s,
 	game_over = 1;
     }
   while (!game_over && !*interrupt_flag);
+
+  /* in any case make sure buffer has been flushed */
+  hio->flush (hio);
 
   /* disconnect and return */
 #if defined (_BUILD_WIN32)

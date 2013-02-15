@@ -1,4 +1,6 @@
-0.7.x
+0.7.3
+	+ poweroff and hdl_toc commands
+	~ transfer speed raised up to 30% (special thanks to dayv)
 	~ bug-fixes and minor changes
 
 0.7-pre
