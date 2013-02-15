@@ -1,6 +1,6 @@
 /*
  * hio.h - PS2 HDD I/O
- * $Id: hio.h,v 1.5 2004/12/04 10:20:52 b081 Exp $
+ * $Id: hio.h,v 1.6 2005/02/17 17:50:10 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -76,6 +76,10 @@ struct hio_type
   hio_last_error_t last_error;
   hio_dispose_error_t dispose_error;
 };
+
+
+int hio_probe (const char *path,
+	       hio_t **hio);
 
 
 #endif /* _HIO_H defined? */

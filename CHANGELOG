@@ -1,3 +1,9 @@
+0.8
+	+ should be compatible with MacOS X
+	+ build-time option (in the Makefile) to limit hdl_dump/b to 128GB to preserve compatibility with updated Sony browser
+	~ few hdl_dumb bugs fixed and few minor tweaks
+	+ GUI source code is now open
+
 0.8-pre
 	~ endianess-neutral
 	~ fixed a bug with small cue-sheet files (move file ptr before file start)

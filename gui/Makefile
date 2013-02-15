@@ -1,23 +1,23 @@
 ##
 ## Makefile
-## $Id: Makefile,v 1.15 2005/02/17 17:51:55 b081 Exp $
+## $Id: Makefile,v 1.5 2005/02/17 17:53:04 b081 Exp $
 ##
 ## Copyright 2004 Bobi B., w1zard0f07@yahoo.com
 ##
-## This file is part of hdl_dump.
+## This file is part of hdl_dumb.
 ##
-## hdl_dump is free software; you can redistribute it and/or modify
+## hdl_dumb is free software; you can redistribute it and/or modify
 ## it under the terms of the GNU General Public License as published by
 ## the Free Software Foundation; either version 2 of the License, or
 ## (at your option) any later version.
 ##
-## hdl_dump is distributed in the hope that it will be useful,
+## hdl_dumb is distributed in the hope that it will be useful,
 ## but WITHOUT ANY WARRANTY; without even the implied warranty of
 ## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ## GNU General Public License for more details.
 ##
 ## You should have received a copy of the GNU General Public License
-## along with hdl_dump; if not, write to the Free Software
+## along with hdl_dumb; if not, write to the Free Software
 ## Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 ##
 
@@ -31,15 +31,15 @@
 INCLUDE_ASPI ?= no
 
 # limit HDD size to 128GB to preserve compatibility with updated PS2 browser
-LIMIT_HDD_TO_128GB ?= no # yes
+LIMIT_HDD_TO_128GB ?= yes
 
 # include icon in the executable (`yes') or look for an extenal icon (other)
 BUILTIN_ICON ?= yes
 
 # `yes' - debug build; something else - release build
-DEBUG ?= yes
 # `RELEASE=yes make' makes a release build no matter what DEBUG flag is
 RELEASE ?= no
+DEBUG ?= yes
 
 # `yes' - don't expect ACK when streaming data to the PS2 (works faster?)
 #
@@ -57,8 +57,8 @@ COMPRESS_DATA ?= yes
 
 # hdl_dump current version/release
 VER_MAJOR = 0
-VER_MINOR = 8
-VER_PATCH = 0
+VER_MINOR = 7
+VER_PATCH = 3
 
 # configuration end
 ###############################################################################
@@ -68,10 +68,13 @@ CFLAGS = -Wall -ansi -pedantic -Wno-long-long
 
 LDFLAGS =
 
-SOURCES = hdl_dump.c apa.c common.c progress.c hdl.c isofs.c \
-	iin_img_base.c iin_optical.c iin_iso.c iin_hdloader.c iin_cdrwin.c \
-	iin_nero.c iin_gi.c iin_iml.c iin_probe.c iin_net.c aligned.c \
-	hio_probe.c hio_win32.c hio_net.c net_io.c byteseq.c
+VPATH = ./:../
+
+SOURCES = gui_main.c osal_win32.c apa.c common.c progress.c \
+	hdl.c isofs.c aligned.c \
+	iin_probe.c iin_img_base.c iin_iso.c iin_optical.c iin_cdrwin.c \
+	iin_hdloader.c iin_iml.c iin_nero.c iin_gi.c iin_net.c net_io.c \
+	hio_probe.c hio_win32.c hio_net.c byteseq.c
 
 
 # "autodetect" Windows builds
@@ -82,28 +85,20 @@ else
 endif
 
 
-# Windows/Unix/Linux build
-ifeq ($(WINDOWS), yes)
-  SOURCES += osal_win32.c
-  OBJECTS += rsrc.o
-  CFLAGS += -mno-cygwin -D_BUILD_WIN32
-  LDFLAGS += -lwsock32
-  EXESUF = .exe
+OBJECTS += rsrc.o
+CFLAGS += -mwindows -mno-cygwin -D_BUILD_WIN32
+LDFLAGS += -lwsock32 -lcomctl32
+EXESUF = .exe
 
-  # whether to include ASPI support or not
-  ifeq ($(INCLUDE_ASPI), yes)
-    CFLAGS += -D_WITH_ASPI
-    OBJECTS += iin_aspi.o aspi_hlio.o
-  endif
-
-  # make it compile with latest cygwin/mingw
-  # however, that would probably not work under older versions of Windows
-  CFLAGS += -D_WIN32_WINNT=0x0500
-else
-  SOURCES += osal_unix.c
-  CFLAGS += -D_GNU_SOURCE -D_BUILD_UNIX
-  EXESUF = 
+# whether to include ASPI support or not
+ifeq ($(INCLUDE_ASPI), yes)
+  CFLAGS += -D_WITH_ASPI
+  OBJECTS += iin_aspi.o aspi_hlio.o
 endif
+
+# make it compile with latest cygwin/mingw
+# however, that would probably not work under older versions of Windows
+CFLAGS += -D_WIN32_WINNT=0x0500
 
 
 # whether to make debug or release build
@@ -158,13 +153,11 @@ endif
 OBJECTS += $(SOURCES:.c=.o)
 DEPENDS += $(SOURCES:.c=.d)
 
-BINARY = hdl_dump$(EXESUF)
+BINARY = hdl_dumb$(EXESUF)
 
 
 ###############################################################################
 # make commands below...
-
-.PHONY: all clean rmdeps
 
 all: $(BINARY)
 
@@ -172,13 +165,12 @@ all: $(BINARY)
 clean:
 	rm -f $(BINARY) $(OBJECTS)
 
-
 rmdeps:
 	rm -f $(DEPENDS)
 
 
-# rules below
-rsrc.o: rsrc.rc
+rsrc.o: rsrc.rc rsrc.h rsrc/app.ico rsrc/manifest.bin \
+	rsrc/ps2_cd.bmp rsrc/ps2_dvd.bmp rsrc/ps2_dvd9.bmp
 	@echo -e "\tRES $<"
 	@windres $(VERSION) -o $@ -i $<
 
@@ -186,6 +178,9 @@ rsrc.o: rsrc.rc
 $(BINARY): $(OBJECTS)
 	@echo -e "\tLNK $@"
 	@$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+
+.SUFFIXES: .o .exe .c
 
 
 %.o : %.c

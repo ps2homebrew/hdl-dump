@@ -1,6 +1,6 @@
 /*
  * config.h
- * $Id: config.h,v 1.7 2004/12/04 10:20:53 b081 Exp $
+ * $Id: config.h,v 1.8 2005/02/17 17:51:04 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -23,6 +23,18 @@
 
 #if !defined (_CONFIG_H)
 #define _CONFIG_H
+
+/* MacOS X support patch */
+#if defined (__APPLE__)
+#  define _BUILD_UNIX
+#  define lseek64 lseek
+#  define stat64 stat
+#  define open64 open
+#  define off64_t off_t
+#  define fstat64 fstat
+#  define O_LARGEFILE 0
+#endif
+/* end of MacOS X support patch */
 
 #if !defined (_BUILD_WIN32) && !defined (_BUILD_UNIX) && !defined (_BUILD_PS2)
 #  error One of _BUILD_WIN32, _BUILD_UNIX or _BUILD_PS2 should be defined
@@ -55,14 +67,15 @@ typedef u64 u_int64_t;
 
 
 /* control whether infrequently-used commands to be built */
-#define INCLUDE_DUMP_CMD
-#define INCLUDE_COMPARE_CMD
+#undef INCLUDE_DUMP_CMD
+#undef INCLUDE_COMPARE_CMD
 #define INCLUDE_COMPARE_IIN_CMD
 #define INCLUDE_MAP_CMD
 #define INCLUDE_INFO_CMD
-#define INCLUDE_ZERO_CMD
-#define INCLUDE_CUTOUT_CMD
-#define INCLUDE_READ_TEST_CMD
+#undef INCLUDE_ZERO_CMD
+#undef INCLUDE_CUTOUT_CMD
+#undef INCLUDE_READ_TEST_CMD
+#undef INCLUDE_CHECK_CMD
 
 
 /*

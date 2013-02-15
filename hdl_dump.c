@@ -1,6 +1,6 @@
 /*
  * hdl_dump.c
- * $Id: hdl_dump.c,v 1.13 2004/12/04 10:20:52 b081 Exp $
+ * $Id: hdl_dump.c,v 1.14 2005/02/17 17:50:25 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -82,6 +82,9 @@
 #  define CMD_READ_TEST "read_test"
 #endif
 #define CMD_POWER_OFF "poweroff"
+#if defined (INCLUDE_CHECK_CMD)
+#  define CMD_CHECK "check"
+#endif
 
 
 /**************************************************************/
@@ -949,6 +952,11 @@ show_usage_and_exit (const char *app_path,
 	"Consecutively reads all sectors from the specified input.",
 	"cd0:", NULL, 0 },
 #endif /* INCLUDE_READ_TEST_CMD defined? */
+#if defined (INCLUDE_CHECK_CMD)
+      { CMD_CHECK, "device",
+	"Attempts to locate and display partition errors.",
+	"hdd1:", "192.168.0.10", 0 },
+#endif /* INCLUDE_CHECK_CMD defined? */
       { NULL, NULL,
 	NULL,
 	NULL, NULL, 0 }
@@ -1181,6 +1189,10 @@ handle_result_and_exit (int result,
       fprintf (stderr, "Broken link (linked file not found).\n");
       exit (100 + RET_BROKEN_LINK);
 
+    case RET_CROSS_128GB:
+      fprintf (stderr, "Unable to limit HDD size to 128GB - data behind 128GB mark.\n");
+      exit (100 + RET_CROSS_128GB);
+
     default:
       fprintf (stderr, "%s: don't know what the error is: %d.\n", device, result);
       exit (200);
@@ -1381,6 +1393,15 @@ main (int argc, char *argv [])
 	  handle_result_and_exit (remote_poweroff (argv [2]), argv [2], NULL);
 	}
 
+#if defined (INCLUDE_CHECK_CMD)
+      else if (caseless_compare (command_name, CMD_CHECK))
+	{ /* attempt to locate and display partition errors */
+	  if (argc != 3)
+	    show_usage_and_exit (argv [0], CMD_CHECK);
+
+	  handle_result_and_exit (check (argv [2]), argv [2], NULL);
+	}
+#endif /* INCLUDE_CHECK_CMD defined? */
 
       else
 	{ /* something else... -h perhaps? */

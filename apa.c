@@ -1,6 +1,6 @@
 /*
  * apa.c
- * $Id: apa.c,v 1.10 2004/12/04 10:20:53 b081 Exp $
+ * $Id: apa.c,v 1.11 2005/02/17 17:51:42 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -173,7 +173,7 @@ apa_setup_statistics (apa_partition_table_t *table)
 	      if (map [part_no] == MAP_AVAIL)
 		map [part_no] = get_u32 (&part->main) == 0 ? MAP_MAIN : MAP_SUB;
 	      else
-		map [part_no] = MAP_COLL; /* colision */
+		map [part_no] = MAP_COLL; /* collision */
 	      ++part_no;
 	      --num_parts;
 	      ++table->allocated_chunks;
@@ -217,6 +217,14 @@ apa_ptable_read_ex (hio_t *hio,
   int result = hio->stat (hio, &size_in_kb);
   if (result == OSAL_OK)
     {
+      u_int32_t total_sectors;
+#if defined (LIMIT_HDD_TO_128GB)
+      /* limit HDD size to 128GB - 1KB; that is: exclude the last 128MB chunk */
+      if (size_in_kb > 128 * 1024 * 1024 - 1)
+	size_in_kb = 128 * 1024 * 1024 - 1;
+#endif
+      total_sectors = size_in_kb * 2; /* 1KB = 2 sectors of 512 bytes, each */
+
       *table = apa_ptable_alloc ();
       if (table != NULL)
 	{
@@ -232,9 +240,22 @@ apa_ptable_read_ex (hio_t *hio,
 		      get_u32 (&part.checksum) == apa_partition_checksum (&part) &&
 		      memcmp (part.magic, PS2_PARTITION_MAGIC, 4) == 0)
 		    {
-		      result = apa_part_add (*table, &part, 1, 1);
-		      if (result == RET_OK)
-			sector = get_u32 (&part.next);
+		      if (get_u32 (&part.start) < total_sectors &&
+			  get_u32 (&part.start) + get_u32 (&part.length) < total_sectors)
+			{
+			  result = apa_part_add (*table, &part, 1, 1);
+			  if (result == RET_OK)
+			    sector = get_u32 (&part.next);
+			}
+		      else
+			{ /* partition behind end-of-HDD */
+#if defined (LIMIT_HDD_TO_128GB)
+			  result = RET_CROSS_128GB; /* data behind 128GB mark */
+#else
+			  result = RET_BAD_APA; /* data behind end-of-HDD */
+#endif
+			  break;
+			}
 		    }
 		  else
 		    result = RET_NOT_APA;
@@ -711,16 +732,182 @@ apa_commit_ex (hio_t *hio,
 
 
 /**************************************************************/
+#define ADD_PROBLEM(buff,size,problem,len) \
+  if ((len) < (size))			   \
+    {					   \
+      memcpy (buff, problem, len);	   \
+      (size) -= (len);			   \
+      (buff) += (len);			   \
+       *(buff) = '\0';			   \
+    }
+
+static int
+apa_list_problems (const apa_partition_table_t *table,
+		   char *buffer,
+		   size_t buffer_size)
+{ /* NOTE: keep in sync with apa_check */
+  u_int32_t i, j, k;
+  char tmp [1024];
+  size_t len;
+
+  const u_int32_t total_sectors = table->device_size_in_mb * 1024 * 2;
+
+  *buffer = '\0';
+  for (i=0; i<table->part_count; ++i)
+    {
+      const ps2_partition_header_t *part = &table->parts [i].header;
+      u_int32_t checksum = apa_partition_checksum (part);
+      if (get_u32 (&part->checksum) != checksum)
+	{
+	  len = sprintf (tmp, "%06lx00: bad checksum: 0x%08lx instead of 0x%08lx;\n",
+			 (unsigned long) (get_u32 (&part->start) >> 8),
+			 (unsigned long) get_u32 (&part->checksum),
+			 (unsigned long) checksum);
+	  ADD_PROBLEM (buffer, buffer_size, tmp, len);
+	}
+
+      if (get_u32 (&part->start) < total_sectors &&
+	  get_u32 (&part->start) + get_u32 (&part->length) <= total_sectors)
+	;
+      else
+	{
+#if defined (LIMIT_HDD_TO_128GB)
+	  len = sprintf (tmp, "%06lx00 +%06lx00: across 128GB mark;\n",
+			 (unsigned long) (get_u32 (&part->start) >> 8),
+			 (unsigned long) (get_u32 (&part->length) >> 8));
+	  ADD_PROBLEM (buffer, buffer_size, tmp, len);
+#else
+	  len = sprintf (tmp, "%06lx00 +%06lx00: outside HDD data area;\n",
+			 (unsigned long) (get_u32 (&part->start) >> 8),
+			 (unsigned long) (get_u32 (&part->length) >> 8));
+	  ADD_PROBLEM (buffer, buffer_size, tmp, len);
+#endif
+	}
+
+      if ((get_u32 (&part->length) % ((128 _MB) / 512)) != 0)
+	{
+	  len = sprintf (tmp, "%06lx00: size %06lx00 not multiple to 128MB;\n",
+			 (unsigned long) (get_u32 (&part->start) >> 8),
+			 (unsigned long) (get_u32 (&part->length) >> 8));
+	  ADD_PROBLEM (buffer, buffer_size, tmp, len);
+	}
+
+      if ((get_u32 (&part->start) % get_u32 (&part->length)) != 0)
+	{
+	  len = sprintf (tmp, "%06lx00: start not multiple to size %06lx00;\n",
+			 (unsigned long) (get_u32 (&part->start) >> 8),
+			 (unsigned long) (get_u32 (&part->length) >> 8));
+	  ADD_PROBLEM (buffer, buffer_size, tmp, len);
+	}
+
+      if (get_u32 (&part->main) == 0 &&
+	  get_u16 (&part->flags) == 0 &&
+	  get_u32 (&part->start) != 0)
+	{ /* check sub-partitions */
+	  u_int32_t count = 0;
+	  for (j=0; j<table->part_count; ++j)
+	    {
+	      const ps2_partition_header_t *part2 = &table->parts [j].header;
+	      if (get_u32 (&part2->main) == get_u32 (&part->start))
+		{ /* sub-partition of current main partition */
+		  int found;
+		  if (get_u16 (&part2->flags) != PS2_PART_FLAG_SUB)
+		    {
+		      len = sprintf (tmp, "%06lx00: mismatching sub-partition flag;\n",
+				     (unsigned long) (get_u32 (&part2->start) >> 8));
+		      ADD_PROBLEM (buffer, buffer_size, tmp, len);
+		    }
+
+		  found = 0;
+		  for (k=0; k<get_u32 (&part->nsub); ++k)
+		    if (get_u32 (&part->subs [k].start) == get_u32 (&part2->start))
+		      { /* in list */
+			if (get_u32 (&part->subs [k].length) != get_u32 (&part2->length))
+			  {
+			    len = sprintf (tmp, "%06lx00: mismatching sub-partition size: %06lx00 != %06lx00;\n",
+					   (unsigned long) (get_u32 (&part2->start) >> 8),
+					   (unsigned long) (get_u32 (&part2->length) >> 8),
+					   (unsigned long) (get_u32 (&part->subs [k].length) >> 8));
+			    ADD_PROBLEM (buffer, buffer_size, tmp, len);
+			  }
+			found = 1;
+			break;
+		      }
+		  if (!found)
+		    {
+		      len = sprintf (tmp, "%06lx00: not a sub-partition of %06lx00;\n",
+				     (unsigned long) (get_u32 (&part2->start) >> 8),
+				     (unsigned long) (get_u32 (&part->start) >> 8));
+		      ADD_PROBLEM (buffer, buffer_size, tmp, len);
+		    }
+
+		  ++count;
+		}
+	    }
+	  if (count != get_u32 (&part->nsub))
+	    {
+	      len = sprintf (tmp, "%06lx00: only %u sub-partitions found of %u;\n",
+			     (unsigned long) (get_u32 (&part->start) >> 8),
+			     (unsigned int) count, (unsigned int) get_u32 (&part->nsub));
+	      ADD_PROBLEM (buffer, buffer_size, tmp, len);
+	    }
+	}
+    }
+
+  /* verify double-linked list */
+  for (i=0; i<table->part_count; ++i)
+    {
+      apa_partition_t *prev = table->parts + (i > 0 ? i - 1 : table->part_count - 1);
+      apa_partition_t *curr = table->parts + i;
+      apa_partition_t *next = table->parts + (i + 1 < table->part_count ? i + 1 : 0);
+      if (get_u32 (&curr->header.prev) != get_u32 (&prev->header.start))
+	{
+	  len = sprintf (tmp, "%06lx00: %06lx00 is previous, not %06lx00;\n",
+			 (unsigned long) (get_u32 (&curr->header.start) >> 8),
+			 (unsigned long) (get_u32 (&prev->header.start) >> 8),
+			 (unsigned long) (get_u32 (&curr->header.prev) >> 8));
+	  ADD_PROBLEM (buffer, buffer_size, tmp, len);
+	}
+      if (get_u32 (&curr->header.next) != get_u32 (&next->header.start))
+	{
+	  len = sprintf (tmp, "%06lx00: %06lx00 is next, not %06lx00;\n",
+			 (unsigned long) (get_u32 (&curr->header.start) >> 8),
+			 (unsigned long) (get_u32 (&next->header.start) >> 8),
+			 (unsigned long) (get_u32 (&curr->header.next) >> 8));
+	  ADD_PROBLEM (buffer, buffer_size, tmp, len);
+	}
+	return (RET_BAD_APA); /* bad links */
+    }
+
+  return (RET_OK);
+}
+
+
+/**************************************************************/
 static int
 apa_check (const apa_partition_table_t *table)
-{
+{ /* NOTE: keep in sync with apa_list_problems */
   u_int32_t i, j, k;
+
+  const u_int32_t total_sectors = table->device_size_in_mb * 1024 * 2;
 
   for (i=0; i<table->part_count; ++i)
     {
       const ps2_partition_header_t *part = &table->parts [i].header;
       if (get_u32 (&part->checksum) != apa_partition_checksum (part))
 	return (RET_BAD_APA); /* bad checksum */
+
+      if (get_u32 (&part->start) < total_sectors &&
+	  get_u32 (&part->start) + get_u32 (&part->length) <= total_sectors)
+	;
+      else
+	{
+#if defined (LIMIT_HDD_TO_128GB)
+	  return (RET_CROSS_128GB); /* data behind 128GB mark */
+#else
+	  return (RET_BAD_APA); /* data behind end-of-HDD */
+#endif
+	}
 
       if ((get_u32 (&part->length) % ((128 _MB) / 512)) != 0)
 	return (RET_BAD_APA); /* partition size not multiple to 128MB */
