@@ -1,0 +1,61 @@
+$Id: README,v 1.1 2005/12/08 20:44:22 bobi Exp $
+
+The new hdld_svr.elf README
+===========================
+
+What's all this about?
+----------------------
+
+The new server uses UDP, instead of TCP. Because UDP is unreliable,
+now and then client asks the server if there is a need to retransmit
+any part of the data.
+
+Basically, protocol works as follows: client tells the server
+"I'm want to write # sectors, starting at #"; then it starts to flood
+the server with data via UDP. If client sends the data too fast
+server cannot "consume" it, hence the data gets lost and should be
+retransmitted. If client sends the data too slow, you loose speed.
+For not to drown server the client sends a small number of packets
+then sleeps for a tiny amount of time. Number of packets and time
+to sleep are controlable via configuration file. On Windows time
+is in milliseconds, whereas on Unix is in microseconds (1000 times
+less). hdl_dump client comes with a reasonable defaults, but you
+can change those numbers (with some limits).
+
+It should be clear already, that the new server is not compatible with
+older servers, therefore server port has been changed.
+
+
+HOWTO setup environment
+-----------------------
+
+Copy all files in the following location:
+	hdl_dump/svr/iop3/
+Open term, navigate to the same location, execute assemble.sh
+
+You need Subversion client, wget and Internet connection in order
+to succeed.
+
+When script completes, use the following commands to build
+the alternative IOP module:
+	cd tcpip/
+	make
+	ls -l bin/
+
+
+HOWTO build loader
+------------------
+
+Copy new ps2iop.irx on top of the old one:
+	cd hdl_dump/svr/irx
+	mv ps2ip.irx ps2ip_orig.irx
+	cd ../iop2/
+	cp tcpip/bin/ps2ip.irx ../irx/
+
+Patch hdl_dump/svr/ee/loader.c:82 - comment-out the line
+	#define LOAD_SERVER
+
+Build the new loader:
+	cd hdl_dump/svr
+	make clean
+	make

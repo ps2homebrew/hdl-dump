@@ -1,6 +1,6 @@
 ##
 ## Makefile
-## $Id: Makefile,v 1.17 2005/07/10 21:06:48 bobi Exp $
+## $Id: Makefile,v 1.18 2005/12/08 20:39:43 bobi Exp $
 ##
 ## Copyright 2004 Bobi B., w1zard0f07@yahoo.com
 ##
@@ -50,7 +50,7 @@ COMPRESS_DATA ?= yes
 # hdl_dump current version/release
 VER_MAJOR = 0
 VER_MINOR = 8
-VER_PATCH = 2
+VER_PATCH = 3
 
 # configuration end
 ###############################################################################
@@ -64,7 +64,8 @@ LDFLAGS =
 SOURCES = hdl_dump.c apa.c common.c progress.c hdl.c isofs.c \
 	iin_img_base.c iin_optical.c iin_iso.c iin_hdloader.c iin_cdrwin.c \
 	iin_nero.c iin_gi.c iin_iml.c iin_probe.c iin_net.c aligned.c \
-	hio_probe.c hio_win32.c hio_net.c net_io.c byteseq.c dict.c
+	hio_probe.c hio_win32.c net_io.c net_common.c \
+	byteseq.c dict.c hio_udpnet.c # hio_net.c
 
 # "autodetect" Windows builds
 ifdef SYSTEMROOT
@@ -80,7 +81,7 @@ ifeq ($(WINDOWS), yes)
   OBJECTS += iin_aspi.o aspi_hlio.o rsrc.o
   CFLAGS += -mno-cygwin -D_BUILD_WIN32
   CXXFLAGS += -mno-cygwin -D_BUILD_WIN32
-  LDFLAGS += -lwsock32
+  LDFLAGS += -lwsock32 -lwinmm
   EXESUF = .exe
 
   # make it compile with latest cygwin/mingw

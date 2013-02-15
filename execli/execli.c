@@ -1,6 +1,6 @@
 /*
  * execli.c
- * $Id: execli.c,v 1.1 2005/05/06 14:50:35 b081 Exp $
+ * $Id: execli.c,v 1.2 2005/12/08 20:42:39 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -102,12 +102,18 @@ exec_cli (const char *file_path,
 	  BOOL process_alive;
 	  do
 	    {
+	      Sleep (10); /* fixes 100% CPU usage issue */
 	      process_alive = (GetExitCodeProcess (pi.hProcess, &exit_code) &&
 			       exit_code == STILL_ACTIVE);
-	      bytes = non_blocking_pipe_read (out_read, buffer,
-					      sizeof (buffer) / sizeof (buffer [0]));
-	      if (bytes > 0)
-		(*message_callback) (buffer, bytes);
+	      do
+		{ /* pipe all data to the caller */
+		  bytes = non_blocking_pipe_read (out_read, buffer,
+						  sizeof (buffer) /
+						  sizeof (buffer [0]));
+		  if (bytes > 0)
+		    (*message_callback) (buffer, bytes);
+		}
+	      while (bytes > 0);
 	    }
 	  while (process_alive || bytes > 0);
 	}

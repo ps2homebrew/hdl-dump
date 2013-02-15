@@ -1,6 +1,6 @@
 /*
  * dict.c
- * $Id: dict.c,v 1.1 2005/07/10 21:06:48 bobi Exp $
+ * $Id: dict.c,v 1.2 2005/12/08 20:40:11 bobi Exp $
  *
  * Copyright 2005 Bobi B., w1zard0f07@yahoo.com
  *
@@ -176,6 +176,20 @@ dict_get_flag (const dict_t *dict,
 	      strcmp (value, "true") == 0 ||
 	      strcmp (value, "1") == 0 ? 1 : 0);
     }
+  else
+    return (default_value);
+}
+
+
+/**************************************************************/
+int
+dict_get_numeric (const dict_t *dict,
+		  const char *key,
+		  int default_value)
+{
+  const char *value = dict_lookup (dict, key);
+  if (value != NULL)
+    return (strtol (value, NULL, 0));
   else
     return (default_value);
 }

@@ -28,7 +28,8 @@ LDFLAGS =
 
 OBJECTS = hdld_svr_win32.o ../net_server.o ../../hio_probe.o \
 	../../hio_win32.o ../../hio_net.o \
-	../../net_io.o ../../apa.o ../../common.o ../../progress.o ../../byteseq.o
+	../../net_io.o ../../apa.o ../../common.o ../../progress.o \
+	../../byteseq.o ../../net_common.o ../../dict.o
 
 # "autodetect" Windows builds
 ifdef SYSTEMROOT

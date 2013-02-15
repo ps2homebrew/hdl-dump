@@ -1,6 +1,6 @@
 /*
  * config.h
- * $Id: config.h,v 1.10 2005/07/10 21:06:48 bobi Exp $
+ * $Id: config.h,v 1.11 2005/12/08 20:40:05 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -70,6 +70,11 @@ typedef u32 u_int32_t;
 typedef u64 u_int64_t;
 #endif
 
+#if defined (_BUILD_UNIX)
+typedef int SOCKET;
+#  define INVALID_SOCKET (-1)
+#endif
+
 /* maximum number of compatibility flags (in bits);
    should fit in the following type */
 #define MAX_FLAGS 8
@@ -97,6 +102,8 @@ static const compat_flags_t COMPAT_FLAGS_INVALID = (compat_flags_t) -1;
 #define CONFIG_USE_COMPRESSION_FLAG       "use_compression"
 #define CONFIG_DISC_DATABASE_FILE         "disc_database_file"
 #define CONFIG_LAST_IP                    "last_ip"
+#define CONFIG_UDP_QUICK_PACKETS          "udp_quick_packets"
+#define CONFIG_UDP_DELAY_TIME             "udp_delay_time"
 
 
 #if defined (__cplusplus)

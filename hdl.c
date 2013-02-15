@@ -1,6 +1,6 @@
 /*
  * hdl.c
- * $Id: hdl.c,v 1.13 2005/07/10 21:06:48 bobi Exp $
+ * $Id: hdl.c,v 1.14 2005/12/08 20:40:22 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -211,7 +211,7 @@ prepare_main (const hdl_game_t *details,
 	 *	  f2 0c 00 00 08 48 00 00 00 25 01 00	;; 0x00480000, 128MB
 	 *	   ^  ^  ^  ^  ^  ^  ^  ^  ^  ^  ^  ^
 	 *	   +--+--+--+  +--+--+--+  +--+--+--+- BE, x / 4 = part size in kilobytes [!]
-	 *	            |           +- x << 8 = data start in sectors
+	 *	            |           +- x << 8 = data start in HDD-sectors
 	 *	            +- BE, x * 512 = part offset in megabytes, incremental counter [!]
 	 */
 

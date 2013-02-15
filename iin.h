@@ -1,6 +1,6 @@
 /*
  * iin.h
- * $Id: iin.h,v 1.7 2005/07/10 21:06:48 bobi Exp $
+ * $Id: iin.h,v 1.8 2005/12/08 20:41:27 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -31,7 +31,7 @@
 C_START
 
 #define IIN_SECTOR_SIZE 2048 /* CD/DVD sector size */
-#define IIN_NUM_SECTORS  128 /* number of sectors to read at once */
+#define IIN_NUM_SECTORS  512 /* number of sectors to read at once */
 
 
 /*

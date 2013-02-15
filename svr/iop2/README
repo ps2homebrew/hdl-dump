@@ -1,0 +1,53 @@
+$Id: README,v 1.1 2005/08/06 12:02:24 bobi Exp $
+
+Alternative hdld_svr.elf README
+===============================
+
+What's all this about?
+----------------------
+
+Alternative hdl_dump networking server uses lwip's RAW API, instead of
+sequential one (AKA BSD-sockets). The benefit is 40% better network
+throughput - 1,15MB/sec compared to the old one of 0,8MB/sec
+(measured when client is running on the Linux box); the drawback
+is somewhat more complex server, because lwip RAW API requires
+a state machine operation. Also, stock ps2ip.irx doesn't export lwip
+RAW API, therefore server is integrated into the ps2ip.irx itself.
+
+Another drawback is lack of decompression code, which means, that
+client SHOULD NOT use compression (turn it off in the config file).
+
+
+HOWTO setup environment
+-----------------------
+
+Copy all files in the following location:
+	hdl_dump/svr/iop2/
+Open term, navigate to the same location, execute assemble.sh
+
+You need Subversion client, wget and Internet connection in order
+to succeed.
+
+When script completes, use the following commands to build
+the alternative IOP module:
+	cd tcpip/
+	make
+	ls -l bin/
+
+
+HOWTO build loader
+------------------
+
+Copy new ps2iop.irx on top of the old one:
+	cd hdl_dump/svr/irx
+	mv ps2ip.irx ps2ip_orig.irx
+	cd ../iop2/
+	cp tcpip/bin/ps2ip.irx ../irx/
+
+Patch hdl_dump/svr/ee/loader.c:82 - comment-out the line
+	#define LOAD_SERVER
+
+Build the new loader:
+	cd hdl_dump/svr
+	make clean
+	make

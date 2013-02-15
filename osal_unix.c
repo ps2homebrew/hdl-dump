@@ -1,6 +1,6 @@
 /*
  * osal_unix.c
- * $Id: osal_unix.c,v 1.5 2005/07/10 21:06:48 bobi Exp $
+ * $Id: osal_unix.c,v 1.6 2005/12/08 20:46:02 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -377,7 +377,9 @@ osal_map_device_name (const char *input,
   int result = stat (input, &st) == 0 ? RET_OK : RET_ERR;
   if (result == RET_OK)
     { /* accept the input, only if it is a block device */
+#if 0 /* when 0 it will treat files like devices; for testing purposes */
       result = st.st_mode & S_IFBLK ? RET_OK : RET_BAD_DEVICE;
+#endif
       if (result == RET_OK)
 	strcpy (output, input);
     }

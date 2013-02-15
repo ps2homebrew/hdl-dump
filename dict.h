@@ -1,6 +1,6 @@
 /*
  * dict.h
- * $Id: dict.h,v 1.1 2005/07/10 21:06:48 bobi Exp $
+ * $Id: dict.h,v 1.2 2005/12/08 20:40:15 bobi Exp $
  *
  * Copyright 2005 Bobi B., w1zard0f07@yahoo.com
  *
@@ -51,6 +51,10 @@ int dict_put_flag (dict_t *dict,
 int dict_get_flag (const dict_t *dict,
 		   const char *key,
 		   int default_value);
+
+int dict_get_numeric (const dict_t *dict,
+		      const char *key,
+		      int default_value);
 
 int dict_store (const dict_t *dict,
 		const char *filename);

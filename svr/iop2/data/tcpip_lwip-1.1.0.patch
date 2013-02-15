@@ -1,0 +1,79 @@
+diff -Naur tcpip_old/Makefile tcpip/Makefile
+--- tcpip_old/Makefile	2005-08-05 16:47:21.000000000 +0000
++++ tcpip/Makefile	2005-08-05 17:16:17.688114032 +0000
+@@ -18,9 +18,9 @@
+ DEBUG_FLAGS = -DDEBUG -DLWIP_DEBUG
+ endif
+ 
+-LWIP=$(PS2SDKSRC)/iop/tcpip/lwip
++LWIP=../lwip
+ 
+-ps2ip_OBJECTS = ps2ip.o sys.o sys_arch.o exports.o imports.o inet.o mem.o netif.o pbuf.o stats.o tcp_in.o tcp_out.o udp.o memp.o tcp.o etharp.o
++ps2ip_OBJECTS = ps2ip.o sys.o sys_arch.o exports.o imports.o inet.o mem.o netif.o pbuf.o stats.o tcp_in.o tcp_out.o udp.o memp.o tcp.o etharp.o raw.o
+ 
+ ifdef PS2IP_DHCP
+ ps2ip_OBJECTS+= dhcp.o
+@@ -52,9 +52,9 @@
+ clean:
+ 	rm -f -r $(IOP_OBJS_DIR) $(IOP_BIN_DIR)
+ 
+-include $(PS2SDKSRC)/Defs.make
+-include $(PS2SDKSRC)/iop/Rules.make
+-include $(PS2SDKSRC)/iop/Rules.release
++include ./Defs.make
++include ./Rules.make
++include ./Rules.release
+ 
+ 
+ obj/loopif.o: $(LWIP)/src/netif/loopif.c
+@@ -87,6 +87,9 @@
+ obj/tcpip.o: $(LWIP)/src/api/tcpip.c
+ 	$(IOP_CC) $(IOP_CFLAGS) $< -o $@
+ 
++obj/raw.o: $(LWIP)/src/core/raw.c
++	$(IOP_CC) $(IOP_CFLAGS) $< -o $@
++
+ obj/inet.o: $(LWIP)/src/core/inet.c
+ 	$(IOP_CC) $(IOP_CFLAGS) $< -o $@
+ 
+diff -Naur tcpip_old/src/ps2ip.c tcpip/src/ps2ip.c
+--- tcpip_old/src/ps2ip.c	2005-08-05 16:47:21.000000000 +0000
++++ tcpip/src/ps2ip.c	2005-08-05 17:16:06.346838168 +0000
+@@ -271,7 +271,6 @@
+ 	InputMSG*	pMSG=(InputMSG*)pvArg;
+ 	PBuf*			pInput=pMSG->pInput;
+ 	NetIF*		pNetIF=pMSG->pNetIF;
+-	PBuf*			pARP;
+ 	int			iFlags;
+ 
+ 	//Remove the first message in the message-queue. BTW: pMSG == &aMSGs[u8FirstMSG].
+@@ -288,7 +287,7 @@
+ 
+ 		//IP-packet. Update ARP table, obtain first queued packet.
+ 
+-		pARP=etharp_ip_input(pNetIF,pInput);
++		etharp_ip_input(pNetIF,pInput);
+ 
+ 		//Skip Ethernet header.
+ 
+@@ -300,17 +299,17 @@
+ 
+ 		//Send out the ARP reply or ARP queued packet.
+ 
+-		SendARPReply(pNetIF,pARP);
++		SendARPReply(pNetIF,NULL);
+ 		break;
+ 	case	ETHTYPE_ARP:
+ 
+ 		//ARP-packet. Pass pInput to ARP module, get ARP reply or ARP queued packet.
+ 
+-		pARP=etharp_arp_input(pNetIF,(struct eth_addr*)&pNetIF->hwaddr,pInput);
++		etharp_arp_input(pNetIF,(struct eth_addr*)&pNetIF->hwaddr,pInput);
+ 
+ 		//Send out the ARP reply or ARP queued packet.
+ 
+-		SendARPReply(pNetIF,pARP);
++		SendARPReply(pNetIF,NULL);
+ 		break;
+ 	default:
+ 
