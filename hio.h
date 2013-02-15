@@ -1,6 +1,6 @@
 /*
  * hio.h - PS2 HDD I/O
- * $Id: hio.h,v 1.2 2004/08/15 16:44:19 b081 Exp $
+ * $Id: hio.h,v 1.3 2004/08/20 12:35:17 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -49,6 +49,11 @@ typedef int (*hio_write_t) (hio_t *hio,
 
 typedef int (*hio_close_t) (hio_t *hio);
 
+/* return last error text in a memory buffer, that would be freed by calling hio_dispose_error_t */
+typedef char* (*hio_last_error_t) (hio_t *hio);
+typedef void (*hio_dispose_error_t) (hio_t *hio,
+				     char* error);
+
 
 struct hio_type
 {
@@ -56,6 +61,8 @@ struct hio_type
   hio_read_t read;
   hio_write_t write;
   hio_close_t close;
+  hio_last_error_t last_error;
+  hio_dispose_error_t dispose_error;
 };
 
 

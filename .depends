@@ -19,8 +19,7 @@
 
 
 ./hdl_dump.o: hdl_dump.c config.h retcodes.h osal.h apa.h ps2_hdd.h hio.h \
-  common.h progress.h iin.h hdl.h isofs.h aligned.h hio_probe.h net_io.h \
-  aspi_hlio.h
+  common.h progress.h iin.h hdl.h isofs.h aligned.h hio_probe.h net_io.h
 
 
 ./hio_net.o: hio_net.c hio_net.h hio.h osal.h config.h net_io.h retcodes.h
@@ -32,8 +31,8 @@
 ./hio_win32.o: hio_win32.c hio_win32.h hio.h osal.h config.h retcodes.h
 
 
-./iin_aspi.o: iin_aspi.c wnaspi32.h iin_aspi.h retcodes.h iin.h config.h \
-  aspi_hlio.h
+./iin_aspi.o: iin_aspi.c wnaspi32.h iin_aspi.h iin.h config.h osal.h \
+  retcodes.h aspi_hlio.h
 
 
 ./iin_cdrwin.o: iin_cdrwin.c iin_cdrwin.h iin.h config.h iin_img_base.h \
@@ -57,7 +56,8 @@
   retcodes.h common.h progress.h hio.h
 
 
-./iin_iso.o: iin_iso.c iin_iso.h iin.h config.h osal.h retcodes.h aligned.h
+./iin_iso.o: iin_iso.c iin_iso.h iin.h config.h iin_img_base.h osal.h \
+  retcodes.h
 
 
 ./iin_nero.o: iin_nero.c iin_nero.h iin.h config.h iin_img_base.h osal.h \
@@ -72,9 +72,9 @@
   retcodes.h aligned.h
 
 
-./iin_probe.o: iin_probe.c iin.h config.h iin_optical.h iin_iso.h \
-  iin_hdloader.h iin_cdrwin.h iin_gi.h iin_nero.h iin_iml.h iin_net.h \
-  retcodes.h
+./iin_probe.o: iin_probe.c iin.h config.h iin_optical.h iin_aspi.h \
+  iin_hdloader.h iin_net.h iin_nero.h iin_cdrwin.h iin_gi.h iin_iso.h \
+  iin_iml.h retcodes.h
 
 
 ./ioctl_hlio.o: ioctl_hlio.c ntddscsi.h wnaspi32.h retcodes.h osal.h \
@@ -86,6 +86,9 @@
 
 
 ./net_io.o: net_io.c net_io.h
+
+
+./osal_unix.o: osal_unix.c retcodes.h osal.h config.h apa.h ps2_hdd.h hio.h
 
 
 ./osal_win32.o: osal_win32.c retcodes.h osal.h config.h apa.h ps2_hdd.h \
@@ -109,9 +112,5 @@
 
 
 ./svr/ee/loader.o: svr/ee/loader.c svr/ee/graph.h
-
-
-./gui/gui_main.o: gui/gui_main.c gui/rsrc.h progress.h config.h osal.h \
-  retcodes.h apa.h ps2_hdd.h hio.h hdl.h isofs.h iin.h
 
 

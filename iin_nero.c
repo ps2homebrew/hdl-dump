@@ -1,6 +1,6 @@
 /*
  * iin_nero.c
- * $Id: iin_nero.c,v 1.5 2004/08/15 16:44:19 b081 Exp $
+ * $Id: iin_nero.c,v 1.6 2004/08/20 12:35:17 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -23,6 +23,7 @@
 
 #include <assert.h>
 #include <ctype.h>
+#include <string.h>
 #include "iin_nero.h"
 #include "iin_img_base.h"
 #include "osal.h"

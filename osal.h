@@ -1,6 +1,6 @@
 /*
  * osal.h
- * $Id: osal.h,v 1.7 2004/08/15 16:44:19 b081 Exp $
+ * $Id: osal.h,v 1.8 2004/08/20 12:35:17 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -28,6 +28,10 @@
 
 #if defined (_BUILD_WIN32)
 #  include <windows.h>
+
+#elif defined (_BUILD_UNIX)
+/* NULL */
+
 #else
 #  error Unsupported platform; Please, modify Makefile
 #endif
@@ -42,13 +46,27 @@
 
 #if defined (_BUILD_WIN32)
 typedef HANDLE osal_handle_t;
+#  define OSAL_HANDLE_INIT 0
+#  define OSAL_IS_OPENED(x) ((x) != OSAL_HANDLE_INIT)
+
+#elif defined (_BUILD_UNIX)
+
+typedef struct
+{
+  int desc; /* file descriptor */
+} osal_handle_t;
+
+#define OSAL_HANDLE_INIT { -1 } /* file descriptor */
+#define OSAL_IS_OPENED(x) ((x).desc != -1)
+
 #endif
 
 
-/* pointer to be freed with osal_free */
+/* pointer should be passed to osal_dispose_error_msg when no longer needed */
 unsigned long osal_get_last_error_code (void);
 char* osal_get_last_error_msg (void);
 char* osal_get_error_msg (unsigned long error);
+void osal_dispose_error_msg (char *msg);
 
 
 int osal_open (const char *name,

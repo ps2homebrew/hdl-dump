@@ -1,6 +1,6 @@
 /*
  * retcodes.h
- * $Id: retcodes.h,v 1.6 2004/08/15 16:44:19 b081 Exp $
+ * $Id: retcodes.h,v 1.7 2004/08/20 12:35:17 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -50,7 +50,7 @@
 #define RET_1ST_LONGER  18 /* compare_iin: first input is longer */
 #define RET_2ND_LONGER  19 /* compare_iin: second input is longer */
 #define RET_FILE_NOT_FOUND 20 /* pretty obvious */
-#define RET_BROKEN_LINK 21 /* missing linked file (to an or CUE for example) */
+#define RET_BROKEN_LINK 21 /* missing linked file (to an IML or CUE for example) */
 
 
 #endif /* _RETCODES_H defined? */

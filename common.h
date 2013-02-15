@@ -1,6 +1,6 @@
 /*
  * common.h
- * $Id: common.h,v 1.8 2004/08/15 16:44:19 b081 Exp $
+ * $Id: common.h,v 1.9 2004/08/20 12:35:17 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -28,6 +28,10 @@
 #include "progress.h"
 #include "iin.h"
 #include "hio.h"
+
+#if !defined (MAX_PATH)
+#  define MAX_PATH 128
+#endif
 
 
 char* ltrim (char *text);

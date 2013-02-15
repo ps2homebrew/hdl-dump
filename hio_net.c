@@ -1,6 +1,6 @@
 /*
  * hio_net.c - TCP/IP networking access to PS2 HDD
- * $Id: hio_net.c,v 1.3 2004/08/15 16:44:19 b081 Exp $
+ * $Id: hio_net.c,v 1.4 2004/08/20 12:35:17 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -21,10 +21,21 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#if defined (_BUILD_WIN32)
+#  include <windows.h>
+#  include <winsock.h>
+#elif defined (_BUILD_UNIX)
+#  include <unistd.h>
+#  include <sys/types.h>
+#  include <sys/socket.h>
+#  include <netinet/in.h>
+typedef int SOCKET;
+#  define INVALID_SOCKET (-1)
+#endif
 #include <assert.h>
+#include <string.h>
+#include <stdlib.h>
 #include "hio_net.h"
-#include "windows.h"
-#include "winsock.h"
 #include "osal.h"
 #include "net_io.h"
 #include "retcodes.h"
@@ -36,46 +47,13 @@ typedef struct hio_net_type
   SOCKET sock;
   unsigned char *compressed;
   size_t compr_alloc, compr_used;
+  unsigned long error_code;
 } hio_net_t;
 
 
-static int net_stat (hio_t *hio,
-		     size_t *size_in_kb);
-
-static int net_read (hio_t *hio,
-		     size_t start_sector,
-		     size_t num_sectors,
-		     void *output,
-		     size_t *bytes);
-
-static int net_write (hio_t *hio,
-		      size_t start_sector,
-		      size_t num_sectors,
-		      const void *input,
-		      size_t *bytes);
-
-static int net_close (hio_t *hio);
-
-
+#if defined (_BUILD_WIN32)
 static int net_init = 0;
-
-
-/**************************************************************/
-static hio_t*
-net_alloc (SOCKET s)
-{
-  hio_net_t *net = (hio_net_t*) osal_alloc (sizeof (hio_net_t));
-  if (net != NULL)
-    {
-      memset (net, 0, sizeof (hio_net_t));
-      net->hio.stat = &net_stat;
-      net->hio.read = &net_read;
-      net->hio.write = &net_write;
-      net->hio.close = &net_close;
-      net->sock = s;
-    }
-  return ((hio_t*) net);
-}
+#endif
 
 
 /**************************************************************/
@@ -159,6 +137,8 @@ net_stat (hio_t *hio,
   int result = query (net->sock, CMD_STAT_UNIT, 0, 0, &size_in_kb2, NULL, NULL);
   if (result == OSAL_OK)
     *size_in_kb = size_in_kb2;
+  else
+    net->error_code = osal_get_last_error_code ();
   return (result);
 }
 
@@ -195,6 +175,8 @@ net_read (hio_t *hio,
 	    /* server reported an error; give up */
 	    result = RET_SVR_ERR;
 	}
+      else
+	net->error_code = osal_get_last_error_code ();
     }
   while (result == OSAL_OK && num_sectors > 0);
   return (result);
@@ -269,6 +251,8 @@ net_write (hio_t *hio,
 		/* server reported an error; give up */
 		result = RET_SVR_ERR;
 	    }
+	  else
+	    net->error_code = osal_get_last_error_code ();
 	}
       while (result == OSAL_OK && num_sectors > 0);
     }
@@ -281,12 +265,54 @@ static int
 net_close (hio_t *hio)
 {
   hio_net_t *net = (hio_net_t*) hio;
+#if defined (_BUILD_WIN32)
   shutdown (net->sock, SD_RECEIVE | SD_SEND);
   closesocket (net->sock);
+#elif defined (_BUILD_UNIX)
+  close (net->sock);
+#endif
   if (net->compressed != NULL)
     osal_free (net->compressed);
   osal_free (hio);
   return (RET_OK);
+}
+
+
+/**************************************************************/
+static char*
+net_last_error (hio_t *hio)
+{
+  hio_net_t *net = (hio_net_t*) hio;
+  return (osal_get_error_msg (net->error_code));
+}
+
+
+/**************************************************************/
+static void
+net_dispose_error (hio_t *hio,
+		   char* error)
+{
+  osal_dispose_error_msg (error);
+}
+
+
+/**************************************************************/
+static hio_t*
+net_alloc (SOCKET s)
+{
+  hio_net_t *net = (hio_net_t*) osal_alloc (sizeof (hio_net_t));
+  if (net != NULL)
+    {
+      memset (net, 0, sizeof (hio_net_t));
+      net->hio.stat = &net_stat;
+      net->hio.read = &net_read;
+      net->hio.write = &net_write;
+      net->hio.close = &net_close;
+      net->hio.last_error = &net_last_error;
+      net->hio.dispose_error = &net_dispose_error;
+      net->sock = s;
+    }
+  return ((hio_t*) net);
 }
 
 
@@ -299,6 +325,8 @@ hio_net_probe (const char *path,
   char *endp;
   int a, b, c, d;
 
+#if defined (_BUILD_WIN32)
+  /* only Windows requires sockets initialization */
   if (!net_init)
     {
       WORD version = MAKEWORD (2, 2);
@@ -309,6 +337,7 @@ hio_net_probe (const char *path,
       else
 	return (RET_ERR);
     }
+#endif
 
   a = strtol (path, &endp, 10);
   if (a > 0 && a <= 255 && *endp == '.')
@@ -343,8 +372,12 @@ hio_net_probe (const char *path,
 
 		      if (result != RET_OK)
 			{ /* close socket on error */
+#if defined (_BUILD_WIN32)
 			  shutdown (s, SD_RECEIVE | SD_SEND);
 			  closesocket (s);
+#elif defined (_BUILD_UNIX)
+			  close (s);
+#endif
 			}
 		    }
 		}

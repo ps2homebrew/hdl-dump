@@ -1,6 +1,6 @@
 /*
  * iin_optical.c
- * $Id: iin_optical.c,v 1.5 2004/08/15 16:44:19 b081 Exp $
+ * $Id: iin_optical.c,v 1.6 2004/08/20 12:35:17 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -23,6 +23,7 @@
 
 #include <assert.h>
 #include <ctype.h>
+#include <string.h>
 #include "iin_optical.h"
 #include "osal.h"
 #include "retcodes.h"
@@ -34,21 +35,82 @@ typedef struct iin_optical_type
   iin_t iin;
   osal_handle_t device;
   aligned_t *al;
+  unsigned long error_code; /* against osal_... */
 } iin_optical_t;
 
 
-static int opt_stat (iin_t *iin,
-		     size_t *sector_size,
-		     size_t *num_sectors);
+/**************************************************************/
+static int
+opt_stat (iin_t *iin,
+	  size_t *sector_size,
+	  size_t *num_sectors)
+{
+  iin_optical_t *opt = (iin_optical_t*) iin;
+  bigint_t size_in_bytes;
+  int result = osal_get_device_size (opt->device, &size_in_bytes);
+  if (result == OSAL_OK)
+    {
+      *sector_size = IIN_SECTOR_SIZE;
+      *num_sectors = (size_t) (size_in_bytes / IIN_SECTOR_SIZE);
+    }
+  else
+    opt->error_code = osal_get_last_error_code ();
+  return (result);
+}
 
-static int opt_read (iin_t *iin,
-		     size_t start_sector,
-		     size_t num_sectors,
-		     const char **data,
-		     size_t *length);
 
-static int opt_close (iin_t *iin);
+/**************************************************************/
+static int
+opt_read (iin_t *iin,
+	  size_t start_sector,
+	  size_t num_sectors,
+	  const char **data,
+	  size_t *length)
+{
+  iin_optical_t *opt = (iin_optical_t*) iin;
+  int result = al_read (opt->al, (bigint_t) start_sector * IIN_SECTOR_SIZE, data,
+			num_sectors * IIN_SECTOR_SIZE, length);
+  if (result != RET_OK)
+    ;
+  else
+    opt->error_code = osal_get_last_error_code ();
+  return (result);
+}
 
+
+/**************************************************************/
+static int
+opt_close (iin_t *iin)
+{
+  iin_optical_t *opt = (iin_optical_t*) iin;
+  int result;
+  al_free (opt->al);
+  result = osal_close (opt->device);
+  if (result == RET_OK)
+    ;
+  else
+    opt->error_code = osal_get_last_error_code ();
+  osal_free (iin);
+  return (result);
+}
+
+
+/**************************************************************/
+static char*
+opt_last_error (iin_t *iin)
+{
+  iin_optical_t *opt = (iin_optical_t*) iin;
+  return (osal_get_error_msg (opt->error_code));
+}
+
+
+/**************************************************************/
+static void
+opt_dispose_error (iin_t *iin,
+		   char* error)
+{
+  osal_dispose_error_msg (error);
+}
 
 
 /**************************************************************/
@@ -68,6 +130,8 @@ opt_alloc (osal_handle_t device,
 	  iin->stat = &opt_stat;
 	  iin->read = &opt_read;
 	  iin->close = &opt_close;
+	  iin->last_error = &opt_last_error;
+	  iin->dispose_error = &opt_dispose_error;
 	  strcpy (iin->source_type, "Optical drive");
 	  opt->device = device;
 	  opt->al = al;
@@ -79,51 +143,6 @@ opt_alloc (osal_handle_t device,
 	}
     }
   return (opt);
-}
-
-
-/**************************************************************/
-static int
-opt_stat (iin_t *iin,
-	  size_t *sector_size,
-	  size_t *num_sectors)
-{
-  iin_optical_t *opt = (iin_optical_t*) iin;
-  bigint_t size_in_bytes;
-  int result = osal_get_device_size (opt->device, &size_in_bytes);
-  if (result == OSAL_OK)
-    {
-      *sector_size = IIN_SECTOR_SIZE;
-      *num_sectors = (size_t) (size_in_bytes / IIN_SECTOR_SIZE);
-    }
-  return (result);
-}
-
-
-/**************************************************************/
-static int
-opt_read (iin_t *iin,
-	  size_t start_sector,
-	  size_t num_sectors,
-	  const char **data,
-	  size_t *length)
-{
-  iin_optical_t *opt = (iin_optical_t*) iin;
-  return (al_read (opt->al, (bigint_t) start_sector * IIN_SECTOR_SIZE, data,
-		   num_sectors * IIN_SECTOR_SIZE, length));
-}
-
-
-/**************************************************************/
-static int
-opt_close (iin_t *iin)
-{
-  iin_optical_t *opt = (iin_optical_t*) iin;
-  int result;
-  al_free (opt->al);
-  result = osal_close (opt->device);
-  osal_free (iin);
-  return (result);
 }
 
 

@@ -1,6 +1,6 @@
 /*
  * apa.c
- * $Id: apa.c,v 1.7 2004/08/15 16:44:19 b081 Exp $
+ * $Id: apa.c,v 1.8 2004/08/20 12:35:17 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -23,6 +23,8 @@
 
 #include <stdio.h>
 #include <time.h>
+#include <string.h>
+#include <stdlib.h>
 
 #include "retcodes.h"
 #include "common.h"

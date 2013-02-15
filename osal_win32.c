@@ -1,6 +1,6 @@
 /*
  * osal_win32.c
- * $Id: osal_win32.c,v 1.8 2004/08/15 16:44:19 b081 Exp $
+ * $Id: osal_win32.c,v 1.9 2004/08/20 12:35:17 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -47,7 +47,7 @@ osal_get_last_error_code (void)
 
 
 /**************************************************************/
-char* /* pointer to be freed with osal_free; NULL on error */
+char*
 osal_get_error_msg (unsigned long err)
 {
   char *error = NULL;
@@ -63,6 +63,14 @@ char*
 osal_get_last_error_msg (void)
 {
   return (osal_get_error_msg (GetLastError ()));
+}
+
+
+/**************************************************************/
+void
+osal_dispose_error_msg (char *msg)
+{
+  LocalFree (msg);
 }
 
 

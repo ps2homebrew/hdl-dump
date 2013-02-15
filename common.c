@@ -1,6 +1,6 @@
 /*
  * common.c
- * $Id: common.c,v 1.10 2004/08/15 16:44:19 b081 Exp $
+ * $Id: common.c,v 1.11 2004/08/20 12:35:17 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -23,6 +23,7 @@
 
 #include <ctype.h>
 #include <stdio.h>
+#include <string.h>
 #include "common.h"
 #include "retcodes.h"
 #include "osal.h"
@@ -197,7 +198,7 @@ dump_device (const char *device_name,
   if (result == OSAL_OK)
     {
       bigint_t size_in_bytes = 0;
-      result = osal_get_device_size (device, &size_in_bytes);
+      result = osal_get_estimated_device_size (device, &size_in_bytes);
       if (result == OSAL_OK)
 	{
 	  osal_handle_t file;

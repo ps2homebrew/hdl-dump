@@ -1,6 +1,6 @@
 /*
  * iin_hdloader.c
- * $Id: iin_hdloader.c,v 1.7 2004/08/15 16:44:19 b081 Exp $
+ * $Id: iin_hdloader.c,v 1.8 2004/08/20 12:35:17 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -23,6 +23,7 @@
 
 #include <ctype.h>
 #include <stdio.h>
+#include <string.h>
 #include "iin_hdloader.h"
 #include "iin_img_base.h"
 #include "hio_win32.h"
@@ -52,7 +53,7 @@ iin_hdloader_probe_path (const char *path,
       char device_name [6 + 1]; /* hdd??:\0 */
       char real_device_name [30];
       const char *partition_name = strchr (path, ':') + 1;
-      osal_handle_t device = 0;
+      osal_handle_t device = OSAL_HANDLE_INIT;
       apa_partition_table_t *table = NULL;
       size_t partition_index;
       size_t device_sector_size;
@@ -70,7 +71,7 @@ iin_hdloader_probe_path (const char *path,
 	result = osal_open (real_device_name, &device, 0); /* do not disable caching */
       if (result == OSAL_OK)
 	result = osal_get_device_sect_size (device, &device_sector_size);
-      if (device != 0)
+      if (OSAL_IS_OPENED (device))
 	osal_close (device);
 
       if (result == OSAL_OK)

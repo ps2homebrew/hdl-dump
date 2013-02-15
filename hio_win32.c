@@ -1,6 +1,6 @@
 /*
  * hio_win32.c - Win32 interface to locally connected PS2 HDD
- * $Id: hio_win32.c,v 1.2 2004/08/15 16:44:19 b081 Exp $
+ * $Id: hio_win32.c,v 1.3 2004/08/20 12:35:17 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -25,48 +25,15 @@
 #include "osal.h"
 #include "retcodes.h"
 #include <ctype.h>
+#include <string.h>
 
 
 typedef struct hio_win32_type
 {
   hio_t hio;
   osal_handle_t device;
+  unsigned long error_code; /* against osal_... */
 } hio_win32_t;
-
-
-static int win32_stat (hio_t *hio,
-		       size_t *size_in_kb);
-
-static int win32_read (hio_t *hio,
-		       size_t start_sector,
-		       size_t num_sectors,
-		       void *output,
-		       size_t *bytes);
-
-static int win32_write (hio_t *hio,
-			size_t start_sector,
-			size_t num_sectors,
-			const void *input,
-			size_t *bytes);
-
-static int win32_close (hio_t *hio);
-
-
-/**************************************************************/
-static hio_t*
-win32_alloc (osal_handle_t device)
-{
-  hio_win32_t *hw32 = (hio_win32_t*) osal_alloc (sizeof (hio_win32_t));
-  if (hw32 != NULL)
-    {
-      hw32->hio.stat = &win32_stat;
-      hw32->hio.read = &win32_read;
-      hw32->hio.write = &win32_write;
-      hw32->hio.close = &win32_close;
-      hw32->device = device;
-    }
-  return ((hio_t*) hw32);
-}
 
 
 /**************************************************************/
@@ -84,6 +51,8 @@ win32_stat (hio_t *hio,
       else
 	*size_in_kb = (size_t) 0xffffffff;
     }
+  else
+    hw32->error_code = osal_get_last_error_code ();
   return (result);
 }
 
@@ -100,6 +69,10 @@ win32_read (hio_t *hio,
   int result = osal_seek (hw32->device, (bigint_t) start_sector * 512);
   if (result == OSAL_OK)
     result = osal_read (hw32->device, output, num_sectors * 512, bytes);
+  if (result == OSAL_OK)
+    ;
+  else
+    hw32->error_code = osal_get_last_error_code ();
   return (result);
 }
 
@@ -116,6 +89,10 @@ win32_write (hio_t *hio,
   int result = osal_seek (hw32->device, (bigint_t) start_sector * 512);
   if (result == OSAL_OK)
     result = osal_write (hw32->device, input, num_sectors * 512, bytes);
+  if (result == OSAL_OK)
+    ;
+  else
+    hw32->error_code = osal_get_last_error_code ();
   return (result);
 }
 
@@ -128,6 +105,44 @@ win32_close (hio_t *hio)
   int result = osal_close (hw32->device);
   osal_free (hio);
   return (result);
+}
+
+
+/**************************************************************/
+static char*
+win32_last_error (hio_t *hio)
+{
+  hio_win32_t *hw32 = (hio_win32_t*) hio;
+  return (osal_get_error_msg (hw32->error_code));
+}
+
+
+/**************************************************************/
+static void
+win32_dispose_error (hio_t *hio,
+		     char* error)
+{
+  osal_dispose_error_msg (error);
+}
+
+
+/**************************************************************/
+static hio_t*
+win32_alloc (osal_handle_t device)
+{
+  hio_win32_t *hw32 = (hio_win32_t*) osal_alloc (sizeof (hio_win32_t));
+  if (hw32 != NULL)
+    {
+      memset (hw32, 0, sizeof (hio_win32_t));
+      hw32->hio.stat = &win32_stat;
+      hw32->hio.read = &win32_read;
+      hw32->hio.write = &win32_write;
+      hw32->hio.close = &win32_close;
+      hw32->hio.last_error = &win32_last_error;
+      hw32->hio.dispose_error = &win32_dispose_error;
+      hw32->device = device;
+    }
+  return ((hio_t*) hw32);
 }
 
 
