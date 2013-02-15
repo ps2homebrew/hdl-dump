@@ -1,0 +1,3 @@
+ * access CD-/DVD-ROM drives by letter (to work under wine)
+ * SPTI support for Windows NT+, disable ASPI support
+ * auto-detect ToxicOS APAEXT, disable 128GB limitation

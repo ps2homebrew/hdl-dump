@@ -1,6 +1,6 @@
 /*
  * progress.h
- * $Id: progress.h,v 1.8 2005/07/10 21:06:48 bobi Exp $
+ * $Id: progress.h,v 1.9 2006/05/21 21:41:50 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -37,16 +37,20 @@ C_START
 
 
 /* high-resolution timers support */
+#define HIGHRES_TO_SEC 1000000 /* microseconds */
+
 #if defined (_BUILD_WIN32) && !defined (_BUILD_WINE)
-typedef clock_t highres_time_t;
-#  define HIGHRES_TO_SEC CLOCKS_PER_SEC
+#  include <windows.h>
+typedef LARGE_INTEGER highres_time_t;
 #endif
 
 #if defined (_BUILD_UNIX) || defined (_BUILD_WINE)
-#  include "sys/time.h"
+#  include <sys/time.h>
 typedef struct timeval highres_time_t;
-#  define HIGHRES_TO_SEC 1000000 /* microseconds */
 #endif
+
+void highres_time (highres_time_t *cl);
+u_int64_t highres_time_val (const highres_time_t *cl);
 
 
 typedef struct progress_type progress_t;

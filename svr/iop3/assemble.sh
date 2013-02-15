@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # part of hdl_dump
-# $Id: assemble.sh,v 1.1 2005/12/08 20:44:22 bobi Exp $
+# $Id: assemble.sh,v 1.2 2006/05/21 21:47:55 bobi Exp $
 
 if [ ! "`svn --version`" ]; then
   echo 'You need Subversion client (svn).'
@@ -41,5 +41,5 @@ fi
 # of error constants
 
 # apply final patch
-cp data/hdld_svr.c tcpip/src/
+cp data/{hdld_svr.c,hio_iop.c,hio_iop.h} tcpip/src/
 patch -p0 -i data/integration.patch

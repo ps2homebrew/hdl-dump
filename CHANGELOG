@@ -1,3 +1,11 @@
+0.8.4
+	+ a new (throttling) algorithm to control network install speeds
+	+ memory-mapped I/O when reading CDs/DVDs on Linux
+	~ improved 64-bit system/compiler compatibility
+ 	~ better FreeBSD (and maybe MacOS X) compatibility
+	~ major UDP server bug fixup
+	~ overall code cleanup
+ 
 0.8.3
 	+ new server, better network transfer speeds
 	+ proper SIGINT handling

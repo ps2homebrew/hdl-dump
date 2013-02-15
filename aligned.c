@@ -1,6 +1,6 @@
 /*
  * aligned.c
- * $Id: aligned.c,v 1.6 2004/12/04 10:20:53 b081 Exp $
+ * $Id: aligned.c,v 1.7 2006/05/21 21:35:11 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -52,8 +52,9 @@ al_alloc (osal_handle_t in,
       if (al->unaligned != NULL)
 	{
 	  al->in = in;
+	  /* FIX: 64-bit OS compatibility (not to trim ptr to 32-bit) */
 	  al->buffer = (void*) (((unsigned long) al->unaligned + sector_size - 1)
-				& ~(sector_size - 1));
+				& ~((unsigned long) sector_size - 1));
 	  assert (al->buffer >= al->unaligned);
 	  al->sector_size = sector_size;
 	  al->offset = (u_int64_t) -1;

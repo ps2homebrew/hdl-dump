@@ -1,6 +1,6 @@
 /*
  * gui_main.c
- * $Id: gui_main.c,v 1.7 2005/07/10 21:06:48 bobi Exp $
+ * $Id: gui_main.c,v 1.8 2006/05/21 21:42:34 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -758,6 +758,10 @@ install (HWND dlg)
 	  game.is_dvd = input_is_dvd;
 	  game.layer_break = 0; /* unsupported w/o ASPI */
 
+	  if (result == RET_OK)
+	    /* update compatibility database */
+	    ddb_update (config_, game.startup, game.name, game.compat_flags);
+
 	  pgs = get_progress (dlg);
 	  result = hdl_inject (config_, hio_, iin, &game, pgs);
 	  dispose_progress (pgs);
@@ -1028,34 +1032,13 @@ WinMain (HINSTANCE curr_inst,
   int result;
   INITCOMMONCONTROLSEX iccx;
 
-  /* read and resave config file */
-  char config_file[256], disc_database[256];
-  char *profile = getenv ("USERPROFILE");
-  if (profile != NULL)
-    { /* put it in user profile this time; share configuration with hdl_dump */
-      strcpy (config_file, profile);
-      strcat (config_file, "\\Application Data\\hdl_dump.conf");
-      strcpy (disc_database, profile);
-      strcat (disc_database, "\\Application Data\\hdl_dump.list");
-    }
-  else
-    { /* no USERPROFILE with winelib/wine */
-      strcpy (config_file, "./hdl_dump.conf");
-      strcpy (disc_database, "./hdl_dump.list");
-    }
+  /* load configuration */
   config_ = dict_alloc ();
   if (config_ != NULL)
-    { /* initialize defaults */
-      dict_put_flag (config_, CONFIG_LIMIT_TO_28BIT_FLAG, 1);
-      dict_put_flag (config_, CONFIG_ENABLE_ASPI_FLAG, 0);
-      dict_put (config_, CONFIG_PARTITION_NAMING,
-		CONFIG_PARTITION_NAMING_TOXICOS);
-      dict_put_flag (config_, CONFIG_USE_COMPRESSION_FLAG, 1);
-      dict_put (config_, CONFIG_LAST_IP, "192.168.0.10");
-      dict_put (config_, CONFIG_DISC_DATABASE_FILE, disc_database);
-
-      dict_restore (config_, config_file);
-      dict_store (config_, config_file);
+    {
+      set_config_defaults (config_);
+      dict_restore (config_, get_config_file ());
+      dict_store (config_, get_config_file ());
     }
 
   /* that way of common controls init should work fine with Windows 2000 */
@@ -1072,7 +1055,7 @@ WinMain (HINSTANCE curr_inst,
   if (hio_ != NULL)
     hio_->close (hio_);
 
-  dict_store (config_, config_file);
+  dict_store (config_, get_config_file ());
   dict_free (config_);
 
   return (0);

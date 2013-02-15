@@ -1,6 +1,6 @@
 /*
  * hdld_svr.c
- * $Id: hdld_svr.c,v 1.1 2005/12/08 20:44:22 bobi Exp $
+ * $Id: hdld_svr.c,v 1.2 2006/05/21 21:48:22 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -41,11 +41,6 @@
 
 #define MAX_RESP_SIZE (1460 * 2)
 
-#define HDD_SECTOR_SIZE  512   /* HDD sector size in bytes */
-#define HDD_NUM_SECTORS   32   /* number of sectors to write at once */
-#define NET_NUM_SECTORS 2048   /* max number of sectors to transfer via network at once */
-#define NET_IO_CMD_LEN (4 * 4) /* command length in bytes in networking I/O */
-
 
 #define SETBIT(mask, bit) (mask)[(bit) / 32] |= 1 << ((bit) % 32)
 #define GETBIT(mask, bit) ((mask)[(bit) / 32] & (1 << ((bit) % 32)))
@@ -76,6 +71,7 @@ typedef struct state_type
   /* incoming data */
   unsigned char *in;
   u_int32_t bitmask[(NET_NUM_SECTORS + 31) / 32];
+  u_int32_t bitmask_copy[(NET_NUM_SECTORS + 31) / 32]; /* endian-neutral */
   unsigned long command, start, num_sect;
 
   size_t bytes_passed, recv_calls; /* TCP/IP window delayed free statistics */
@@ -344,8 +340,10 @@ init_write_stat (state_t *state,
     }
   else
     { /* some parts are missing; ask for retransmit */
-      unsigned long *out = (unsigned long*) (((long) &state->_buffer[HDD_SECTOR_SIZE - 1]) &
-					     ~(HDD_SECTOR_SIZE - 1));
+      /* FIX: before, the code uses `incoming' buffer to build
+       *      available sectors bitmask, effectively destroying
+       *      the first sector from incoming data :-( */
+      unsigned long *out = state->bitmask_copy;
       for (i = 0; i < (NET_NUM_SECTORS + 31) / 32; ++i)
 	set_u32 (out + i, state->bitmask[i]);
       queue_response (state, command, sector, num_sect, 0,

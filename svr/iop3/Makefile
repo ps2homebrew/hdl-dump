@@ -1,6 +1,6 @@
 ##
-## svr/iop/Makefile
-## $Id: Makefile,v 1.5 2005/05/06 14:50:35 b081 Exp $
+## svr/iop3/Makefile
+## $Id: Makefile,v 1.1 2006/05/21 21:47:42 bobi Exp $
 ##
 ## Copyright 2004 Bobi B., w1zard0f07@yahoo.com
 ##
@@ -21,35 +21,10 @@
 ## Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 ##
 
-IOP_BIN = hdld_svr.irx
-
-IOP_OBJS = hdld_svr_iop.o hio_iop.o imports.o net_server.o net_io.o byteseq.o
-
-IOP_LIBS =
-
-IOP_INCS += -I../../
-
-IOP_CFLAGS += -Wall -D_BUILD_PS2 -s
-
-all: $(IOP_BIN) copy_irx
+all:
+	@[ ! -d tcpip -o ! -d lwip ] && ( ./clean.sh ; ./assemble.sh ; ) || \
+		/bin/true
+	$(MAKE) -C ./tcpip
 
 clean:
-	rm -f $(IOP_BIN) $(IOP_OBJS)
-
-net_server.o: ../net_server.c
-	@echo -e "\tIOP-CC $<"
-	@$(IOP_CC) $(IOP_CFLAGS) $< -o $@
-
-net_io.o: ../../net_io.c
-	@echo -e "\tIOP-CC $<"
-	@$(IOP_CC) $(IOP_CFLAGS) $< -o $@
-
-byteseq.o: ../../byteseq.c
-	@echo -e "\tIOP-CC $<"
-	@$(IOP_CC) $(IOP_CFLAGS) $< -o $@
-
-copy_irx: $(IOP_BIN)
-	@cp $(IOP_BIN) ../irx/
-
-include ../Defs.make
-include ../iop-rules.make
+	$(MAKE) -C ./tcpip clean

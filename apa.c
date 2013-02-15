@@ -1,6 +1,6 @@
 /*
  * apa.c
- * $Id: apa.c,v 1.14 2005/12/08 20:39:49 bobi Exp $
+ * $Id: apa.c,v 1.15 2006/05/21 21:35:20 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -740,6 +740,7 @@ apa_commit_ex (const dict_t *config,
 
 
 /**************************************************************/
+#if 0
 #define ADD_PROBLEM(buff,size,problem,len) \
   if ((len) < (size))			   \
     {					   \
@@ -893,6 +894,7 @@ apa_list_problems (const dict_t *config,
 
   return (RET_OK);
 }
+#endif
 
 
 /**************************************************************/

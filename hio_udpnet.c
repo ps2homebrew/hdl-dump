@@ -1,6 +1,6 @@
 /*
  * hio_net.c - TCP/IP networking access to PS2 HDD
- * $Id: hio_udpnet.c,v 1.1 2005/12/08 20:46:02 bobi Exp $
+ * $Id: hio_udpnet.c,v 1.2 2006/05/21 21:37:58 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -38,14 +38,16 @@
 #endif
 #include <assert.h>
 #include <string.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 #include "osal.h"
 #include "hio_udpnet.h"
 #include "byteseq.h"
-#include "net_io.h"
 #include "net_common.h"
 #include "retcodes.h"
+#include "progress.h"
+#include "net_io.h"
 
 
 typedef struct hio_net_type
@@ -54,8 +56,7 @@ typedef struct hio_net_type
   SOCKET sock;
   SOCKET udp;
   unsigned long error_code;
-  size_t quick_packets;
-  time_t delay_time;
+  size_t target_kbps;
 } hio_net_t;
 
 #define SETBIT(mask, bit) (mask)[(bit) / 32] |= 1 << ((bit) % 32)
@@ -68,7 +69,9 @@ static int net_init = 0;
 #if defined (_BUILD_WIN32)
 /* it is not the same, since usleep works in microseconds,
  * whereas Sleep is in miliseconds */
-#  define usleep Sleep
+#  define delay(ms) Sleep (ms)
+#else
+#  define delay(ms) usleep((ms) * 1000)
 #endif
 
 
@@ -76,10 +79,10 @@ static int net_init = 0;
 /* execute a command and wait for a reply */
 static int
 query (SOCKET s,
-       unsigned long command,
-       unsigned long sector,
-       unsigned long num_sectors,
-       unsigned long *response,
+       u_int32_t command,
+       u_int32_t sector,
+       u_int32_t num_sectors,
+       u_int32_t *response,
        char output [HDD_SECTOR_SIZE * NET_NUM_SECTORS]) /* or NULL */
 {
   unsigned char cmd [NET_IO_CMD_LEN];
@@ -122,46 +125,101 @@ query (SOCKET s,
 
 
 /**************************************************************/
+#define FEEDBACK 0
 static int
 send_for_write (hio_net_t *net,
-		unsigned long command,
-		unsigned long sector,
-		unsigned long num_sectors,
-		unsigned long *response,
+		u_int32_t command,
+		u_int32_t sector,
+		u_int32_t num_sectors,
+		u_int32_t *response,
 		const char data [HDD_SECTOR_SIZE * NET_NUM_SECTORS])
 {
-  size_t quick_packets = net->quick_packets;
-  time_t delay_time = net->delay_time;
+  static size_t retries = 0;
+  time_t delay_time = 1; /* <= tune here */
 
   u_int32_t bitmask[(NET_NUM_SECTORS + 31) / 32] = { 0 };
   typedef struct udp_packet_t
-  {
+  { /* 64-bit fix: command and start were unsigned long */
     unsigned char sector[HDD_SECTOR_SIZE * 2];
-    unsigned long command, start;
+    u_int32_t command, start;
   } udp_packet_t;
   udp_packet_t packet;
 
   /* ask to start writing operation */
-  int result = query (net->sock, CMD_HIO_WRITE, sector, num_sectors, response, NULL);
+  int result = query (net->sock, CMD_HIO_WRITE,
+		      sector, num_sectors, response, NULL);
   if (result == RET_OK &&
       *response == 0)
     {
       do
 	{ /* flood with (unconfirmed) data */
-	  size_t i, n = 0;
+	  size_t sps = net->target_kbps; /* *1032 */
+	  size_t i, count = 0;
+
+	  /* new throttling code */
+	  highres_time_t start;
+	  int sent = 0;
+
 	  for (i = 0; i < num_sectors; i += 2)
 	    if (!GETBIT (bitmask, i))
-	      {
-		memcpy (packet.sector, data + i * HDD_SECTOR_SIZE,
-			HDD_SECTOR_SIZE * 2);
-		set_u32 (&packet.command, command);
-		set_u32 (&packet.start, sector + i);
-		send (net->udp, (void*) &packet, sizeof (packet), 0);
+	      ++count;
 
-		/* that is pretty heuristic */
-		if ((n++ % quick_packets) == 0)
-		  usleep (delay_time);
-	      }
+	  highres_time (&start);
+	  while (count)
+	    {
+	      double seconds; /* curr time relative to start */
+	      double next; /* the time when the next packet should be sent */
+	      do
+		{ /* what's the time, how many seconds have gone and
+		   * what is the ratio of job that _has_ to be done
+		   * against the job that _is_ done */
+		  highres_time_t now;
+
+		  highres_time (&now);
+		  seconds = ((highres_time_val (&now) -
+			      highres_time_val (&start)) /
+			     (double) HIGHRES_TO_SEC);
+		  next = (double) sent / (double) sps;
+#if (FEEDBACK == 2)
+		  printf ("%.5f, %.5f, %4d\n",
+			  next, seconds, sent);
+		  fflush (stdout);
+#endif
+
+		  if (sent == 0 || next <= seconds)
+		    { /* lagging behind... */
+		      for (i = 0; i < num_sectors; i += 2)
+			if (!GETBIT (bitmask, i))
+			  {
+			    memcpy (packet.sector, data + i * HDD_SECTOR_SIZE,
+				    HDD_SECTOR_SIZE * 2);
+			    set_u32 (&packet.command, command);
+			    set_u32 (&packet.start, sector + i);
+			    send (net->udp, (void*) &packet,
+				  sizeof (packet), 0);
+#if (FEEDBACK == 1)
+			    printf (".");
+#endif
+
+			    /* send a single packet only */
+			    SETBIT (bitmask, i);
+			    break;
+			  }
+
+		      ++sent;
+		      --count;
+		    }
+		}
+	      while (count > 0 && next < seconds); /* quick loop */
+
+	      if (count)
+		{
+		  delay (delay_time);
+#if (FEEDBACK == 1)
+		  printf ("z");
+#endif
+		}
+	    } /* while more data waiting to be sent... */
 
 	  /* ask if all data is received */
 	  result = query (net->sock, CMD_HIO_WRITE_STAT, sector, num_sectors,
@@ -170,30 +228,35 @@ send_for_write (hio_net_t *net,
 	    {
 	      if (*response == num_sectors)
 		{
+#if 0 /* raise packets? */
 		  if (quick_packets <= net->quick_packets)
 		    ++quick_packets;
+#endif
 		  return (RET_OK); /* write operation has completed */
 		}
-	      else if (*response == (unsigned long) -1)
+	      else if (*response == (u_int32_t) -1)
 		return (RET_SVR_ERR); /* write operation has failed */
 	      else if (*response == 0)
 		{ /* more data needed; bitmask has been sent */
-		  unsigned long tmp[(NET_NUM_SECTORS + 31) / 32];
-		  result = recv_exact (net->sock, (void*) tmp, sizeof (tmp), 0);
+		  /* 64-bit fix: replaced unsigned long with u_int32_t */
+		  u_int32_t tmp[(NET_NUM_SECTORS + 31) / 32];
+		  result = recv_exact (net->sock, (void*) tmp,
+				       sizeof (tmp), 0);
 		  if (result == sizeof (tmp))
 		    { /* refresh bitmask */
 		      for (i = 0; i < (NET_NUM_SECTORS + 31) / 32; ++i)
 			bitmask[i] = get_u32 (tmp + i);
-		      --quick_packets;
+		      ++retries;
+		      result = RET_OK;
 		    }
 		  else
-		    return (RET_ERR);
+		    result = RET_ERR;
 		}
 	      else
-		return (RET_SVR_ERR); /* protocol error? */
+		result = RET_SVR_ERR; /* protocol error? */
 	    }
 	}
-      while (1);
+      while (result == RET_OK);
     }
   return (result);
 }
@@ -203,9 +266,9 @@ send_for_write (hio_net_t *net,
 /* execute a command with no reply */
 static int
 execute (SOCKET s,
-	 unsigned long command,
-	 unsigned long sector,
-	 unsigned long num_sectors)
+	 u_int32_t command,
+	 u_int32_t sector,
+	 u_int32_t num_sectors)
 {
   unsigned char cmd [NET_IO_CMD_LEN + HDD_SECTOR_SIZE * NET_NUM_SECTORS];
   u_int32_t cmd_length = NET_IO_CMD_LEN;
@@ -226,7 +289,7 @@ net_stat (hio_t *hio,
 	  u_int32_t *size_in_kb)
 {
   hio_net_t *net = (hio_net_t*) hio;
-  unsigned long size_in_kb2;
+  u_int32_t size_in_kb2;
   int result = query (net->sock, CMD_HIO_STAT, 0, 0, &size_in_kb2, NULL);
   if (result == OSAL_OK)
     *size_in_kb = size_in_kb2;
@@ -245,7 +308,7 @@ net_read (hio_t *hio,
 	  u_int32_t *bytes)
 {
   hio_net_t *net = (hio_net_t*) hio;
-  unsigned long response;
+  u_int32_t response;
   int result;
   char *outp = (char*) output;
 
@@ -285,7 +348,7 @@ net_write (hio_t *hio,
 	   u_int32_t *bytes)
 {
   hio_net_t *net = (hio_net_t*) hio;
-  unsigned long response;
+  u_int32_t response;
   int result = RET_OK;
   char *inp = (char*) input;
 
@@ -342,7 +405,7 @@ static int
 net_flush (hio_t *hio)
 {
   hio_net_t *net = (hio_net_t*) hio;
-  unsigned long response;
+  u_int32_t response;
   int result = query (net->sock, CMD_HIO_FLUSH, 0, 0, &response, NULL);
   return (result);
 }
@@ -410,13 +473,7 @@ net_alloc (const dict_t *config,
       net->sock = tcp;
       net->udp = udp;
 
-#if defined (_BUILD_WIN32)
-      net->quick_packets = dict_get_numeric (config, CONFIG_UDP_QUICK_PACKETS, 5);
-      net->delay_time = dict_get_numeric (config, CONFIG_UDP_DELAY_TIME, 2);
-#else
-      net->quick_packets = dict_get_numeric (config, CONFIG_UDP_QUICK_PACKETS, 7);
-      net->delay_time = dict_get_numeric (config, CONFIG_UDP_DELAY_TIME, 1000);
-#endif
+      net->target_kbps = dict_get_numeric (config, CONFIG_TARGET_KBPS, 2500);
 
 #if defined (_BUILD_WIN32)
       timeBeginPeriod (1);
@@ -464,7 +521,8 @@ hio_udpnet_probe (const dict_t *config,
 		{
 		  SOCKET s = socket (PF_INET, SOCK_STREAM, 0);
 		  if (s != INVALID_SOCKET)
-		    {
+		    { /* generally there ain't clean-up below, but that is
+		       * not really fatal for such class application */
 		      struct sockaddr_in sa;
 		      memset (&sa, 0, sizeof (sa));
 		      sa.sin_family = AF_INET;
@@ -472,17 +530,24 @@ hio_udpnet_probe (const dict_t *config,
 		      sa.sin_port = htons (NET_HIO_SERVER_PORT);
 		      result = connect (s, (const struct sockaddr*) &sa,
 					sizeof (sa)) == 0 ? RET_OK : RET_ERR;
-		      if (result == RET_OK)
+		      if (result == 0)
 			{ /* socket connected */
 			  SOCKET udp = socket (PF_INET, SOCK_DGRAM, 0);
-			  connect (udp, (const struct sockaddr*) &sa,
-				   sizeof (sa));
-			  *hio = net_alloc (config, s, udp);
-			  if (*hio != NULL)
-			    ; /* success */
+			  result = connect (udp, (const struct sockaddr*) &sa,
+					    sizeof (sa));
+			  if (result == 0)
+			    {
+			      *hio = net_alloc (config, s, udp);
+			      if (*hio != NULL)
+				; /* success */
+			      else
+				result = RET_NO_MEM;
+			    }
 			  else
-			    result = RET_NO_MEM;
+			    result = RET_ERR;
 			}
+		      else
+			result = RET_ERR;
 
 		      if (result != RET_OK)
 			{ /* close socket on error */

@@ -1,6 +1,6 @@
 /*
  * osal_win32.c
- * $Id: osal_win32.c,v 1.11 2004/12/04 10:20:52 b081 Exp $
+ * $Id: osal_win32.c,v 1.12 2006/05/21 21:41:28 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -27,6 +27,14 @@
 #include "retcodes.h"
 #include "osal.h"
 #include "apa.h"
+
+
+/* memory-mapped files */
+struct osal_mmap_type
+{ /* keep anything required for unmap operation */
+  HANDLE mmap;
+  LPVOID start;
+};
 
 
 static int osal_dlist_alloc (osal_dlist_t **dlist);
@@ -356,6 +364,60 @@ osal_free (void *ptr)
 
 /**************************************************************/
 int
+osal_mmap (osal_mmap_t **mm,
+	   void **p,
+	   osal_handle_t handle,
+	   u_int64_t offset,
+	   u_int32_t length)
+{
+  *mm = osal_alloc (sizeof (osal_mmap_t));
+  if (*mm != NULL)
+    {
+      u_int64_t end = offset + length;
+      HANDLE mmap = CreateFileMapping (handle, NULL, PAGE_READONLY,
+				       (end >> 32) & 0xffffffff,
+				       end & 0xffffffff, NULL);
+      if (mmap != NULL)
+	{
+	  LPVOID *addr = MapViewOfFile (mmap, FILE_MAP_READ,
+					(offset >> 32) & 0xffffff,
+					offset & 0xffffffff, length);
+	  if (addr != NULL)
+	    { /* success */
+	      (*mm)->mmap = mmap;
+	      (*mm)->start = addr;
+	      *p = addr;
+	      return (OSAL_OK);
+	    }
+	  else
+	    CloseHandle (mmap); /* and fallback to the clean-up below */
+	}
+
+      /* here on error only */
+      osal_free (*mm), *mm = NULL;
+      return (OSAL_ERR);
+    }
+  else /* malloc failed */
+    return (OSAL_NO_MEM);
+}
+
+
+/**************************************************************/
+int
+osal_munmap (osal_mmap_t *mm)
+{
+  if (UnmapViewOfFile (mm->start) &&
+      CloseHandle (mm->mmap))
+    {
+      osal_free (mm);
+      return (OSAL_OK);
+    }
+  return (OSAL_ERR);
+}
+
+
+/**************************************************************/
+int
 osal_query_hard_drives (osal_dlist_t **hard_drives)
 {
   u_int32_t i;
@@ -393,6 +455,55 @@ osal_query_hard_drives (osal_dlist_t **hard_drives)
 
 
 /**************************************************************/
+/* #define _USE_SPTI */
+#if defined (_USE_SPTI)
+int
+osal_query_optical_drives (osal_dlist_t **optical_drives)
+{
+  int result;
+
+  *optical_drives = NULL;
+  result = osal_dlist_alloc (optical_drives);
+  if (result == RET_OK)
+    {
+      DWORD req_len = GetLogicalDriveStrings (0, NULL);
+      if (req_len > 0)
+	{
+	  char *buf;
+	  ++req_len; /* include term-zero */
+	  buf = (char*) osal_alloc (req_len);
+	  if (buf != NULL)
+	    { /* NOTE: ignore case if device is plugged in before two calls */
+	      DWORD tot_len = GetLogicalDriveStrings (req_len, buf);
+	      if (tot_len > 0)
+		{
+		  char *p = buf;
+		  do
+		    {
+		      size_t len = strlen (p);
+		      if (GetDriveType (p) == DRIVE_CDROM)
+			{ /* CD-/DVD-ROM drive found */
+			  result = osal_dlist_add (*optical_drives, device_name,
+						   (u_int64_t) 0, 0, GetLastError ());
+			}
+		      p += len;
+		    }
+		  while (*p != '\0');
+		  result = RET_OK;
+		}
+	      else
+		result = RET_ERR;
+	      osal_free (buf);
+	    }
+	  else
+	    result = RET_NO_MEM;
+	}
+      else
+	result = RET_ERR;
+    }
+  return (result);
+}
+#else
 int
 osal_query_optical_drives (osal_dlist_t **optical_drives)
 {
@@ -429,6 +540,7 @@ osal_query_optical_drives (osal_dlist_t **optical_drives)
 
   return (result);
 }
+#endif /* _USE_SPTI defined? */
 
 
 /**************************************************************/

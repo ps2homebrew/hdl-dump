@@ -1,6 +1,6 @@
 /*
  * common.c
- * $Id: common.c,v 1.14 2005/07/10 21:06:48 bobi Exp $
+ * $Id: common.c,v 1.15 2006/05/21 21:35:55 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -353,6 +353,80 @@ iin_copy_ex (iin_t *iin,
 
 
 /**************************************************************/
+const char*
+get_config_file (void)
+{
+  static char config_file[256] = { "" };
+
+  if (*config_file == '\0')
+    { /* default location */
+      char *p;
+      strcpy (config_file, "./hdl_dump.conf");
+
+      /* decide where config file is depending on the OS/build type */
+#if defined (_BUILD_WIN32)
+      p = getenv ("USERPROFILE");
+      if (p != NULL)
+	{
+	  strcpy (config_file, p);
+	  strcat (config_file, "\\Application Data\\hdl_dump.conf");
+	}
+#elif defined (_BUILD_UNIX)
+      p = getenv ("HOME");
+      if (p != NULL)
+	{
+	  strcpy (config_file, p);
+	  strcat (config_file, "/.hdl_dump.conf");
+	}
+#endif
+    }
+
+  return (config_file);
+}
+
+
+/**************************************************************/
+void
+set_config_defaults (dict_t *config)
+{
+  char disc_database[256], *p;
+
+  /* better safe than sorry: do not trash APA-EXT */
+  dict_put_flag (config, CONFIG_LIMIT_TO_28BIT_FLAG, 1);
+
+#if defined (_BUILD_WIN32)
+  /* disable ASPI by default */
+  dict_put_flag (config, CONFIG_ENABLE_ASPI_FLAG, 0);
+#endif
+
+  dict_put (config, CONFIG_PARTITION_NAMING,
+	    CONFIG_PARTITION_NAMING_TOXICOS);
+
+  dict_put (config, CONFIG_TARGET_KBPS, "2350");
+
+  /* decide where disc compatibility database would be kept */
+  strcpy (disc_database, "./hdl_dump.list"); /* default */
+#if defined (_BUILD_WIN32) && !defined (_BUILD_WINE)
+  p = getenv ("USERPROFILE");
+  if (p != NULL)
+    {
+      strcpy (disc_database, p);
+      strcat (disc_database, "\\Application Data\\hdl_dump.list");
+    }
+#else
+  /* Unix/Linux/WineLib */
+  p = getenv ("HOME");
+  if (p != NULL)
+    {
+      strcpy (disc_database, p);
+      strcat (disc_database, "/.hdl_dump.list");
+    }
+#endif
+  dict_put (config, CONFIG_DISC_DATABASE_FILE, disc_database);
+}
+
+
+/**************************************************************/
 compat_flags_t
 parse_compat_flags (const char *flags)
 {
@@ -451,6 +525,36 @@ ddb_lookup (const dict_t *config,
 	}
       else
 	result = RET_NO_DDBENTRY;
+      dict_free (list);
+    }
+  else
+    result = RET_NO_DISC_DB;
+  return (result);
+}
+
+
+/**************************************************************/
+int
+ddb_update (const dict_t *config,
+	    const char *startup,
+	    const char *name,
+	    compat_flags_t flags)
+{
+  int result = RET_OK;
+  const char *disc_db = dict_lookup (config, CONFIG_DISC_DATABASE_FILE);
+  dict_t *list = dict_restore (NULL, disc_db);
+  if (list != NULL)
+    {
+      char tmp[500];
+      compat_flags_t dummy;
+      result = ddb_lookup (config, startup, tmp, &dummy);
+      if (result != RET_DDB_INCOMPATIBLE)
+	{ /* do not overwrite entries, marked as incompatible */
+	  sprintf (tmp, "%s;0x%02x", name, flags);
+	  dict_put (list, startup, tmp);
+
+	  result = dict_store (list, disc_db);
+	}
       dict_free (list);
     }
   else

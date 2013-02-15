@@ -1,6 +1,6 @@
 /*
  * progress.c
- * $Id: progress.c,v 1.9 2005/07/10 21:06:48 bobi Exp $
+ * $Id: progress.c,v 1.10 2006/05/21 21:41:43 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -29,30 +29,42 @@
 
 /* high-resolution time support */
 #if defined (_BUILD_WIN32) && !defined (_BUILD_WINE)
-static void
+void
 highres_time (highres_time_t *cl)
 {
-  *cl = clock ();
+  QueryPerformanceCounter (cl);
 }
 
-static u_int64_t
+u_int64_t
 highres_time_val (const highres_time_t *cl)
 {
-  return (*cl);
+  static int init = 0;
+  static LARGE_INTEGER freq;
+  if (!init)
+    {
+      QueryPerformanceFrequency (&freq);
+      init = 1;
+    }
+  if (freq.QuadPart >= HIGHRES_TO_SEC)
+    return ((u_int64_t) (cl->QuadPart /
+			 ((double) freq.QuadPart / HIGHRES_TO_SEC)));
+  else
+    return ((u_int64_t) (cl->QuadPart *
+			 ((double) HIGHRES_TO_SEC / freq.QuadPart)));
 }
 #endif
 
 #if defined (_BUILD_UNIX) || defined (_BUILD_WINE)
-static void
+void
 highres_time (highres_time_t *cl)
 {
   gettimeofday (cl, NULL /* ignore time zone */);
 }
 
-static u_int64_t
+u_int64_t
 highres_time_val (const highres_time_t *cl)
 {
-  return ((u_int64_t) cl->tv_sec * HIGHRES_TO_SEC + cl->tv_usec);
+  return ((u_int64_t) cl->tv_sec * 1000000 + cl->tv_usec);
 }
 #endif
 

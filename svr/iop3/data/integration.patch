@@ -17,17 +17,14 @@ diff -Naur tcpip_old/Makefile tcpip/Makefile
  IOP_CFLAGS += -Wall -fno-builtin-printf -DLWIP_NOASSERT $(DEBUG_FLAGS)
  IOP_LDFLAGS += -s
  
-+IOP_CFLAGS += -D_BUILD_PS2 -I../../../
++IOP_CFLAGS += -D_BUILD_PS2 -DTHROTTLE_BY_SPEED -I../../../
  
  all: $(IOP_OBJS_DIR) $(IOP_BIN_DIR) $(IOP_BIN)
  
-@@ -123,6 +127,12 @@
+@@ -123,6 +127,9 @@
  obj/etharp.o: $(LWIP)/src/netif/etharp.c
  	$(IOP_CC) $(IOP_CFLAGS) $< -o $@
  
-+obj/hio_iop.o: ../../iop/hio_iop.c
-+	$(IOP_CC) $(IOP_CFLAGS) $< -o $@
-+
 +obj/byteseq.o: ../../../byteseq.c
 +	$(IOP_CC) $(IOP_CFLAGS) $< -o $@
 +

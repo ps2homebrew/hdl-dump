@@ -1,6 +1,6 @@
 /*
  * iin_optical.c
- * $Id: iin_optical.c,v 1.9 2005/07/10 21:06:48 bobi Exp $
+ * $Id: iin_optical.c,v 1.10 2006/05/21 21:38:38 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -34,7 +34,15 @@ typedef struct iin_optical_type
 {
   iin_t iin;
   osal_handle_t device;
+#if defined (IIN_OPTICAL_MMAP)
+#  define MMAP_AREA_SIZE IIN_SECTOR_SIZE * 65536 /* 128MB */
+  osal_mmap_t *mm;
+  u_int64_t total_size;
+  u_int64_t ptr_start, ptr_end;
+  void *ptr;
+#else
   aligned_t *al;
+#endif
   unsigned long error_code; /* against osal_... */
 } iin_optical_t;
 
@@ -68,13 +76,57 @@ opt_read (iin_t *iin,
 	  u_int32_t *length)
 {
   iin_optical_t *opt = (iin_optical_t*) iin;
-  int result = al_read (opt->al, (u_int64_t) start_sector * IIN_SECTOR_SIZE, data,
-			num_sectors * IIN_SECTOR_SIZE, length);
+
+#if defined (IIN_OPTICAL_MMAP)
+  u_int64_t range_start = (u_int64_t) start_sector * IIN_SECTOR_SIZE;
+  u_int64_t range_end = range_start + num_sectors * IIN_SECTOR_SIZE;
+
+  if (range_end > opt->total_size)
+    range_end = opt->total_size;
+  if (!(opt->ptr_start <= range_start &&
+	range_end <= opt->ptr_end))
+    { /* need to (re)map requested region */
+      u_int64_t tmp_start = range_start;
+      u_int64_t tmp_end = range_start + MMAP_AREA_SIZE;
+      int result;
+
+      if (tmp_end > opt->total_size)
+	tmp_end = opt->total_size;
+
+      if (opt->ptr != NULL)
+	{ /* reset current mapping first */
+	  result = osal_munmap (opt->mm);
+	  if (result != OSAL_OK)
+	    return (result);
+	  opt->mm = NULL;
+	  opt->ptr = NULL;
+	  opt->ptr_start = opt->ptr_end = 0;
+	}
+
+      result = osal_mmap (&opt->mm, &opt->ptr, opt->device,
+			  tmp_start, tmp_end - tmp_start);
+      if (result == OSAL_OK)
+	{ /* output args are set-up below */
+	  opt->ptr_start = tmp_start;
+	  opt->ptr_end = tmp_end;
+	}
+      else
+	return (result);
+    }
+  /* information we need is memory-mapped already */
+  *data = (const char*) opt->ptr + (range_start - opt->ptr_start);
+  *length = (u_int32_t) (range_end - range_start);
+  return (RET_OK);
+
+#else
+  int result = al_read (opt->al, (u_int64_t) start_sector * IIN_SECTOR_SIZE,
+			data, num_sectors * IIN_SECTOR_SIZE, length);
   if (result == RET_OK)
     ;
   else
     opt->error_code = osal_get_last_error_code ();
   return (result);
+#endif /* IIN_OPTICAL_MMAP defined? */
 }
 
 
@@ -84,7 +136,15 @@ opt_close (iin_t *iin)
 {
   iin_optical_t *opt = (iin_optical_t*) iin;
   int result;
+
+#if defined (IIN_OPTICAL_MMAP)
+  if (opt->mm != NULL)
+    osal_munmap (opt->mm);
+
+#else
   al_free (opt->al);
+#endif
+
   result = osal_close (opt->device);
   if (result == RET_OK)
     ;
@@ -122,10 +182,12 @@ opt_alloc (osal_handle_t device,
   if (opt != NULL)
     {
       iin_t *iin = &opt->iin;
-      aligned_t *al = al_alloc (device, device_sector_size,
-				IIN_SECTOR_SIZE * IIN_NUM_SECTORS / device_sector_size);
+#if !defined (IIN_OPTICAL_MMAP)
+      aligned_t *al = al_alloc (device, device_sector_size, IIN_SECTOR_SIZE *
+				IIN_NUM_SECTORS / device_sector_size);
       if (al != NULL)
 	{ /* success */
+#endif
 	  memset (opt, 0, sizeof (iin_optical_t));
 	  iin->stat = &opt_stat;
 	  iin->read = &opt_read;
@@ -134,6 +196,21 @@ opt_alloc (osal_handle_t device,
 	  iin->dispose_error = &opt_dispose_error;
 	  strcpy (iin->source_type, "Optical drive");
 	  opt->device = device;
+#if defined (IIN_OPTICAL_MMAP)
+	  opt->mm = NULL;
+	  opt->ptr = NULL;
+	  opt->ptr_start = opt->ptr_end = 0;
+	  {
+	    u_int32_t sectors, size;
+	    if (opt_stat (iin, &size, &sectors) == RET_OK)
+	      opt->total_size = (u_int64_t) sectors * size;
+	    else
+	      {
+		osal_free (opt);
+		opt = NULL;
+	      }
+	  }
+#else
 	  opt->al = al;
 	}
       else
@@ -141,6 +218,7 @@ opt_alloc (osal_handle_t device,
 	  osal_free (opt);
 	  opt = NULL;
 	}
+#endif
     }
   return (opt);
 }
@@ -187,5 +265,37 @@ iin_optical_probe_path (const dict_t *config,
       return (result);
     }
   else
-    return (RET_NOT_COMPAT);
+    {
+#if defined (_BUILD_WIN32)
+      return (RET_NOT_COMPAT);
+#else
+      /* FreeBSD patch to support device nodes */
+      char device_name [MAX_PATH];
+      int result = osal_map_device_name (path, device_name);
+      if (result == OSAL_OK)
+	{
+	  osal_handle_t device;
+	  result = osal_open (device_name, &device, 1);
+	  if (result == OSAL_OK)
+	    {
+	      u_int32_t sector_size;
+	      result = osal_get_device_sect_size (device, &sector_size);
+	      if (result == OSAL_OK)
+		{
+		  *iin = (iin_t*) opt_alloc (device, sector_size);
+		  if (*iin != NULL)
+		    ; /* success */
+		  else
+		    { /* opt_alloc failed */
+		      osal_close (device);
+		      result = RET_NO_MEM;
+		    }
+		}
+	    }
+	}
+      else
+	result = RET_NOT_COMPAT;
+      return (result);
+#endif
+    }
 }

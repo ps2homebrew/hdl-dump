@@ -1,0 +1,113 @@
+hdl_dump, hdl_dumb and networking server README
+===============================================
+
+
+TOC
+---
+General
+Compilation
+Configuration and list file location
+Configuration
+Network speed notes
+
+
+Intro
+-----
+
+Latest version, as well as some? documentation (ha-ha-ha) could be
+found on the official site -- http://hdldump.ps2-scene.org/.
+Me reads w1zard0f07@yahoo.com and ps2-scene forums now and then.
+
+
+General
+-------
+
+It is advised (but not strictly necessary) to remove your old
+configuration file before using the new version. Client 0.8.4 must be
+compatible with server version 0.8.3a, too. Server version 0.8.3
+should NOT be used as it is buggy and almost certainly will corrupt
+data during installation.
+
+
+Compilation
+-----------
+
+* Windows: You need to have CYGWIN (http://www.cygwin.com/) installed;
+then use
+	make RELEASE=yes
+	make -c gui RELEASE=yes
+to compile command-line or GUI version.
+
+NOTICE: with current compilation flags hdl_dump would not handle
+correctly Ctrl+C if ran from-within a CYGWIN shell. AFAIR, removing
+"-mno-cygwin" might correct this behaviour, but will break Ctrl+C
+handling when ran from a Command Prompt.
+
+* Linux: Build and copy executable into a directory of your choice.
+	make RELEASE=yes
+Advanced Linux build commands:
+	make XC=win          # for Windows cross-compilation using mingw32
+	make -c gui          # for WineLib compilation
+	make -c gui XC=win   # for GUI cross-compilation using mingw32
+
+* FreeBSD and MacOS X: You'll need to have GNU make installed, then
+	gmake RELEASE=yes IIN_OPTICAL_MMAP=no
+or
+	make RELEASE=yes IIN_OPTICAL_MMAP=no
+
+
+Configuration and list file location
+------------------------------------
+
+* Windows: (cited names are for English version of Windows)
+C:\Documents and Settings\<login name>\Application Data\hdl_dump.conf
+C:\Documents and Settings\<login name>\Application Data\hdl_dump.list
+
+* Linux, FreeBSD and MacOS X: (~ is your home dir)
+~/.hdl_dump.conf
+~/.hdl_dump.list
+
+
+Configuration
+-------------
+
+* disc_database_file -- full path to your disc compatibility database
+file;
+
+* limit_to_28bit -- whether to "imagine" that HDD is not bigger than
+128GB; necessary if you use ToxicOS with APA-EXT partitioning;
+
+* partition_naming -- put signature (toxicos) or game label (standard)
+to partition name;
+
+* target_kbps -- target speed to follow when installing games via
+networking; look below.
+
+
+Network speed notes
+-------------------
+
+Networking server is able to accept a limited number of bytes per
+second. Any extra bytes send would probably be missed -- "dropped on
+the floor" -- as UDP is unreliable protocol. For not to corrupt data
+the client will ask the server if it got all the data send and will
+retransmit some or all of the missed bytes if necessary. Hence if the
+client sends data too quickly it will need to make a retry and there
+will be a waste of time. However, if it sends the data too slowly
+there will be a waste of bandwidth.
+
+"target_kbps" controls the number of kbytes client will send each
+second. The "maximum" practical speed depends on many factors, like OS
+and maybe kernel compilation flags -- mostly timer granularity -- as
+client uses sleep and benefits greatly from high-resolution timers.
+"2350" is a good default value, which gives about 2,1MB/sec. "2500"
+works great on my Linux box, making 2,25MB/sec, but performs badly on
+a Windows machine decreasing speed below 1,6MB/sec.
+
+Run a few tries and pick a number for yourself.
+
+
+
+Happy gaming.
+
+$Id: README,v 1.5 2006/05/21 21:47:28 bobi Exp $

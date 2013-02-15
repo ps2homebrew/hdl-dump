@@ -1,6 +1,6 @@
 /*
  * isofs.c
- * $Id: isofs.c,v 1.8 2005/05/06 14:50:35 b081 Exp $
+ * $Id: isofs.c,v 1.9 2006/05/21 21:40:08 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -39,8 +39,8 @@ static int
 isofs_find_pvd_addr (iin_t *iin,
 		     u_int64_t *pvd_start_addr,
 		     u_int64_t *ptr_start_addr,
-		     char system_id [32 + 1],
-		     char volume_id [32 + 1],
+		     char system_id[32 + 1],
+		     char volume_id[32 + 1],
 		     int layer)
 {
   u_int32_t start_sector = 16;
@@ -54,10 +54,10 @@ isofs_find_pvd_addr (iin_t *iin,
     result = memcmp (buffer + 1, "CD001", 5) == 0 ? OSAL_OK : RET_BAD_ISOFS;
   if (layer == 1)
     {
-      start_sector = (buffer [83] << 24 |
-		      buffer [82] << 16 |
-		      buffer [81] <<  8 |
-		      buffer [80] <<  0);
+      start_sector = (buffer[83] << 24 |
+		      buffer[82] << 16 |
+		      buffer[81] <<  8 |
+		      buffer[80] <<  0);
       result = iin->read (iin, start_sector, 1, &data, &len);
       if (len != 2048)
 	result = RET_BAD_ISOFS;
@@ -67,23 +67,23 @@ isofs_find_pvd_addr (iin_t *iin,
 
   if (result == OSAL_OK)
     {
-      if (buffer [0] == 0x01) /* primary volume descriptor set */
+      if (buffer[0] == 0x01) /* primary volume descriptor set */
 	{
 	  *pvd_start_addr = start_sector * IIN_SECTOR_SIZE;
-	  *ptr_start_addr = (u_int64_t) (buffer [143] << 24 |
-					buffer [142] << 16 |
-					buffer [141] <<  8 |
-					buffer [140] <<  0) * (u_int64_t) CDVD_SECT_SIZE;
+	  *ptr_start_addr = (u_int64_t) (buffer[143] << 24 |
+					 buffer[142] << 16 |
+					 buffer[141] <<  8 |
+					 buffer[140] <<  0) * (u_int64_t) CDVD_SECT_SIZE;
 	  if (system_id != NULL)
 	    {
 	      memcpy (system_id, buffer + 8, 32);
-	      system_id [32] = '\0';
+	      system_id[32] = '\0';
 	      rtrim (system_id);
 	    }
 	  if (volume_id != NULL)
 	    {
 	      memcpy (volume_id, buffer + 40, 32);
-	      volume_id [32] = '\0';
+	      volume_id[32] = '\0';
 	      rtrim (volume_id);
 	    }
 	}
@@ -120,8 +120,8 @@ isofs_get_root_addr (iin_t *iin,
 	      p > buffer + 2047)
 	    break; /* last entry */
 	  ext_len = *p++;
-	  dir_start_addr = p [3] << 24 | p [2] << 16 | p [1] << 8 | p [0]; p += 4;
-	  parent_dir = p [1] << 8 | p [0]; p += 2;
+	  dir_start_addr = p[3] << 24 | p[2] << 16 | p[1] << 8 | p[0]; p += 4;
+	  parent_dir = p[1] << 8 | p[0]; p += 2;
 	  if (*p == '\0')
 	    { /* root dir? */
 	      found = 1;
@@ -168,8 +168,8 @@ isofs_get_file_addr (iin_t *iin,
 	      p > buffer + 2047)
 	    break; /* last entry */
 	  len_ext_ar = *p++;
-	  start_addr = p [3] << 24 | p [2] << 16 | p [1] << 8 | p [0]; p += 8;
-	  length = p [3] << 24 | p [2] << 16 | p [1] << 8 | p [0]; p += 8;
+	  start_addr = p[3] << 24 | p[2] << 16 | p[1] << 8 | p[0]; p += 8;
+	  length = p[3] << 24 | p[2] << 16 | p[1] << 8 | p[0]; p += 8;
 	  p += 7; /* recording date/time */
 	  ++p; ++p; ++p; p += 4; /* flags, unit size, intereave gap size, volume seq no */
 	  name_len = *p++;
@@ -197,13 +197,19 @@ isofs_get_file_addr (iin_t *iin,
 
 
 static int
-parse_config_cnf (char *contents,
+parse_config_cnf (const char *contents,
 		  u_int32_t length,
-		  char signature [12 + 1])
+		  char signature[12 + 1])
 {
+  /* when using memory-mapped I/O buffer is read-only */
+  char buf[2048];
   int found = 0;
-  char *line = contents;
-  const char *end = contents + length;
+  char *line = buf;
+  const char *end = buf + length;
+  if (length <= sizeof (buf))
+    memcpy (buf, contents, length);
+  else
+    return (RET_NOT_PS_CDVD);
   do
     {
       char *p = line, *start = line;
@@ -241,27 +247,27 @@ static int
 isofs_parse_config_cnf (iin_t *iin,
 			u_int64_t file_start_addr,
 			u_int64_t file_length,
-			char signature [12 + 1])
+			char signature[12 + 1])
 {
   u_int32_t len;
   const char *data;
   int result = iin->read (iin, (u_int32_t) (file_start_addr / IIN_SECTOR_SIZE),
 			  1, &data, &len);
   if (result == OSAL_OK)
-    result = parse_config_cnf ((char*) data, (u_int32_t) file_length, signature);
+    result = parse_config_cnf (data, (u_int32_t) file_length, signature);
   return (result);
 }
 
 
 int
 isofs_get_ps_cdvd_details (iin_t *iin,
-			   char volume_id [32 + 1],
-			   char signature [12 + 1],
+			   char volume_id[32 + 1],
+			   char signature[12 + 1],
 			   u_int64_t *layer_pvd)
 {
   u_int64_t pvd_start_addr, ptr_start_addr, root_start_addr;
   u_int64_t system_cnf_start_addr, system_cnf_length;
-  char system_id [32 + 1];
+  char system_id[32 + 1];
   int result = isofs_find_pvd_addr (iin, &pvd_start_addr, &ptr_start_addr,
 				    system_id, volume_id, 0);
   *layer_pvd = 0;
@@ -278,7 +284,8 @@ isofs_get_ps_cdvd_details (iin_t *iin,
 				  &system_cnf_start_addr, &system_cnf_length);
 
   if (result == OSAL_OK)
-    result = isofs_parse_config_cnf (iin, system_cnf_start_addr, system_cnf_length, signature);
+    result = isofs_parse_config_cnf (iin, system_cnf_start_addr,
+				     system_cnf_length, signature);
 
   *layer_pvd = 0;
   if (result == OSAL_OK)
