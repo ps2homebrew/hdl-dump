@@ -1,0 +1,12 @@
+diff -ruN hdl_dump_orig/config.h hdl_dump/config.h
+--- hdl_dump_orig/config.h      Fri Sep  2 12:25:35 2005
++++ hdl_dump/config.h   Fri Sep  2 12:24:30 2005
+@@ -25,7 +25,7 @@
+ #define _CONFIG_H
+ 
+ /* MacOS X support patch; there is more in osal_unix.c */
+-#if defined (__APPLE__)
++#if defined (__APPLE__) || (__FreeBSD__)
+ #  undef _BUILD_UNIX
+ #  define _BUILD_UNIX
+ #  define lseek64 lseek

@@ -56,7 +56,7 @@ main (int argc,
   if (argc > 1)
     {
       hio_t *hio;
-      int result = hio_probe (argv [1], &hio);
+      int result = hio_probe (NULL, argv [1], &hio);
       if (result == RET_OK)
 	{
 #if defined (_BUILD_WIN32)

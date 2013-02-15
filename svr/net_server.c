@@ -1,6 +1,6 @@
 /*
  * svr/net_server.c
- * $Id: net_server.c,v 1.7 2005/07/10 21:06:48 bobi Exp $
+ * $Id: net_server.c,v 1.8 2005/12/08 20:42:55 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -69,6 +69,7 @@
 #include "../hio.h"
 #include "../retcodes.h"
 #include "../byteseq.h"
+#include "../net_common.h"
 
 
 /**************************************************************/
@@ -87,13 +88,13 @@ respond (int s,
   set_u32 (resp +  4, sector);
   set_u32 (resp +  8, num_sect);
   set_u32 (resp + 12, response);
-  bytes = send (s, (char*) resp, NET_IO_CMD_LEN, 0);
+  bytes = send_exact (s, (char*) resp, NET_IO_CMD_LEN, 0);
   if (bytes == NET_IO_CMD_LEN)
     {
       if (data != NULL)
 	{
-	  bytes = send (s, (/* why not const? */ char*) data,
-			num_sect * HDD_SECTOR_SIZE, 0);
+	  bytes = send_exact (s, (/* why not const? */ char*) data,
+			      num_sect * HDD_SECTOR_SIZE, 0);
 	  if (bytes == num_sect * HDD_SECTOR_SIZE)
 	    ; /* success */
 	  else
@@ -103,28 +104,6 @@ respond (int s,
     }
   else
     return (RET_ERR);
-}
-
-
-/**************************************************************/
-static int /* returns RET_OK or RET_ERR */
-recv_exact (int s,
-	    char *buffer,
-	    int len,
-	    int flags)
-{
-  int result = 1;
-
-  while (len > 0 && result > 0)
-    {
-      result = recv (s, buffer, len, flags);
-      if (result > 0)
-	{
-	  buffer += result;
-	  len -= result;
-	}
-    }
-  return (result > 0 ? RET_OK : RET_ERR);
 }
 
 
@@ -146,7 +125,9 @@ handle_client (int s,
 
   do
     {
-      int result = recv_exact (s, (char*) cmd_buff, NET_IO_CMD_LEN, 0);
+      int result = (recv_exact (s, (char*) cmd_buff,
+				NET_IO_CMD_LEN, 0) == NET_IO_CMD_LEN ?
+		    RET_OK : RET_ERR);
       if (result == RET_OK)
 	{
 	  unsigned long command = get_u32 (cmd_buff + 0);
@@ -352,7 +333,7 @@ run_server (unsigned short port,
 	    {
 	      do
 		{ /* wait for a client to connect and handle connection */
-		  int addr_len = sizeof (sa);
+		  socklen_t addr_len = sizeof (sa);
 		  int transport = accept (s, (struct sockaddr*) &sa, &addr_len);
 		  if (transport > 0)
 		    handle_client (transport, hio, interrupt_flag);

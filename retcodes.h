@@ -1,6 +1,6 @@
 /*
  * retcodes.h
- * $Id: retcodes.h,v 1.11 2005/07/10 21:06:48 bobi Exp $
+ * $Id: retcodes.h,v 1.12 2005/12/08 20:42:19 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -56,6 +56,8 @@
 #define RET_NO_DISC_DB  24 /* disc database file could not be found */
 #define RET_NO_DDBENTRY 25 /* there is no entry for that game in the disc database */
 #define RET_DDB_INCOMPATIBLE 26 /* game is incompatible according to disc database */
+#define RET_TIMEOUT     27 /* communication timeout */
+#define RET_PROTO_ERR   28 /* network communication protocol error */
 
 
 #endif /* _RETCODES_H defined? */

@@ -1,6 +1,6 @@
 /*
  * hdl_dump.c
- * $Id: hdl_dump.c,v 1.16 2005/07/10 21:06:48 bobi Exp $
+ * $Id: hdl_dump.c,v 1.17 2005/12/08 20:40:48 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -26,6 +26,12 @@
 #endif
 #include <assert.h>
 #include <ctype.h>
+#include <signal.h>
+#if defined (_BUILD_WIN32)
+/* b0rken in cygwin's headers */
+#  undef SIGINT
+#  define SIGINT 2
+#endif
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -926,6 +932,18 @@ remote_poweroff (const dict_t *config,
 
 
 /**************************************************************/
+static volatile int sigint_catched = 0;
+
+void
+handle_sigint (int signo)
+{
+  sigint_catched = 1;
+#if defined (_BUILD_WIN32)
+  while (1)
+    Sleep (1); /* endless loop; will end when main thread ends */
+#endif
+}
+
 static int
 progress_cb (progress_t *pgs, void *data)
 {
@@ -934,10 +952,8 @@ progress_cb (progress_t *pgs, void *data)
 
   if (pgs->remaining != -1)
     fprintf (stdout,
-	     "%3d%%, %s remaining (est.), avg %.2f MBps, "
-	     "curr %.2f MBps         \r",
+	     "%3d%%, %s remaining, %.2f MB/sec         \r",
 	     pgs->pc_completed, pgs->remaining_text,
-	     pgs->avg_bps / (1024.0 * 1024.0),
 	     pgs->curr_bps / (1024.0 * 1024.0));
   else
     fprintf (stdout, "%3d%%\r", pgs->pc_completed);
@@ -948,7 +964,7 @@ progress_cb (progress_t *pgs, void *data)
       last_flush = now;
     }
 
-  return (RET_OK);
+  return (!sigint_catched ? RET_OK : RET_INTERRUPTED);
 }
 
 /* progress is allocated, but never freed, which is not a big deal for a CLI app */
@@ -1259,6 +1275,10 @@ handle_result_and_exit (int result,
       fprintf (stderr, "Contents are different.\n");
       exit (100 + RET_DIFFERENT);
 
+    case RET_INTERRUPTED:
+      fprintf (stderr, "\nInterrupted.\n");
+      exit (100 + RET_INTERRUPTED);
+
     case RET_PART_EXISTS:
       fprintf (stderr, "%s: partition with such name already exists: \"%s\".\n",
 	       device, partition);
@@ -1332,40 +1352,19 @@ handle_result_and_exit (int result,
       fprintf (stderr, "Game is incompatible, according to disc database.\n");
       exit (100 + RET_DDB_INCOMPATIBLE);
 
+    case RET_TIMEOUT:
+      fprintf (stderr, "Network communication timeout.\n");
+      exit (100 + RET_TIMEOUT);
+
+    case RET_PROTO_ERR:
+      fprintf (stderr, "Network communication protocol error.\n");
+      exit (100 + RET_PROTO_ERR);
+
     default:
       fprintf (stderr, "%s: don't know what the error is: %d.\n", device, result);
       exit (200);
     }
 }
-
-
-#if defined (_DEBUG)
-void
-test (void)
-{
-  dict_t *dict = dict_alloc ();
-
-  dict_put (dict, "key1", "value1");
-  dict_put (dict, "key3", "value3");
-  dict_put (dict, "key2", "value2");
-  dict_put (dict, "key2", "value2");
-
-  dict_put (dict, "\n", "\r");
-  dict_put (dict, "1\n", "1\r");
-  dict_put (dict, "\n1", "\r1");
-  dict_put (dict, "1\n1", "1\r1");
-
-  dict_dump (dict);
-
-  dict_store (dict, "dict.txt");
-  dict_free (dict);
-
-  dict = dict_restore (NULL, "dict.txt");
-  dict_store (dict, "dict2.txt");
-  dict_dump (dict);
-  dict_free (dict);
-}
-#endif
 
 
 int
@@ -1402,12 +1401,33 @@ main (int argc, char *argv[])
       dict_put_flag (config, CONFIG_ENABLE_ASPI_FLAG, 0);
       dict_put (config, CONFIG_PARTITION_NAMING,
 		CONFIG_PARTITION_NAMING_TOXICOS);
+#if 0
       dict_put_flag (config, CONFIG_USE_COMPRESSION_FLAG, 1);
+#endif
       dict_put (config, CONFIG_DISC_DATABASE_FILE, "./hdl_dump.list");
 
+#if defined (_BUILD_WIN32)
+      /* good combinations for Win32:
+       *  5/2 = 2,05 MB/sec,
+       * 10/3 = 2,06 MB/sec,
+       * 14/4 = 2,07 MB/sec */
+      dict_put (config, CONFIG_UDP_QUICK_PACKETS, "5");
+      dict_put (config, CONFIG_UDP_DELAY_TIME, "2");
+#else
+      dict_put (config, CONFIG_UDP_QUICK_PACKETS, "7");
+      dict_put (config, CONFIG_UDP_DELAY_TIME, "1000");
+#endif
       dict_restore (config, config_file);
       dict_store (config, config_file);
     }
+
+  /* handle Ctrl+C gracefully */
+  signal (SIGINT, &handle_sigint);
+
+#if 0
+  test2 (config);
+  return (0);
+#endif
 
   if (argc > 1)
     {

@@ -1,3 +1,7 @@
+0.8.3
+	+ new server, better network transfer speeds
+	+ proper SIGINT handling
+
 0.8.2
 	+ both - hdl_dump and hdl_dumb - are now configurable in run-time
 	  (as opposed to build-time)

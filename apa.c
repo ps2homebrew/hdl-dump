@@ -1,6 +1,6 @@
 /*
  * apa.c
- * $Id: apa.c,v 1.13 2005/07/10 21:06:48 bobi Exp $
+ * $Id: apa.c,v 1.14 2005/12/08 20:39:49 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -262,6 +262,10 @@ apa_ptable_read_ex (const dict_t *config,
 		  else
 		    result = RET_NOT_APA;
 		}
+	      /* TODO: check whether next partition is not loaded already --
+	       * do not deadlock; that is a quick-and-dirty hack */
+	      if ((*table)->part_count > 10000)
+		result = RET_BAD_APA;
 	    }
 	  while (result == RET_OK && sector != 0);
 

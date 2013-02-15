@@ -1,6 +1,6 @@
 /*
  * svr/ee/loader.c
- * $Id: loader.c,v 1.8 2005/05/06 14:50:35 b081 Exp $
+ * $Id: loader.c,v 1.9 2005/12/08 20:43:11 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -63,7 +63,7 @@
  */
 
 #define APP_NAME "hdld_svr"
-#define VERSION "0.8.1"
+#define VERSION "0.8.3"
 
 
 #if 1 /* debugging */
@@ -79,7 +79,7 @@
 #define LOAD_SIOMAN_AND_MC
 /* #define LOAD_POWEROFF */
 #define LOAD_PS2ATAD
-#define LOAD_SERVER
+/*#define LOAD_SERVER*/
 
 
 extern u8 *iomanx_irx;

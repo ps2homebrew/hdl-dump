@@ -1,6 +1,6 @@
 /*
  * hio_net.c - TCP/IP networking access to PS2 HDD
- * $Id: hio_net.c,v 1.10 2005/12/08 20:41:00 bobi Exp $
+ * $Id: hio_udpnet.c,v 1.1 2005/12/08 20:46:02 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -39,8 +39,9 @@
 #include <assert.h>
 #include <string.h>
 #include <stdlib.h>
+#include <time.h>
 #include "osal.h"
-#include "hio_net.h"
+#include "hio_udpnet.h"
 #include "byteseq.h"
 #include "net_io.h"
 #include "net_common.h"
@@ -51,15 +52,23 @@ typedef struct hio_net_type
 {
   hio_t hio;
   SOCKET sock;
-  unsigned char *compressed;
-  u_int32_t compr_alloc, compr_used;
+  SOCKET udp;
   unsigned long error_code;
-  int do_compress;
+  size_t quick_packets;
+  time_t delay_time;
 } hio_net_t;
 
+#define SETBIT(mask, bit) (mask)[(bit) / 32] |= 1 << ((bit) % 32)
+#define GETBIT(mask, bit) ((mask)[(bit) / 32] & (1 << ((bit) % 32)))
 
 #if defined (_BUILD_WIN32)
 static int net_init = 0;
+#endif
+
+#if defined (_BUILD_WIN32)
+/* it is not the same, since usleep works in microseconds,
+ * whereas Sleep is in miliseconds */
+#  define usleep Sleep
 #endif
 
 
@@ -71,23 +80,15 @@ query (SOCKET s,
        unsigned long sector,
        unsigned long num_sectors,
        unsigned long *response,
-       const char input [HDD_SECTOR_SIZE * NET_NUM_SECTORS],
        char output [HDD_SECTOR_SIZE * NET_NUM_SECTORS]) /* or NULL */
 {
-  unsigned char cmd [NET_IO_CMD_LEN + HDD_SECTOR_SIZE * NET_NUM_SECTORS];
+  unsigned char cmd [NET_IO_CMD_LEN];
   u_int32_t cmd_length = NET_IO_CMD_LEN;
   int result;
   set_u32 (cmd +  0, command);
   set_u32 (cmd +  4, sector);
   set_u32 (cmd +  8, num_sectors);
   set_u32 (cmd + 12, 0x003a2d29);
-  if (input != NULL)
-    { /* probably a write operation */
-      int compressed_data = (num_sectors & 0xffffff00) != 0;
-      u_int32_t bytes = compressed_data ? num_sectors >> 8 : num_sectors * HDD_SECTOR_SIZE;
-      memcpy (cmd + NET_IO_CMD_LEN, input, bytes);
-      cmd_length += bytes;
-    }
 
   result = send_exact (s, (const char*) cmd, cmd_length, 0);
   if (result == cmd_length)
@@ -95,12 +96,18 @@ query (SOCKET s,
       result = recv_exact (s, (char*) cmd, NET_IO_CMD_LEN, 0);
       if (result == NET_IO_CMD_LEN)
 	{ /* response successfully received */
+	  if (get_u32 (cmd + 0) != command ||
+	      get_u32 (cmd + 4) != sector ||
+	      get_u32 (cmd + 8) != num_sectors)
+	    return (RET_PROTO_ERR);
+
 	  *response = get_u32 (cmd + 12);
 	  if (output != NULL &&
 	      *response != (u_int32_t) -1)
 	    { /* receive additional information */
-	      result = recv_exact (s, output, HDD_SECTOR_SIZE * num_sectors, 0);
-	      result = result == HDD_SECTOR_SIZE * num_sectors ? RET_OK : RET_ERR;
+	      size_t bytes_expected = HDD_SECTOR_SIZE * num_sectors;
+	      result = recv_exact (s, output, bytes_expected, 0);
+	      result = result == bytes_expected ? RET_OK : RET_ERR;
 	    }
 	  else
 	    result = RET_OK;
@@ -110,7 +117,84 @@ query (SOCKET s,
     }
   else
     result = RET_ERR;
+  return (result);
+}
 
+
+/**************************************************************/
+static int
+send_for_write (hio_net_t *net,
+		unsigned long command,
+		unsigned long sector,
+		unsigned long num_sectors,
+		unsigned long *response,
+		const char data [HDD_SECTOR_SIZE * NET_NUM_SECTORS])
+{
+  size_t quick_packets = net->quick_packets;
+  time_t delay_time = net->delay_time;
+
+  u_int32_t bitmask[(NET_NUM_SECTORS + 31) / 32] = { 0 };
+  typedef struct udp_packet_t
+  {
+    unsigned char sector[HDD_SECTOR_SIZE * 2];
+    unsigned long command, start;
+  } udp_packet_t;
+  udp_packet_t packet;
+
+  /* ask to start writing operation */
+  int result = query (net->sock, CMD_HIO_WRITE, sector, num_sectors, response, NULL);
+  if (result == RET_OK &&
+      *response == 0)
+    {
+      do
+	{ /* flood with (unconfirmed) data */
+	  size_t i, n = 0;
+	  for (i = 0; i < num_sectors; i += 2)
+	    if (!GETBIT (bitmask, i))
+	      {
+		memcpy (packet.sector, data + i * HDD_SECTOR_SIZE,
+			HDD_SECTOR_SIZE * 2);
+		set_u32 (&packet.command, command);
+		set_u32 (&packet.start, sector + i);
+		send (net->udp, (void*) &packet, sizeof (packet), 0);
+
+		/* that is pretty heuristic */
+		if ((n++ % quick_packets) == 0)
+		  usleep (delay_time);
+	      }
+
+	  /* ask if all data is received */
+	  result = query (net->sock, CMD_HIO_WRITE_STAT, sector, num_sectors,
+			  response, NULL);
+	  if (result == RET_OK)
+	    {
+	      if (*response == num_sectors)
+		{
+		  if (quick_packets <= net->quick_packets)
+		    ++quick_packets;
+		  return (RET_OK); /* write operation has completed */
+		}
+	      else if (*response == (unsigned long) -1)
+		return (RET_SVR_ERR); /* write operation has failed */
+	      else if (*response == 0)
+		{ /* more data needed; bitmask has been sent */
+		  unsigned long tmp[(NET_NUM_SECTORS + 31) / 32];
+		  result = recv_exact (net->sock, (void*) tmp, sizeof (tmp), 0);
+		  if (result == sizeof (tmp))
+		    { /* refresh bitmask */
+		      for (i = 0; i < (NET_NUM_SECTORS + 31) / 32; ++i)
+			bitmask[i] = get_u32 (tmp + i);
+		      --quick_packets;
+		    }
+		  else
+		    return (RET_ERR);
+		}
+	      else
+		return (RET_SVR_ERR); /* protocol error? */
+	    }
+	}
+      while (1);
+    }
   return (result);
 }
 
@@ -121,8 +205,7 @@ static int
 execute (SOCKET s,
 	 unsigned long command,
 	 unsigned long sector,
-	 unsigned long num_sectors,
-	 const char input [HDD_SECTOR_SIZE * NET_NUM_SECTORS])
+	 unsigned long num_sectors)
 {
   unsigned char cmd [NET_IO_CMD_LEN + HDD_SECTOR_SIZE * NET_NUM_SECTORS];
   u_int32_t cmd_length = NET_IO_CMD_LEN;
@@ -131,13 +214,6 @@ execute (SOCKET s,
   set_u32 (cmd +  4, sector);
   set_u32 (cmd +  8, num_sectors);
   set_u32 (cmd + 12, 0x7d3a2d29); /* }:-) */
-  if (input != NULL)
-    { /* probably a write operation */
-      int compressed_data = (num_sectors & 0xffffff00) != 0;
-      u_int32_t bytes = compressed_data ? num_sectors >> 8 : num_sectors * HDD_SECTOR_SIZE;
-      memcpy (cmd + NET_IO_CMD_LEN, input, bytes);
-      cmd_length += bytes;
-    }
 
   result = send_exact (s, (const char*) cmd, cmd_length, 0);
   return (result == cmd_length ? RET_OK : RET_ERR);
@@ -151,7 +227,7 @@ net_stat (hio_t *hio,
 {
   hio_net_t *net = (hio_net_t*) hio;
   unsigned long size_in_kb2;
-  int result = query (net->sock, CMD_HIO_STAT, 0, 0, &size_in_kb2, NULL, NULL);
+  int result = query (net->sock, CMD_HIO_STAT, 0, 0, &size_in_kb2, NULL);
   if (result == OSAL_OK)
     *size_in_kb = size_in_kb2;
   else
@@ -178,7 +254,7 @@ net_read (hio_t *hio,
     {
       u_int32_t at_once_s = num_sectors > NET_NUM_SECTORS ? NET_NUM_SECTORS : num_sectors;
       result = query (net->sock, CMD_HIO_READ, start_sector, at_once_s,
-		      &response, NULL, outp);
+		      &response, outp);
       if (result == OSAL_OK)
 	{
 	  if (response == at_once_s)
@@ -212,72 +288,23 @@ net_write (hio_t *hio,
   unsigned long response;
   int result = RET_OK;
   char *inp = (char*) input;
-  /* hm... the overhead should be at most 1 byte on each 128 bytes... but just to be sure */
-  u_int32_t avg_compressed_len = NET_NUM_SECTORS * HDD_SECTOR_SIZE * 2;
-
-  if (net->compr_alloc < avg_compressed_len)
-    { /* allocate memory to keep compressed data */
-      unsigned char *tmp = osal_alloc (avg_compressed_len);
-      if (tmp != NULL)
-	{
-	  if (net->compressed != NULL)
-	    osal_free (net->compressed);
-	  net->compressed = tmp;
-	  net->compr_alloc = avg_compressed_len;
-	}
-      else
-	result = RET_NO_MEM;
-    }
 
   if (result == RET_OK)
     {
       *bytes = 0;
       do
 	{
-	  u_int32_t at_once_s = num_sectors > NET_NUM_SECTORS ? NET_NUM_SECTORS : num_sectors;
+	  u_int32_t at_once_s = (num_sectors > NET_NUM_SECTORS ?
+				 NET_NUM_SECTORS : num_sectors);
 	  const void *data_to_send;
 	  u_int32_t sectors_to_send;
-	  u_int32_t compr_len;
-	  const double SMALLEST_PC_FOR_COMPRESSION = 0.5;
 
-	  /* compress input data */
-	  if (net->do_compress)
-	    {
-	      rle_compress ((const unsigned char*) inp, at_once_s * HDD_SECTOR_SIZE,
-			    net->compressed, &compr_len);
-	      assert (compr_len < net->compr_alloc);
-	    }
-	  if (net->do_compress &&
-	      compr_len < (u_int32_t) ((at_once_s * HDD_SECTOR_SIZE) *
-				       SMALLEST_PC_FOR_COMPRESSION))
-	    { /* < 100% remaining => send compressed */
-	      data_to_send = net->compressed;
-	      sectors_to_send = compr_len << 8 | at_once_s;
-	    }
-	  else
-	    { /* unable to compress => send RAW */
-	      data_to_send = inp;
-	      sectors_to_send = at_once_s;
-	    }
+	  data_to_send = inp;
+	  sectors_to_send = at_once_s;
 
-#if defined (NET_SEND_NOACK)
-	  result = execute (net->sock, CMD_HIO_WRITE_NACK, start_sector,
-			    sectors_to_send, data_to_send);
-	  response = at_once_s; /* assume success; server would kick us on error */
-#else
-#  if defined (NET_QUICK_ACK)
-	  result = query (net->sock, CMD_HIO_WRITE_QACK, start_sector,
-			  sectors_to_send, &response, data_to_send, NULL);
-	  response = at_once_s;
-#  elif defined (NET_DUMMY_ACK)
-	  result = query (net->sock, CMD_HIO_WRITE_RACK, start_sector,
-			  sectors_to_send, &response, data_to_send, NULL);
-	  response = at_once_s;
-#  else
-	  result = query (net->sock, CMD_HIO_WRITE, start_sector,
-			  sectors_to_send, &response, data_to_send, NULL);
-#  endif
-#endif
+	  result = send_for_write (net, CMD_HIO_WRITE,
+				   start_sector, sectors_to_send,
+				   &response, data_to_send);
 	  if (result == OSAL_OK)
 	    {
 	      if (response == at_once_s)
@@ -305,7 +332,7 @@ static int
 net_poweroff (hio_t *hio)
 {
   hio_net_t *net = (hio_net_t*) hio;
-  int result = execute (net->sock, CMD_HIO_POWEROFF, 0, 0, NULL);
+  int result = execute (net->sock, CMD_HIO_POWEROFF, 0, 0);
   return (result);
 }
 
@@ -316,7 +343,7 @@ net_flush (hio_t *hio)
 {
   hio_net_t *net = (hio_net_t*) hio;
   unsigned long response;
-  int result = query (net->sock, CMD_HIO_FLUSH, 0, 0, &response, NULL, NULL);
+  int result = query (net->sock, CMD_HIO_FLUSH, 0, 0, &response, NULL);
   return (result);
 }
 
@@ -329,12 +356,17 @@ net_close (hio_t *hio)
 #if defined (_BUILD_WIN32)
   shutdown (net->sock, SD_RECEIVE | SD_SEND);
   closesocket (net->sock);
+  closesocket (net->udp);
 #elif defined (_BUILD_UNIX)
   close (net->sock);
+  close (net->udp);
 #endif
-  if (net->compressed != NULL)
-    osal_free (net->compressed);
   osal_free (hio);
+
+#if defined (_BUILD_WIN32)
+  timeEndPeriod (1);
+#endif
+
   return (RET_OK);
 }
 
@@ -360,7 +392,8 @@ net_dispose_error (hio_t *hio,
 /**************************************************************/
 static hio_t*
 net_alloc (const dict_t *config,
-	   SOCKET s)
+	   SOCKET tcp,
+	   SOCKET udp)
 {
   hio_net_t *net = (hio_net_t*) osal_alloc (sizeof (hio_net_t));
   if (net != NULL)
@@ -374,8 +407,20 @@ net_alloc (const dict_t *config,
       net->hio.poweroff = &net_poweroff;
       net->hio.last_error = &net_last_error;
       net->hio.dispose_error = &net_dispose_error;
-      net->do_compress = dict_get_flag (config, CONFIG_USE_COMPRESSION_FLAG, 0);
-      net->sock = s;
+      net->sock = tcp;
+      net->udp = udp;
+
+#if defined (_BUILD_WIN32)
+      net->quick_packets = dict_get_numeric (config, CONFIG_UDP_QUICK_PACKETS, 5);
+      net->delay_time = dict_get_numeric (config, CONFIG_UDP_DELAY_TIME, 2);
+#else
+      net->quick_packets = dict_get_numeric (config, CONFIG_UDP_QUICK_PACKETS, 7);
+      net->delay_time = dict_get_numeric (config, CONFIG_UDP_DELAY_TIME, 1000);
+#endif
+
+#if defined (_BUILD_WIN32)
+      timeBeginPeriod (1);
+#endif
     }
   return ((hio_t*) net);
 }
@@ -383,9 +428,9 @@ net_alloc (const dict_t *config,
 
 /**************************************************************/
 int
-hio_net_probe (const dict_t *config,
-	       const char *path,
-	       hio_t **hio)
+hio_udpnet_probe (const dict_t *config,
+		  const char *path,
+		  hio_t **hio)
 {
   int result = RET_NOT_COMPAT;
   char *endp;
@@ -429,23 +474,10 @@ hio_net_probe (const dict_t *config,
 					sizeof (sa)) == 0 ? RET_OK : RET_ERR;
 		      if (result == RET_OK)
 			{ /* socket connected */
-#if defined (_BUILD_WIN32) && 0
-			  /* alter Nagle algorithm; testing purposes only */
-			  /* inject Rez, 196246KB
-			   * real    5m19.347s
-			   * user    0m0.020s
-			   * sys     0m0.020s
-			   */
-#if defined (_BUILD_WIN32)
-			  BOOL value = 1;
-#else
-			  int value = 1;
-#endif
-			  /* return value is ignored */
-			  /* void */ setsockopt (s, IPPROTO_TCP, TCP_NODELAY,
-						 (void*) &value, sizeof (value));
-#endif
-			  *hio = net_alloc (config, s);
+			  SOCKET udp = socket (PF_INET, SOCK_DGRAM, 0);
+			  connect (udp, (const struct sockaddr*) &sa,
+				   sizeof (sa));
+			  *hio = net_alloc (config, s, udp);
 			  if (*hio != NULL)
 			    ; /* success */
 			  else

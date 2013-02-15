@@ -1,6 +1,6 @@
 /*
  * hio_iop.c
- * $Id: hio_iop.c,v 1.4 2004/12/04 10:28:45 b081 Exp $
+ * $Id: hio_iop.c,v 1.5 2005/08/06 12:03:13 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -41,7 +41,7 @@ typedef struct hio_iop_type
 /**************************************************************/
 static int
 iop_stat (hio_t *hio,
-	  size_t *size_in_kb)
+	  u_int32_t *size_in_kb)
 {
   hio_iop_t *iop = (hio_iop_t*) hio;
   *size_in_kb = iop->size_in_sectors / 2;
@@ -52,10 +52,10 @@ iop_stat (hio_t *hio,
 /**************************************************************/
 static int
 iop_read (hio_t *hio,
-	  size_t start_sector,
-	  size_t num_sectors,
+	  u_int32_t start_sector,
+	  u_int32_t num_sectors,
 	  void *output,
-	  size_t *bytes)
+	  u_int32_t *bytes)
 {
   hio_iop_t *iop = (hio_iop_t*) hio;
   int result = ata_device_dma_transfer (iop->unit, output,
@@ -73,10 +73,10 @@ iop_read (hio_t *hio,
 /**************************************************************/
 static int
 iop_write (hio_t *hio,
-	   size_t start_sector,
-	   size_t num_sectors,
+	   u_int32_t start_sector,
+	   u_int32_t num_sectors,
 	   const void *input,
-	   size_t *bytes)
+	   u_int32_t *bytes)
 {
   hio_iop_t *iop = (hio_iop_t*) hio;
   int result = ata_device_dma_transfer (iop->unit, (char*) input,
@@ -150,12 +150,12 @@ int
 hio_iop_probe (const char *path,
 	       hio_t **hio)
 {
-  if (tolower (path [0]) == 'h' &&
-      tolower (path [1]) == 'd' &&
-      tolower (path [2]) == 'd' &&
-      (path [3] >= '0' && path [3] <= '9') &&
-      path [4] == ':' &&
-      path [5] == '\0')
+  if (path[0] == 'h' &&
+      path[1] == 'd' &&
+      path[2] == 'd' &&
+      (path[3] >= '0' && path[3] <= '9') &&
+      path[4] == ':' &&
+      path[5] == '\0')
     {
       int unit = path [3] - '0';
       ata_devinfo_t *dev_info = ata_get_devinfo (unit);
