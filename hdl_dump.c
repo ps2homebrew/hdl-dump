@@ -1,6 +1,6 @@
 /*
  * hdl_dump.c
- * $Id: hdl_dump.c,v 1.10 2004/08/20 12:35:17 b081 Exp $
+ * $Id: hdl_dump.c,v 1.11 2004/09/12 17:25:26 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -55,6 +55,9 @@
 #endif
 #if defined (INCLUDE_COMPARE_CMD)
 #  define CMD_COMPARE "compare"
+#endif
+#if defined (INCLUDE_COMPARE_IIN_CMD)
+#  define CMD_COMPARE_IIN "compare_iin"
 #endif
 #define CMD_TOC "toc"
 #if defined (INCLUDE_MAP_CMD)
@@ -499,98 +502,6 @@ query_devices (void)
 
 /**************************************************************/
 static int
-compare_iin (const char *path1,
-	     const char *path2,
-	     progress_t *pgs)
-{
-  iin_t *iin1, *iin2;
-  int different = 0;
-  int longer_file = 0; /* 0 - same sizes or doesn't matter; 1 - 1st longer; 2 - 2nd longer */
-
-  int result = iin_probe (path1, &iin1);
-  if (result == OSAL_OK)
-    {
-      result = iin_probe (path2, &iin2);
-      if (result == OSAL_OK)
-	{
-	  size_t len1, len2;
-	  const char *data1, *data2;
-	  size_t sector = 0;
-	  size_t sector_size, num_sectors;
-
-	  /* progress indicator is based on the size of the first file */
-	  result = iin1->stat (iin1, &sector_size, &num_sectors);
-	  if (result == OSAL_OK)
-	    pgs_prepare (pgs, (bigint_t) num_sectors * sector_size);
-
-	  do
-	    {
-	      result = iin1->read (iin1, sector, IIN_NUM_SECTORS, &data1, &len1);
-	      if (result == OSAL_OK)
-		{
-		  result = iin2->read (iin2, sector, IIN_NUM_SECTORS, &data2, &len2);
-		  if (result == OSAL_OK)
-		    {
-		      size_t len = (len1 <= len2 ? len1 : len2); /* lesser from the two */
-
-		      if (memcmp (data1, data2, len) != 0)
-			{
-#if 0 /* save differences */
-			  size_t i, len = (len1 <= len2 ? len1 : len2), diffs = 0;
-			  for (i=0; i<len; ++i)
-			    if (data1 [i] != data2 [i])
-			      ++diffs;
-			  write_file ("./1.bin", data1, len1);
-			  write_file ("./2.bin", data2, len2);
-#endif
-			  different = 1;
-			  break;
-			}
-
-		      if (len1 != len2 &&
-			  (len1 == 0 || len2 == 0))
-			{ /* track which file is longer */
-			  if (len2 == 0)
-			    longer_file = 1;
-			  else if (len1 == 0)
-			    longer_file = 2;
-			}
-		    }
-		}
-	      sector += (len1 <= len2 ? len1 : len2) / IIN_SECTOR_SIZE;
-	      pgs_update (pgs, (bigint_t) sector * IIN_SECTOR_SIZE);
-	    }
-	  while (result == OSAL_OK && len1 / IIN_SECTOR_SIZE > 0 && len2 / IIN_SECTOR_SIZE > 0);
-
-	  iin2->close (iin2);
-	}
-      iin1->close (iin1);
-    }
-
-  /* handle result code */
-  if (result == OSAL_OK)
-    { /* no I/O errors */
-      if (different == 0)
-	{ /* contents are the same */
-	  switch (longer_file)
-	    {
-	    case 0: return (RET_OK); /* neither */
-	    case 1: return (RET_1ST_LONGER);
-	    case 2: return (RET_2ND_LONGER);
-	    default: return (RET_ERR); /* should not be here */
-	    }
-	}
-      else
-	/* contents are different */
-	return (RET_DIFFERENT);
-    }
-  else
-    return (result);
-}
-
-
-/**************************************************************/
-static int
 cdvd_info (const char *path)
 {
   iin_t *iin;
@@ -599,10 +510,14 @@ cdvd_info (const char *path)
     {
       char volume_id [32 + 1];
       char signature [12 + 1];
-      result = isofs_get_ps_cdvd_details (iin, volume_id, signature);
+      size_t num_sectors, sector_size;
+      result = iin->stat (iin, &sector_size, &num_sectors);
       if (result == OSAL_OK)
-	printf ("\"%s\" \"%s\"\n",
-		signature, volume_id);
+	result = isofs_get_ps_cdvd_details (iin, volume_id, signature);
+      if (result == OSAL_OK)
+	printf ("\"%s\" \"%s\" %luKB\n",
+		signature, volume_id,
+		(unsigned long) (((bigint_t) num_sectors * sector_size) / 1024));
       iin->close (iin);
     }
   return (result);
@@ -652,17 +567,138 @@ read_test (const char *path,
 
 
 /**************************************************************/
+#if defined (INCLUDE_COMPARE_IIN_CMD)
+static int
+compare_iin (const char *path1,
+	     const char *path2,
+	     progress_t *pgs)
+{
+  iin_t *iin1, *iin2;
+  int different = 0;
+  int longer_file = 0;
+
+  int result = iin_probe (path1, &iin1);
+  if (result == OSAL_OK)
+    {
+      result = iin_probe (path2, &iin2);
+      if (result == OSAL_OK)
+	{
+	  size_t len1, len2;
+	  const char *data1, *data2;
+	  size_t sector = 0;
+	  size_t sector_size1, num_sectors1;
+	  size_t sector_size2, num_sectors2;
+	  bigint_t size1, size2;
+
+	  result = iin1->stat (iin1, &sector_size1, &num_sectors1);
+	  if (result == OSAL_OK)
+	    {
+	      size1 = (bigint_t) num_sectors1 * sector_size1;
+	      result = iin2->stat (iin2, &sector_size2, &num_sectors2);
+	    }
+	  if (result == OSAL_OK)
+	    {
+	      size2 = (bigint_t) num_sectors2 * sector_size2;
+	      if (sector_size1 == IIN_SECTOR_SIZE &&
+		  sector_size2 == IIN_SECTOR_SIZE)
+		/* progress indicator is set up against the shorter file */
+		pgs_prepare (pgs, size1 < size2 ? size1 : size2);
+	      else
+		/* unable to compare with different sector sizes */
+		result = RET_DIFFERENT;
+	    }
+
+	  len1 = len2 = IIN_SECTOR_SIZE;
+	  while (result == OSAL_OK &&
+		 len1 / IIN_SECTOR_SIZE > 0 &&
+		 len2 / IIN_SECTOR_SIZE > 0)
+	    {
+	      size_t sectors1 = (num_sectors1 > IIN_NUM_SECTORS ?
+				 IIN_NUM_SECTORS : num_sectors1);
+	      result = iin1->read (iin1, sector, sectors1, &data1, &len1);
+	      if (result == OSAL_OK)
+		{
+		  size_t sectors2 = (num_sectors2 > IIN_NUM_SECTORS ?
+				     IIN_NUM_SECTORS : num_sectors2);
+		  result = iin2->read (iin2, sector, sectors2, &data2, &len2);
+		  if (result == OSAL_OK)
+		    {
+		      size_t len = (len1 <= len2 ? len1 : len2); /* lesser from the two */
+		      size_t len_s = len / IIN_SECTOR_SIZE;
+
+		      if (memcmp (data1, data2, len) != 0)
+			{
+			  different = 1;
+			  break;
+			}
+
+		      if (len1 != len2 &&
+			  (len1 == 0 || len2 == 0))
+			{ /* track which file is longer */
+			  if (len2 == 0)
+			    longer_file = 1;
+			  else if (len1 == 0)
+			    longer_file = 2;
+			}
+
+		      num_sectors1 -= len_s;
+		      num_sectors2 -= len_s;
+		      sector += len_s;
+		      pgs_update (pgs, (bigint_t) sector * IIN_SECTOR_SIZE);
+		    }
+		}
+	    } /* loop */
+	  iin2->close (iin2);
+	}
+      iin1->close (iin1);
+    }
+
+  /* handle result code */
+  if (result == OSAL_OK)
+    { /* no I/O errors */
+      if (different == 0)
+	{ /* contents are the same */
+	  switch (longer_file)
+	    {
+	    case 0: return (RET_OK); /* neither */
+	    case 1: return (RET_1ST_LONGER);
+	    case 2: return (RET_2ND_LONGER);
+	    default: return (RET_ERR); /* should not be here */
+	    }
+	}
+      else
+	/* contents are different */
+	return (RET_DIFFERENT);
+    }
+  else
+    return (result);
+}
+#endif /* INCLUDE_COMPARE_IIN_CMD defined? */
+
+
+/**************************************************************/
 static int
 progress_cb (progress_t *pgs)
 {
+  static time_t last_flush = 0;
+  time_t now = time (NULL);
+
   if (pgs->remaining != -1)
-    {
-      fprintf (stdout, "%3d%%, %s remaining (est.), avg %.2f MBps, curr %.2f MBps         \r",
-	       pgs->pc_completed, pgs->remaining_text,
-	       pgs->avg_bps / (1024.0 * 1024.0), pgs->curr_bps / (1024.0 * 1024.0));
-    }
+    fprintf (stdout,
+	     "%3d%%, %s remaining (est.), avg %.2f MBps, "
+	     "curr %.2f MBps         \r",
+	     pgs->pc_completed, pgs->remaining_text,
+	     pgs->avg_bps / (1024.0 * 1024.0),
+	     pgs->curr_bps / (1024.0 * 1024.0));
   else
     fprintf (stdout, "%3d%%\r", pgs->pc_completed);
+
+  if (now > last_flush)
+    { /* flush about once per second */
+      fflush (stdout);
+      last_flush = now;
+    }
+
   return (RET_OK);
 }
 
@@ -703,9 +739,14 @@ show_usage_and_exit (const char *app_path,
 	"cd0: c:\\tekken.iso", NULL, 0 },
 #endif
 #if defined (INCLUDE_COMPARE_CMD)
-      { CMD_COMPARE, "iin1 iin2",
+      { CMD_COMPARE, "file_or_device1 file_or_device2",
+	"Compares two files or devices.",
+	"cd0: c:\\tekken.iso", NULL, 0 },
+#endif
+#if defined (INCLUDE_COMPARE_IIN_CMD)
+      { CMD_COMPARE_IIN, "iin1 iin2",
 	"Compares two ISO inputs.",
-	"c:\\mc.cue c:\\mc.iso", "cd0: c:\\tekken.iso", 0 },
+	"c:\\tekken.cue cd0:", "c:\\gt3.gi hdd1:GT3", 0 },
 #endif
       { CMD_TOC, "device",
 	"Displays PlayStation 2 HDD TOC.",
@@ -753,8 +794,8 @@ show_usage_and_exit (const char *app_path,
 	"hdd1: \"Gran Turismo 3\" cd0: SCES_xxx.xx",
 	"hdd1: \"Gran Turismo 3\" c:\\gt3.iso SCES_xxx.xx", 1 },
       { CMD_CDVD_INFO, "iin_input",
-	"Displays signature (startup file) and volume label for a CD-/DVD-drive\n"
-	"or image file.",
+	"Displays signature (startup file), volume label and data size\n"
+	"for a CD-/DVD-drive or image file.",
 	"c:\\gt3.gi", "\"hdd2:Gran Turismo 3\"", 0 },
 #if defined (INCLUDE_READ_TEST_CMD)
       { CMD_READ_TEST, "iin_input",
@@ -774,8 +815,8 @@ show_usage_and_exit (const char *app_path,
     app = app_path;
 
   fprintf (stderr,
-	   "hdl_dump-0.6 by The W1zard 0f 0z (AKA b...)\n"
-	   "http://w1zard0f07.i8.com/ w1zard0f07@yahoo.com\n"
+	   "hdl_dump-" VERSION " by The W1zard 0f 0z (AKA b...)\n"
+	   "http://hdldump.ps2-scene.org/ w1zard0f07@yahoo.com\n"
 	   "\n");
 
   command_found = 0;
@@ -873,7 +914,7 @@ show_usage_and_exit (const char *app_path,
 
 void
 map_device_name_or_exit (const char *input,
-			 char output [30])
+			 char output [MAX_PATH])
 {
   int result = osal_map_device_name (input, output);
   switch (result)
@@ -1020,7 +1061,7 @@ main (int argc, char *argv [])
 #if defined (INCLUDE_DUMP_CMD)
       else if (caseless_compare (command_name, CMD_DUMP))
 	{ /* dump CD/DVD-ROM to the HDD */
-	  char device_name [30];
+	  char device_name [MAX_PATH];
 
 	  if (argc != 4)
 	    show_usage_and_exit (argv [0], CMD_DUMP);
@@ -1035,8 +1076,8 @@ main (int argc, char *argv [])
 #if defined (INCLUDE_COMPARE_CMD)
       else if (caseless_compare (command_name, CMD_COMPARE))
 	{ /* compare two files or devices or etc. */
-	  char device_name_1 [30];
-	  char device_name_2 [30];
+	  char device_name_1 [MAX_PATH];
+	  char device_name_2 [MAX_PATH];
 	  int is_device_1 = 0, is_device_2 = 0;
 
 	  if (argc != 4)
@@ -1050,6 +1091,16 @@ main (int argc, char *argv [])
 				  NULL, NULL);
 	}
 #endif /* INCLUDE_COMPARE_CMD defined? */
+
+#if defined (INCLUDE_COMPARE_IIN_CMD)
+      else if (caseless_compare (command_name, CMD_COMPARE_IIN))
+	{ /* compare two iso inputs */
+	  if (argc != 4)
+	    show_usage_and_exit (argv [0], CMD_COMPARE_IIN);
+	  handle_result_and_exit (compare_iin (argv [2], argv [3], get_progress ()),
+				  NULL, NULL);
+	}
+#endif /* INCLUDE_COMPARE_IIN_CMD defined? */
 
       else if (caseless_compare (command_name, CMD_TOC))
 	{ /* show TOC of a PlayStation 2 HDD */
@@ -1081,7 +1132,7 @@ main (int argc, char *argv [])
 #if defined (INCLUDE_ZERO_CMD)
       else if (caseless_compare (command_name, CMD_ZERO))
 	{ /* zero HDD */
-	  char device_name [30];
+	  char device_name [MAX_PATH];
 
 	  if (argc != 3)
 	    show_usage_and_exit (argv [0], CMD_ZERO);
@@ -1137,7 +1188,7 @@ main (int argc, char *argv [])
 #if defined (INCLUDE_CUTOUT_CMD)
       else if (caseless_compare (command_name, CMD_CUTOUT))
 	{ /* calculate and display how to arrange a new HD Loader partition */
-	  char device_name [30];
+	  char device_name [MAX_PATH];
 
 	  if (argc != 4)
 	    show_usage_and_exit (argv [0], CMD_CUTOUT);

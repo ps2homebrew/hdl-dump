@@ -1,6 +1,6 @@
 /*
  * config.h
- * $Id: config.h,v 1.4 2004/08/20 12:35:17 b081 Exp $
+ * $Id: config.h,v 1.5 2004/09/12 17:25:26 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -24,17 +24,22 @@
 #if !defined (_CONFIG_H)
 #define _CONFIG_H
 
+#if !defined (_BUILD_WIN32) && !defined (_BUILD_UNIX)
+#  error Either _BUILD_WIN32 or _BUILD_UNIX should be defined
+#endif
+
 
 typedef long long bigint_t;
 
 /* control whether infrequently-used commands to be built */
 #define INCLUDE_DUMP_CMD
-#define INCLUDE_COMPARE_CMD
+/* #define INCLUDE_COMPARE_CMD */
+#define INCLUDE_COMPARE_IIN_CMD
 /* #define INCLUDE_MAP_CMD */
 /* #define INCLUDE_INFO_CMD */
 /* #define INCLUDE_ZERO_CMD */
 /* #define INCLUDE_CUTOUT_CMD */
-#define INCLUDE_READ_TEST_CMD
+/* #define INCLUDE_READ_TEST_CMD */
 
 
 #endif /* _CONFIG_H defined? */

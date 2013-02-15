@@ -1,6 +1,6 @@
 /*
  * osal_unix.c
- * $Id: osal_unix.c,v 1.1 2004/08/20 12:35:17 b081 Exp $
+ * $Id: osal_unix.c,v 1.2 2004/09/12 17:25:27 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -73,8 +73,7 @@ osal_open (const char *name,
 	   osal_handle_t *handle,
 	   int no_cache)
 {
-  /* TODO: remove buffering */
-  handle->desc = open64 (name, O_RDONLY | O_LARGEFILE, S_IRUSR | S_IWUSR);
+  handle->desc = open64 (name, O_RDONLY | O_LARGEFILE, 0);
   return (handle->desc == -1 ? OSAL_ERR : OSAL_OK);
 }
 
@@ -84,7 +83,6 @@ int /* OSAL_OK, OSAL_ERR */
 osal_open_device_for_writing (const char *device_name,
 			      osal_handle_t *handle)
 {
-  /* TODO: remove buffering */
   handle->desc = open (device_name, O_RDWR | O_LARGEFILE, S_IRUSR | S_IWUSR);
   return (handle->desc == -1 ? OSAL_ERR : OSAL_OK);
 }
@@ -97,23 +95,30 @@ osal_create_file (const char *path,
 		  bigint_t estimated_size)
 {
   int result = RET_ERR;
-  handle->desc = open64 (path, O_CREAT | O_EXCL | O_LARGEFILE, S_IRUSR | S_IWUSR);
+  handle->desc = open64 (path,
+			 O_CREAT | O_EXCL | O_LARGEFILE | O_RDWR,
+			 S_IRUSR | S_IWUSR);
   if (handle->desc != -1)
     { /* success */
-      off64_t offs = lseek64 (handle->desc, estimated_size - 1, SEEK_END);
-      if (offs != -1)
+      if (estimated_size > 0)
 	{
-	  char dummy = '\0';
-	  size_t bytes = write (handle->desc, &dummy, 1);
-	  if (bytes == 1)
+	  off64_t offs = lseek64 (handle->desc, estimated_size - 1, SEEK_END);
+	  if (offs != -1)
 	    {
-	      offs = lseek64 (handle->desc, 0, SEEK_SET);
-	      if (offs == 0)
-		{ /* success */
-		  result = RET_OK;
+	      char dummy = '\0';
+	      size_t bytes = write (handle->desc, &dummy, 1);
+	      if (bytes == 1)
+		{
+		  offs = lseek64 (handle->desc, 0, SEEK_SET);
+		  if (offs == 0)
+		    { /* success */
+		      result = RET_OK;
+		    }
 		}
 	    }
 	}
+      else
+	result = RET_OK;
 
       if (result != RET_OK)
 	{ /* delete file on error */
@@ -136,11 +141,28 @@ osal_get_estimated_device_size (osal_handle_t handle,
   struct stat64 st;
   int result;
   memset (&st, 0, sizeof (struct stat64)); /* play on the safe side */
-  result = fstat64 (handle.desc, &st);
-  if (result == 0)
+  result = fstat64 (handle.desc, &st) == 0 ? RET_OK : RET_ERR;
+  if (result == RET_OK)
     { /* success */
-      *size_in_bytes = st.st_size; /* TODO: might be 0 for block devices? */
-      result = RET_OK;
+      *size_in_bytes = st.st_size; /* might be 0 for block devices? */
+      if (*size_in_bytes == 0)
+	{ /* try with lseek... */
+	  off64_t curr = lseek64 (handle.desc, 0, SEEK_CUR);
+	  if (curr >= 0)
+	    {
+	      off64_t size = lseek64 (handle.desc, 0, SEEK_END);
+	      if (size >= 0)
+		{
+		  *size_in_bytes = size;
+		  result = (lseek64 (handle.desc, curr, SEEK_SET) >= 0 ?
+			    OSAL_OK : OSAL_ERR);
+		}
+	      else
+		result = RET_ERR;
+	    }
+	  else
+	    result = RET_ERR;
+	}
     }
   else
     result = RET_ERR;
@@ -153,7 +175,6 @@ int /* OSAL_OK, OSAL_ERR */
 osal_get_device_size (osal_handle_t handle,
 		      bigint_t *size_in_bytes)
 {
-  /* TODO: check if stat returns the *real* device size or works as Windows' one */
   return (osal_get_estimated_device_size (handle, size_in_bytes));
 }
 
@@ -162,9 +183,9 @@ osal_get_device_size (osal_handle_t handle,
 int
 osal_get_device_sect_size (osal_handle_t handle,
 			   size_t *size_in_bytes)
-{
-  /* TODO: */
-  return (OSAL_ERR);
+{ /* TODO: osal_get_device_sect_size */
+  *size_in_bytes = 4096; /* that is a resonable sector size */
+  return (OSAL_OK);
 }
 
 
@@ -172,9 +193,12 @@ osal_get_device_sect_size (osal_handle_t handle,
 int
 osal_get_volume_sect_size (const char *volume_root,
 			   size_t *size_in_bytes)
-{
-  /* TODO: */
-  return (OSAL_ERR);
+{ /* TODO: osal_get_volume_sect_size */
+  struct stat st;
+  int result = stat (volume_root, &st) == 0 ? RET_OK : RET_ERR;
+  if (result == RET_OK)
+    *size_in_bytes = st.st_blksize; 
+  return (result);
 }
 
 
@@ -232,7 +256,7 @@ osal_read (osal_handle_t handle,
 	   size_t bytes,
 	   size_t *stored)
 {
-  int n = read (handle.desc, &out, bytes);
+  int n = read (handle.desc, out, bytes);
   if (n != -1)
     { /* success */
       *stored = n;
@@ -250,7 +274,7 @@ osal_write (osal_handle_t handle,
 	    size_t bytes,
 	    size_t *stored)
 {
-  int n = write(handle.desc, &in, bytes);
+  int n = write(handle.desc, in, bytes);
   if (n != -1)
     { /* success */
       *stored = n;
@@ -332,39 +356,15 @@ osal_dlist_free (osal_dlist_t *dlist)
 /**************************************************************/
 int /* RET_OK, RET_BAD_FORMAT, RET_BAD_DEVICE */
 osal_map_device_name (const char *input,
-		      char output [30])
+		      char output [MAX_PATH])
 {
-  /* TODO: map hddX to /dev/hdaX or /dev/ide/host/... */
-  if (memcmp (input, "hdd", 3) == 0)
-    {
-      char *endp;
-      long index = strtol (input + 3, &endp, 10);
-      if (endp == input + 3)
-	return (RET_BAD_FORMAT); /* bad format: no number after hdd */
-      if (endp [0] == ':' &&
-	  endp [1] == '\0')
-	{
-	  sprintf (output, "\\\\.\\PhysicalDrive%ld", index);
-	  return (RET_OK);
-	}
-      else
-	return (RET_BAD_FORMAT);
+  struct stat st;
+  int result = stat (input, &st) == 0 ? RET_OK : RET_ERR;
+  if (result == RET_OK)
+    { /* accept the input, only if it is a block device */
+      result = st.st_mode & S_IFBLK ? RET_OK : RET_BAD_DEVICE;
+      if (result == RET_OK)
+	strcpy (output, input);
     }
-  else if (memcmp (input, "cd", 2) == 0)
-    {
-      char *endp;
-      long index = strtol (input + 2, &endp, 10);
-      if (endp == input + 2)
-	return (RET_BAD_FORMAT); /* bad format: no number after hdd */
-      if (endp [0] == ':' &&
-	  endp [1] == '\0')
-	{
-	  sprintf (output, "\\\\.\\CdRom%ld", index);
-	  return (RET_OK);
-	}
-      else
-	return (RET_BAD_FORMAT);
-    }
-  else
-    return (RET_BAD_DEVICE);
+  return (result);
 }

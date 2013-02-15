@@ -1,6 +1,6 @@
 /*
  * iin_gi.c
- * $Id: iin_gi.c,v 1.6 2004/08/20 12:35:17 b081 Exp $
+ * $Id: iin_gi.c,v 1.7 2004/09/12 17:25:26 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -97,6 +97,7 @@ iin_gi_probe_path (const char *path,
 	    result = RET_BAD_COMPAT;
 	}
 
+      mode = dm_mode1_plain;
       if (result == OSAL_OK)
 	{ /* mode1/mode2? */
 	  switch (header [0x7e])

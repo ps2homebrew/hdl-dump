@@ -1,6 +1,6 @@
 /*
  * iin_probe.c
- * $Id: iin_probe.c,v 1.4 2004/08/20 12:35:17 b081 Exp $
+ * $Id: iin_probe.c,v 1.5 2004/09/12 17:25:27 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -43,8 +43,10 @@ iin_probe (const char *path,
   /* prefix-driven inputs first */
   if (result == RET_NOT_COMPAT)
     result = iin_optical_probe_path (path, iin);
+#if defined (_BUILD_WIN32) && defined (_WITH_ASPI)
   if (result == RET_NOT_COMPAT)
     result = iin_aspi_probe_path (path, iin);
+#endif
   if (result == RET_NOT_COMPAT)
     result = iin_hdloader_probe_path (path, iin);
   if (result == RET_NOT_COMPAT)

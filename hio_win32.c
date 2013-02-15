@@ -1,6 +1,6 @@
 /*
  * hio_win32.c - Win32 interface to locally connected PS2 HDD
- * $Id: hio_win32.c,v 1.3 2004/08/20 12:35:17 b081 Exp $
+ * $Id: hio_win32.c,v 1.4 2004/09/12 17:25:26 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -151,6 +151,8 @@ int
 hio_win32_probe (const char *path,
 		 hio_t **hio)
 {
+  int result;
+#if defined (_BUILD_WIN32)
   if (tolower (path [0]) == 'h' &&
       tolower (path [1]) == 'd' &&
       tolower (path [2]) == 'd' &&
@@ -160,9 +162,24 @@ hio_win32_probe (const char *path,
        (isdigit (path [4]) &&
 	path [5] == ':' &&
 	path [6] == '\0')))
+    result = RET_OK;
+  else
+    result = RET_NOT_COMPAT;
+#endif
+#if defined (_BUILD_UNIX)
+  /* osal_map_device_name would check whether input is a device or not */
+  result = RET_OK;
+#endif
+
+  if (result == RET_OK)
     {
-      char device_name [30];
-      int result = osal_map_device_name (path, device_name);
+      char device_name [MAX_PATH];
+      result = osal_map_device_name (path, device_name);
+#if defined (_BUILD_UNIX)
+      if (result == RET_ERR ||
+	  result == RET_BAD_DEVICE)
+	result = RET_NOT_COMPAT;
+#endif
       if (result == OSAL_OK)
 	{
 	  osal_handle_t device;
@@ -179,8 +196,6 @@ hio_win32_probe (const char *path,
 		osal_close (device);
 	    }
 	}
-      return (result);
     }
-  else
-    return (RET_NOT_COMPAT);
+  return (result);
 }

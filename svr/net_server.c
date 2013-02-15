@@ -1,6 +1,6 @@
 /*
  * svr/net_server.c
- * $Id: net_server.c,v 1.3 2004/08/15 16:44:19 b081 Exp $
+ * $Id: net_server.c,v 1.4 2004/09/12 17:24:44 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -26,8 +26,8 @@
  * NOTE: stack size should be at least 4KB + about 1KB
  */
 
-#if !defined (_BUILD_WIN32) && !defined (_BUILD_PS2)
-#  error One of _BUILD_WIN32 or _BUILD_PS2 should be defined
+#if !defined (_BUILD_WIN32) && !defined (_BUILD_UNIX) && !defined (_BUILD_PS2)
+#  error One of _BUILD_WIN32, _BUILD_UNIX or _BUILD_PS2 should be defined
 #endif
 
 #if defined (_BUILD_WIN32)
@@ -36,6 +36,12 @@
 #  if !defined (EWX_FORCEIFHUNG)
 #    define EWX_FORCEIFHUNG 0x00000010
 #  endif
+#endif
+#if defined (_BUILD_UNIX)
+#  include <sys/types.h>
+#  include <sys/socket.h>
+#  include <netinet/in.h>
+#  include <string.h>
 #endif
 #if defined (_BUILD_PS2)
 #  include <tamtypes.h>

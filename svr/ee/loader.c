@@ -1,6 +1,6 @@
 /*
  * svr/ee/loader.c
- * $Id: loader.c,v 1.4 2004/08/20 12:35:17 b081 Exp $
+ * $Id: loader.c,v 1.5 2004/09/12 17:23:59 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -57,19 +57,19 @@
 #endif
 
 
-/* #define RESET_IOP */
+#define RESET_IOP
 #define LOAD_MRBROWN_PATCHES
 #define LOAD_SIOMAN_AND_MC
 /* #define LOAD_POWEROFF */
-#define LOAD_PS2ATAD /* if not loaded server.irx refuses to load?!? */
+#define LOAD_PS2ATAD
 #define LOAD_SERVER
 
 
-extern u8 *iomanx_irx;			// (c) 2003 Marcus R. Brown <mrbrown@0xd6.org> IOP module
-extern int size_iomanx_irx;		// from PS2DRV to handle 'standard' PS2 device IO
+extern u8 *iomanx_irx;
+extern int size_iomanx_irx;
 
-extern u8 *ps2dev9_irx;			// (c) 2003 Marcus R. Brown <mrbrown@0xd6.org> IOP module
-extern int size_ps2dev9_irx;		// from PS2DRV to handle low-level HDD device
+extern u8 *ps2dev9_irx;
+extern int size_ps2dev9_irx;
 
 extern u8 *ps2ip_irx;
 extern int size_ps2ip_irx;
@@ -77,11 +77,11 @@ extern int size_ps2ip_irx;
 extern u8 *ps2smap_irx;
 extern int size_ps2smap_irx;
 
-extern u8 *ps2atad_irx;			// (c) 2003 Marcus R. Brown <mrbrown@0xd6.org> IOP module
-extern int size_ps2atad_irx;		// from PS2DRV to handle low-level ATA for HDD
+extern u8 *ps2atad_irx;
+extern int size_ps2atad_irx;
 
-extern u8 *poweroff_irx;		// (c) 2003 Vector IOP module to handle PS2 reset/shutdown
-extern int size_poweroff_irx;		// from LIBHDD v1.0
+extern u8 *poweroff_irx;
+extern int size_poweroff_irx;
 
 extern u8 *hdlsvr_iop_irx;
 extern int size_hdlsvr_iop_irx;
@@ -129,7 +129,7 @@ setup_ip (char outp [IPCONF_MAX_LEN])
 	      result = len;
 	    }
 	  else
-	    printf ("IPCONFIG.DAT format (use a single space as a separator):\n"
+	    printf ("IPCONFIG.DAT format (use a single space as separator):\n"
 		    "ip_address network_mask gateway_ip\n");
 	}
     }
@@ -212,7 +212,8 @@ load_modules (int init_tcpip)
 	      if_conf, if_conf + pos1, if_conf + pos1 + pos2, if_conf_len);
 
       printf ("PS2SMAP.IRX");
-      SifExecModuleBuffer (&ps2smap_irx, size_ps2smap_irx, if_conf_len, if_conf, &ret);
+      SifExecModuleBuffer (&ps2smap_irx, size_ps2smap_irx,
+			   if_conf_len, if_conf, &ret);
       printf (": %d\n", ret);
     }
   else

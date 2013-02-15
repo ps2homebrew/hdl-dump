@@ -1,6 +1,6 @@
 ##
 ## svr/win32/Makefile
-## $Id: Makefile,v 1.2 2004/08/15 16:50:17 b081 Exp $
+## $Id: Makefile,v 1.3 2004/09/12 17:22:52 b081 Exp $
 ##
 ## Copyright 2004 Bobi B., w1zard0f07@yahoo.com
 ##
@@ -22,26 +22,50 @@
 ##
 ##
 
-CFLAGS = -Wall -ansi -pedantic -Wno-long-long -O0 -g -D_BUILD_WIN32 -mno-cygwin
-LDFLAGS = -lwsock32
+CFLAGS = -Wall -ansi -pedantic -Wno-long-long -O0 -g
 
-OBJS = hdld_svr_win32.o ../net_server.o ../../hio_probe.o ../../hio_win32.o ../../hio_net.o \
-	../../osal_win32.o ../../net_io.o ../../apa.o ../../common.o ../../progress.o
-BIN_OUT = hdld_svr.exe
+LDFLAGS =
 
-all: $(BIN_OUT)
+OBJECTS = hdld_svr_win32.o ../net_server.o ../../hio_probe.o \
+	../../hio_win32.o ../../hio_net.o \
+	../../net_io.o ../../apa.o ../../common.o ../../progress.o
+
+# "autodetect" Windows builds
+ifdef SYSTEMROOT
+  WINDOWS = yes
+else
+  WINDOWS = no
+endif
+
+# Windows/Unix/Linux build
+ifeq ($(WINDOWS), yes)
+  OBJECTS += ../../osal_win32.o
+  CFLAGS += -mno-cygwin -D_BUILD_WIN32
+  LDFLAGS += -lwsock32
+  EXESUF = .exe
+else
+  OBJECTS += ../../osal_unix.o
+  CFLAGS += -D_BUILD_UNIX -D_GNU_SOURCE
+  EXESUF =
+endif
+
+BINARY = hdld_svr$(EXESUF)
+
+all: $(BINARY)
 
 clean:
-	rm -f *.o $(BIN_OUT)
+	rm -f $(BINARY) $(OBJECTS)
 
-$(BIN_OUT): $(OBJS)
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+$(BINARY): $(OBJECTS)
+	@echo -e "\tLNK $@"
+	@$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 define COMP
 $(CC) $(CFLAGS) -c -o $@ $^
 endef
 
 %.o : %.c
-	$(CC) $(CFLAGS) -c -o $@ $^
+	@echo -e "\tCC  $<"
+	@$(CC) $(CFLAGS) -c -o $@ $^
 
 include ../../.depends

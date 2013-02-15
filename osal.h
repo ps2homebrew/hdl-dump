@@ -1,6 +1,6 @@
 /*
  * osal.h
- * $Id: osal.h,v 1.8 2004/08/20 12:35:17 b081 Exp $
+ * $Id: osal.h,v 1.9 2004/09/12 17:25:27 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -37,9 +37,9 @@
 #endif
 
 
-#define OSAL_OK 0
-#define OSAL_ERR -1
-#define OSAL_NO_MEM -2
+#define OSAL_OK       0
+#define OSAL_ERR     -1
+#define OSAL_NO_MEM  -2
 
 #define _MB * (1024 * 1024) /* really ugly :-) */
 
@@ -58,6 +58,8 @@ typedef struct
 
 #define OSAL_HANDLE_INIT { -1 } /* file descriptor */
 #define OSAL_IS_OPENED(x) ((x).desc != -1)
+
+#define MAX_PATH 256
 
 #endif
 
@@ -143,7 +145,7 @@ void osal_dlist_free (osal_dlist_t *dlist);
 
 int /* RET_OK, RET_BAD_FORMAT, RET_BAD_DEVICE */
 osal_map_device_name (const char *input,
-		      char output [30]);
+		      char output [MAX_PATH]);
 
 
 #endif /* _OSAL_H defined? */

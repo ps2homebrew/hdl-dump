@@ -1,6 +1,6 @@
 /*
  * iin_hdloader.c
- * $Id: iin_hdloader.c,v 1.8 2004/08/20 12:35:17 b081 Exp $
+ * $Id: iin_hdloader.c,v 1.9 2004/09/12 17:25:27 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -51,7 +51,7 @@ iin_hdloader_probe_path (const char *path,
 	path [5] == ':')))
     {
       char device_name [6 + 1]; /* hdd??:\0 */
-      char real_device_name [30];
+      char real_device_name [MAX_PATH];
       const char *partition_name = strchr (path, ':') + 1;
       osal_handle_t device = OSAL_HANDLE_INIT;
       apa_partition_table_t *table = NULL;
@@ -68,7 +68,7 @@ iin_hdloader_probe_path (const char *path,
 	device_name [6] = '\0'; /* hdd??: */
       result = osal_map_device_name (device_name, real_device_name);
       if (result == OSAL_OK)
-	result = osal_open (real_device_name, &device, 0); /* do not disable caching */
+	result = osal_open (real_device_name, &device, 0); /* w/ caching */
       if (result == OSAL_OK)
 	result = osal_get_device_sect_size (device, &device_sector_size);
       if (OSAL_IS_OPENED (device))
@@ -82,12 +82,14 @@ iin_hdloader_probe_path (const char *path,
 	result = apa_ptable_read_ex (hio, &table);
       if (result == OSAL_OK)
 	{
-	  result = apa_find_partition (table, partition_name, &partition_index);
+	  result = apa_find_partition (table, partition_name,
+				       &partition_index);
 	  if (result == RET_NOT_FOUND)
 	    { /* attempt to locate partition name by prepending "PP.HDL." */
 	      char alt_part_name [100];
 	      sprintf (alt_part_name, "PP.HDL.%s", partition_name);
-	      result = apa_find_partition (table, alt_part_name, &partition_index);
+	      result = apa_find_partition (table, alt_part_name,
+					   &partition_index);
 	    }
 	}
       if (result == OSAL_OK)
@@ -97,15 +99,18 @@ iin_hdloader_probe_path (const char *path,
 	    { /* get HD Loader header */
 	      iin_img_base_t *img_base = NULL;
 	      size_t len;
-	      const ps2_partition_header_t *part = &table->parts [partition_index].header;
-	      result = hio->read (hio, part->start, (4 _MB) / HDD_SECTOR_SIZE, buffer, &len);
+	      const ps2_partition_header_t *part =
+		&table->parts [partition_index].header;
+	      result = hio->read (hio, part->start,
+				  (4 _MB) / HDD_SECTOR_SIZE, buffer, &len);
 	      if (result == OSAL_OK)
-		result = (len == 4 _MB ? OSAL_OK : RET_BAD_APA); /* failed to read? */
+		result = (len == 4 _MB ? OSAL_OK : RET_BAD_APA);
 	      if (result == OSAL_OK)
-		result = (buffer [0x00101000] == 0xed &&
-			  buffer [0x00101001] == 0xfe &&
-			  buffer [0x00101002] == 0xad &&
-			  buffer [0x00101003] == 0xde) ? OSAL_OK : RET_NOT_HDL_PART;
+		result = ((buffer [0x00101000] == 0xed &&
+			   buffer [0x00101001] == 0xfe &&
+			   buffer [0x00101002] == 0xad &&
+			   buffer [0x00101003] == 0xde) ?
+			  OSAL_OK : RET_NOT_HDL_PART);
 	      if (result == OSAL_OK)
 		{
 		  img_base = img_base_alloc (2048, 0);
@@ -118,7 +123,7 @@ iin_hdloader_probe_path (const char *path,
 		  size_t i;
 		  for (i=0; result == OSAL_OK && i<num_parts; ++i)
 		    {
-		      bigint_t start = ((bigint_t) data [i * 3 + 1] << 8) * 512;
+		      bigint_t start = ((bigint_t) data [i * 3 + 1] << 8) *512;
 		      bigint_t length = (bigint_t) data [i * 3 + 2] * 256;
 		      result = img_base_add_part (img_base, real_device_name,
 						  (size_t) (length / 2048),

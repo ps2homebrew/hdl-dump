@@ -1,6 +1,6 @@
 /*
  * svr/win32/hdld_svr_win32.c
- * $Id: hdld_svr_win32.c,v 1.2 2004/08/15 16:44:20 b081 Exp $
+ * $Id: hdld_svr_win32.c,v 1.3 2004/09/12 17:23:02 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -21,7 +21,12 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include <winsock.h>
+#if defined (_BUILD_WIN32)
+#  include <winsock.h>
+#endif
+#if defined (_BUILD_UNIX)
+#  include <sys/socket.h>
+#endif
 #include <signal.h>
 #include <stdio.h>
 #include "../net_server.h"
@@ -54,9 +59,14 @@ main (int argc,
       int result = hio_probe (argv [1], &hio);
       if (result == RET_OK)
 	{
+#if defined (_BUILD_WIN32)
 	  WORD version = MAKEWORD (2, 2);
 	  WSADATA wsa_data;
 	  int result = WSAStartup (version, &wsa_data);
+#endif
+#if defined (_BUILD_UNIX)
+	  result = 0; /* Unix/Linux sockets don't need initialization */
+#endif
 	  if (result == 0)
 	    {
 	      result = run_server (NET_HIO_SERVER_PORT, hio, &interrupt_flag);
