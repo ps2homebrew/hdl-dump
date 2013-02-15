@@ -1,6 +1,6 @@
 /*
  * iin_optical.c
- * $Id: iin_optical.c,v 1.11 2006/06/18 13:11:46 bobi Exp $
+ * $Id: iin_optical.c,v 1.12 2006/09/01 17:24:29 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -50,8 +50,8 @@ typedef struct iin_optical_type
 /**************************************************************/
 static int
 opt_stat (iin_t *iin,
-	  u_int32_t *sector_size,
-	  u_int32_t *num_sectors)
+	  /*@out@*/ u_int32_t *sector_size,
+	  /*@out@*/ u_int32_t *num_sectors)
 {
   iin_optical_t *opt = (iin_optical_t*) iin;
   u_int64_t size_in_bytes;
@@ -72,8 +72,8 @@ static int
 opt_read (iin_t *iin,
 	  u_int32_t start_sector,
 	  u_int32_t num_sectors,
-	  const char **data,
-	  u_int32_t *length)
+	  /*@out@*/ const char **data,
+	  /*@out@*/ u_int32_t *length)
 {
   iin_optical_t *opt = (iin_optical_t*) iin;
 
@@ -132,7 +132,7 @@ opt_read (iin_t *iin,
 
 /**************************************************************/
 static int
-opt_close (iin_t *iin)
+opt_close (/*@special@*/ /*@only@*/ iin_t *iin) /*@releases iin@*/
 {
   iin_optical_t *opt = (iin_optical_t*) iin;
   int result;
@@ -145,7 +145,7 @@ opt_close (iin_t *iin)
   al_free (opt->al);
 #endif
 
-  result = osal_close (opt->device);
+  result = osal_close (&opt->device);
   if (result == RET_OK)
     ;
   else
@@ -166,8 +166,8 @@ opt_last_error (iin_t *iin)
 
 /**************************************************************/
 static void
-opt_dispose_error (iin_t *iin,
-		   char* error)
+opt_dispose_error (/*@unused@*/ iin_t *iin,
+		   /*@only@*/ char* error)
 {
   osal_dispose_error_msg (error);
 }
@@ -255,7 +255,7 @@ iin_optical_probe_path (const char *path,
 		    ; /* success */
 		  else
 		    { /* opt_alloc failed */
-		      osal_close (device);
+		      osal_close (&device);
 		      result = RET_NO_MEM;
 		    }
 		}
@@ -263,11 +263,13 @@ iin_optical_probe_path (const char *path,
 	}
       return (result);
     }
+
   else
     {
 #if defined (_BUILD_WIN32)
       return (RET_NOT_COMPAT);
 #else
+
       /* FreeBSD patch to support device nodes */
       char device_name [MAX_PATH];
       int result = osal_map_device_name (path, device_name);
@@ -286,7 +288,7 @@ iin_optical_probe_path (const char *path,
 		    ; /* success */
 		  else
 		    { /* opt_alloc failed */
-		      osal_close (device);
+		      osal_close (&device);
 		      result = RET_NO_MEM;
 		    }
 		}

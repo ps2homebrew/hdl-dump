@@ -1,6 +1,6 @@
 /*
  * hio_win32.c - Win32 interface to locally connected PS2 HDD
- * $Id: hio_win32.c,v 1.7 2006/06/18 13:11:07 bobi Exp $
+ * $Id: hio_win32.c,v 1.8 2006/09/01 17:26:40 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -39,7 +39,7 @@ typedef struct hio_win32_type
 /**************************************************************/
 static int
 win32_stat (hio_t *hio,
-	    u_int32_t *size_in_kb)
+	    /*@out@*/ u_int32_t *size_in_kb)
 {
   hio_win32_t *hw32 = (hio_win32_t*) hio;
   u_int64_t size_in_bytes;
@@ -62,8 +62,8 @@ static int
 win32_read (hio_t *hio,
 	    u_int32_t start_sector,
 	    u_int32_t num_sectors,
-	    void *output,
-	    u_int32_t *bytes)
+	    /*@out@*/ void *output,
+	    /*@out@*/ u_int32_t *bytes)
 {
   hio_win32_t *hw32 = (hio_win32_t*) hio;
   int result = osal_seek (hw32->device, (u_int64_t) start_sector * 512);
@@ -83,7 +83,7 @@ win32_write (hio_t *hio,
 	     u_int32_t start_sector,
 	     u_int32_t num_sectors,
 	     const void *input,
-	     u_int32_t *bytes)
+	     /*@out@*/ u_int32_t *bytes)
 {
   hio_win32_t *hw32 = (hio_win32_t*) hio;
   int result = osal_seek (hw32->device, (u_int64_t) start_sector * 512);
@@ -99,7 +99,7 @@ win32_write (hio_t *hio,
 
 /**************************************************************/
 static int
-win32_flush (hio_t *hio)
+win32_flush (/*@unused@*/ hio_t *hio)
 { /* win32_flush is intentionately blank */
   return (RET_OK);
 }
@@ -107,7 +107,7 @@ win32_flush (hio_t *hio)
 
 /**************************************************************/
 static int
-win32_poweroff (hio_t *hio)
+win32_poweroff (/*@unused@*/ hio_t *hio)
 { /* win32_poweroff is intentionately blank */
   return (RET_OK);
 }
@@ -115,10 +115,10 @@ win32_poweroff (hio_t *hio)
 
 /**************************************************************/
 static int
-win32_close (hio_t *hio)
+win32_close (/*@special@*/ /*@only@*/ hio_t *hio) /*@releases hio@*/
 {
   hio_win32_t *hw32 = (hio_win32_t*) hio;
-  int result = osal_close (hw32->device);
+  int result = osal_close (&hw32->device);
   osal_free (hio);
   return (result);
 }
@@ -135,16 +135,16 @@ win32_last_error (hio_t *hio)
 
 /**************************************************************/
 static void
-win32_dispose_error (hio_t *hio,
-		     char* error)
+win32_dispose_error (/*@unused@*/ hio_t *hio,
+		     /*@only@*/ char* error)
 {
   osal_dispose_error_msg (error);
 }
 
 
 /**************************************************************/
-static hio_t*
-win32_alloc (osal_handle_t device)
+/*@special@*/ static hio_t*
+win32_alloc (osal_handle_t device) /*@allocates result@*/ /*@defines result@*/
 {
   hio_win32_t *hw32 = (hio_win32_t*) osal_alloc (sizeof (hio_win32_t));
   if (hw32 != NULL)
@@ -212,7 +212,7 @@ hio_win32_probe (const dict_t *config,
 		result = RET_NO_MEM;
 
 	      if (result != OSAL_OK)
-		osal_close (device);
+		osal_close (&device);
 	    }
 	}
     }

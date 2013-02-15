@@ -1,6 +1,6 @@
 /*
  * iin.h
- * $Id: iin.h,v 1.9 2006/06/18 13:11:15 bobi Exp $
+ * $Id: iin.h,v 1.10 2006/09/01 17:26:23 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -26,11 +26,12 @@
 
 #include "config.h"
 #include <stddef.h>
+#include "dict.h"
 
 C_START
 
-#define IIN_SECTOR_SIZE 2048 /* CD/DVD sector size */
-#define IIN_NUM_SECTORS  512 /* number of sectors to read at once */
+#define IIN_SECTOR_SIZE 2048u /* CD/DVD sector size */
+#define IIN_NUM_SECTORS  512u /* number of sectors to read at once */
 
 
 /*
@@ -38,32 +39,28 @@ C_START
  */
 
 typedef struct iin_type iin_t;
+typedef /*@only@*/ /*@out@*/ /*@null@*/ iin_t* iin_p_t;
 
-
-/* if RET_OK is returned source can be handled with that implementation;
-   if so, iin is ready to process the input */
-typedef int (*iin_probe_path_t) (const char *path,
-				 iin_t **iin);
 
 typedef int (*iin_stat_t) (iin_t *iin,
-			   u_int32_t *sector_size,
-			   u_int32_t *num_sectors);
+			   /*@out@*/ u_int32_t *sector_size,
+			   /*@out@*/ u_int32_t *num_sectors);
 
 /* read num_sectors starting from start_sector in an internal buffer;
    number of sectors read = *length / IIN_SECTOR_SIZE */
 typedef int (*iin_read_t) (iin_t *iin,
 			   u_int32_t start_sector,
 			   u_int32_t num_sectors,
-			   const char **data,
-			   u_int32_t *length);
+			   /*@out@*/ const char **data,
+			   /*@out@*/ u_int32_t *length);
 
 /* return last error text in a memory buffer, that would be freed by calling iin_dispose_error_t */
-typedef char* (*iin_last_error_t) (iin_t *iin);
+typedef /*@only@*/ char* (*iin_last_error_t) (iin_t *iin);
 typedef void (*iin_dispose_error_t) (iin_t *iin,
-				     char* error);
+				     /*@only@*/ char* error);
 
 /* iin should not be used after close */
-typedef int (*iin_close_t) (iin_t *iin);
+typedef int (*iin_close_t) (/*@special@*/ /*@only@*/ iin_t *iin) /*@releases iin@*/;
 
 struct iin_type
 {
@@ -75,9 +72,9 @@ struct iin_type
   char source_type [36];
 };
 
-
-int iin_probe (const char *path,
-	       iin_t **iin);
+int iin_probe (const dict_t *dict,
+	       const char *path,
+	       /*@special@*/ iin_p_t *iin) /*@allocates *iin@*/ /*@defines *iin@*/;
 
 C_END
 

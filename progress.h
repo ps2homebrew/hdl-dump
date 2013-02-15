@@ -1,6 +1,6 @@
 /*
  * progress.h
- * $Id: progress.h,v 1.10 2006/06/18 13:12:47 bobi Exp $
+ * $Id: progress.h,v 1.11 2006/09/01 17:20:50 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -51,7 +51,7 @@ typedef LARGE_INTEGER highres_time_t;
 typedef struct timeval highres_time_t;
 #endif
 
-void highres_time (highres_time_t *cl);
+void highres_time (/*@out@*/ highres_time_t *cl);
 u_int64_t highres_time_val (const highres_time_t *cl);
 
 
@@ -66,7 +66,7 @@ struct progress_type
   u_int64_t start_, elapsed_;  /* highres_time_val */
   u_int64_t offset_; /* of the current block, absolute */
   progress_cb_t progress_cb_;
-  void *progress_data_;
+  /*@dependent@*/ void *progress_data_;
   int last_elapsed_; /* last time when the estimated has been calculated */
 
   /* history/histogram to track current speed */

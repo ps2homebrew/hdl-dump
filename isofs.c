@@ -1,6 +1,6 @@
 /*
  * isofs.c
- * $Id: isofs.c,v 1.10 2006/06/18 13:12:04 bobi Exp $
+ * $Id: isofs.c,v 1.11 2006/09/01 17:23:22 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -38,10 +38,10 @@
  */
 static int
 isofs_find_pvd_addr (iin_t *iin,
-		     u_int64_t *pvd_start_addr,
-		     u_int64_t *ptr_start_addr,
-		     char system_id[32 + 1],
-		     char volume_id[32 + 1],
+		     /*@out@*/ u_int64_t *pvd_start_addr,
+		     /*@out@*/ u_int64_t *ptr_start_addr,
+		     /*@out@*/ char system_id[32 + 1],
+		     /*@out@*/ char volume_id[32 + 1],
 		     int layer)
 {
   u_int32_t start_sector = 16;
@@ -51,14 +51,17 @@ isofs_find_pvd_addr (iin_t *iin,
   int result = iin->read (iin, start_sector, 1, &data, &len);
   buffer = (const unsigned char*) data;
 
+  *pvd_start_addr = *ptr_start_addr = 0;
+  *system_id = *volume_id = '\0';
+
   if (result == OSAL_OK)
     result = memcmp (buffer + 1, "CD001", 5) == 0 ? OSAL_OK : RET_BAD_ISOFS;
   if (layer == 1)
     {
-      start_sector = (buffer[83] << 24 |
-		      buffer[82] << 16 |
-		      buffer[81] <<  8 |
-		      buffer[80] <<  0);
+      start_sector = ((u_int32_t) buffer[83] << 24 |
+		      (u_int32_t) buffer[82] << 16 |
+		      (u_int32_t) buffer[81] <<  8 |
+		      (u_int32_t) buffer[80] <<  0);
       result = iin->read (iin, start_sector, 1, &data, &len);
       if (len != 2048)
 	result = RET_BAD_ISOFS;
@@ -83,13 +86,13 @@ isofs_find_pvd_addr (iin_t *iin,
 	    {
 	      memcpy (system_id, buffer + 8, 32);
 	      system_id[32] = '\0';
-	      rtrim (system_id);
+	      (void) rtrim (system_id);
 	    }
 	  if (volume_id != NULL)
 	    {
 	      memcpy (volume_id, buffer + 40, 32);
 	      volume_id[32] = '\0';
-	      rtrim (volume_id);
+	      (void) rtrim (volume_id);
 	    }
 	}
       else
@@ -103,31 +106,37 @@ isofs_find_pvd_addr (iin_t *iin,
 static int
 isofs_get_root_addr (iin_t *iin,
 		     u_int64_t ptr_start_addr,
-		     u_int64_t *root_start_addr)
+		     /*@out@*/ u_int64_t *root_start_addr)
 {
   u_int32_t len;
   const char *data;
   int result = iin->read (iin, (u_int32_t) (ptr_start_addr / IIN_SECTOR_SIZE),
 			  1, &data, &len);
   const unsigned char *buffer = (const unsigned char*) data;
+  *root_start_addr = 0;
   if (result == OSAL_OK)
     {
       int found = 0;
-      unsigned long dir_start_addr;
+      u_int32_t dir_start_addr;
       const unsigned char *p = buffer;
       do
 	{
 	  int id_len;
 	  int ext_len;
-	  unsigned short parent_dir;
+	  u_int16_t parent_dir;
 
 	  id_len = *p++;
 	  if (id_len == 0 ||
 	      p > buffer + 2047)
 	    break; /* last entry */
 	  ext_len = *p++;
-	  dir_start_addr = p[3] << 24 | p[2] << 16 | p[1] << 8 | p[0]; p += 4;
-	  parent_dir = p[1] << 8 | p[0]; p += 2;
+	  dir_start_addr = ((u_int32_t) p[3] << 24 |
+			    (u_int32_t) p[2] << 16 |
+			    (u_int32_t) p[1] <<  8 |
+			    (u_int32_t) p[0] <<  0);
+	  p += 4;
+	  parent_dir = (u_int16_t) p[1] << 8 | (u_int16_t) p[0];
+	  p += 2;
 	  if (*p == '\0')
 	    { /* root dir? */
 	      found = 1;
@@ -152,8 +161,8 @@ static int
 isofs_get_file_addr (iin_t *iin,
 		     u_int64_t dir_start_addr,
 		     const char *file_name,
-		     u_int64_t *file_start_addr,
-		     u_int64_t *file_length)
+		     /*@out@*/ u_int64_t *file_start_addr,
+		     /*@out@*/ u_int64_t *file_length)
 {
   u_int32_t file_name_len = strlen (file_name);
   u_int32_t len;
@@ -161,10 +170,11 @@ isofs_get_file_addr (iin_t *iin,
   int result = iin->read (iin, (u_int32_t) (dir_start_addr / IIN_SECTOR_SIZE),
 			  1, &data, &len);
   const unsigned char *buffer = (const unsigned char*) data;
+  *file_start_addr = *file_length = 0;
   if (result == OSAL_OK)
     {
       int found = 0;
-      unsigned long start_addr, length;
+      u_int32_t start_addr, length;
       const unsigned char *p = buffer;
       do
 	{
@@ -175,8 +185,16 @@ isofs_get_file_addr (iin_t *iin,
 	      p > buffer + 2047)
 	    break; /* last entry */
 	  len_ext_ar = *p++;
-	  start_addr = p[3] << 24 | p[2] << 16 | p[1] << 8 | p[0]; p += 8;
-	  length = p[3] << 24 | p[2] << 16 | p[1] << 8 | p[0]; p += 8;
+	  start_addr = ((u_int32_t) p[3] << 24 |
+			(u_int32_t) p[2] << 16 |
+			(u_int32_t) p[1] <<  8 |
+			(u_int32_t) p[0] <<  0);
+	  p += 8;
+	  length = ((u_int32_t) p[3] << 24 |
+		    (u_int32_t) p[2] << 16 |
+		    (u_int32_t) p[1] <<  8 |
+		    (u_int32_t) p[0] <<  0);
+	  p += 8;
 	  p += 7; /* recording date/time */
 	  ++p; ++p; ++p; p += 4; /* flags, unit size, intereave gap size, volume seq no */
 	  name_len = *p++;
@@ -207,13 +225,14 @@ isofs_get_file_addr (iin_t *iin,
 static int
 parse_config_cnf (const char *contents,
 		  u_int32_t length,
-		  char signature[12 + 1])
+		  /*@out@*/ char signature[12 + 1])
 {
   /* when using memory-mapped I/O buffer is read-only */
   char buf[2048];
   int found = 0;
   char *line = buf;
   const char *end = buf + length;
+  *signature = '\0';
   if (length <= sizeof (buf))
     memcpy (buf, contents, length);
   else
@@ -256,12 +275,13 @@ static int
 isofs_parse_config_cnf (iin_t *iin,
 			u_int64_t file_start_addr,
 			u_int64_t file_length,
-			char signature[12 + 1])
+			/*@out@*/ char signature[12 + 1])
 {
   u_int32_t len;
   const char *data;
   int result = iin->read (iin, (u_int32_t) (file_start_addr / IIN_SECTOR_SIZE),
 			  1, &data, &len);
+  *signature = '\0';
   if (result == OSAL_OK)
     result = parse_config_cnf (data, (u_int32_t) file_length, signature);
   return (result);
@@ -271,7 +291,7 @@ isofs_parse_config_cnf (iin_t *iin,
 /**************************************************************/
 static int
 isofs_detect_media_type (iin_t *iin,
-			 ps2_cdvd_info_t *info)
+			 /*@out@*/ ps2_cdvd_info_t *info)
 {
   const char *buf = NULL;
   u_int32_t len = 0;
@@ -321,8 +341,9 @@ isofs_get_ps2_cdvd_info (iin_t *iin,
 
   if (result == OSAL_OK)
     {
+      char tmp_volume_id[32 + 1];
       if (isofs_find_pvd_addr (iin, &pvd_start_addr, &ptr_start_addr,
-			       system_id, info->volume_id, 1) == OSAL_OK)
+			       system_id, tmp_volume_id, 1) == OSAL_OK)
 	info->layer_pvd = pvd_start_addr / CDVD_SECT_SIZE;
       else
 	info->layer_pvd = 0;

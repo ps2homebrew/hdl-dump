@@ -1,6 +1,6 @@
 /*
  * iin_gi.c
- * $Id: iin_gi.c,v 1.10 2006/06/18 13:11:34 bobi Exp $
+ * $Id: iin_gi.c,v 1.11 2006/09/01 17:25:47 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -34,11 +34,11 @@
 #define CHECK_11111111
 
 
-typedef enum data_mode_type
+typedef enum gi_data_mode_type
   {
-    dm_mode1_plain = 0,
-    dm_mode2_plain = 1
-  } data_mode_t;
+    gdm_mode1_plain = 0,
+    gdm_mode2_plain = 1
+  } gi_data_mode_t;
 
 /* values for Global Image found out by building test images */
 static const u_int32_t RAW_SECTOR_SIZE [2] = { 2048, 2336 };
@@ -60,7 +60,7 @@ iin_gi_probe_path (const char *path,
   if (result == OSAL_OK)
     {
       int single_file = 0;
-      data_mode_t mode;
+      gi_data_mode_t mode;
       u_int32_t len;
       unsigned char header [1476];
       iin_img_base_t *img_base = NULL;
@@ -97,13 +97,13 @@ iin_gi_probe_path (const char *path,
 	    result = RET_BAD_COMPAT;
 	}
 
-      mode = dm_mode1_plain;
+      mode = gdm_mode1_plain;
       if (result == OSAL_OK)
 	{ /* mode1/mode2? */
 	  switch (header [0x7e])
 	    {
-	    case 0x01: mode = dm_mode1_plain; break;
-	    case 0x02: mode = dm_mode2_plain; break;
+	    case 0x01: mode = gdm_mode1_plain; break;
+	    case 0x02: mode = gdm_mode2_plain; break;
 	    default:   result = RET_BAD_COMPAT;
 	    }
 	  if (result == OSAL_OK)
@@ -168,14 +168,16 @@ iin_gi_probe_path (const char *path,
 	  *iin = (iin_t*) img_base;
 	  switch (mode)
 	    {
-	    case dm_mode1_plain: strcpy ((*iin)->source_type, "Global Image, Mode1"); break;
-	    case dm_mode2_plain: strcpy ((*iin)->source_type, "Global Image, Mode2"); break;
+	    case gdm_mode1_plain:
+	      strcpy ((*iin)->source_type, "Global Image, Mode1"); break;
+	    case gdm_mode2_plain:
+	      strcpy ((*iin)->source_type, "Global Image, Mode2"); break;
 	    }
 	}
       else if (img_base != NULL)
 	((iin_t*) img_base)->close ((iin_t*) img_base);
 
-      osal_close (in);
+      osal_close (&in);
     }
   return (result);
 }

@@ -1,6 +1,6 @@
 /*
  * progress.c
- * $Id: progress.c,v 1.10 2006/05/21 21:41:43 bobi Exp $
+ * $Id: progress.c,v 1.11 2006/09/01 17:21:05 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -58,7 +58,7 @@ highres_time_val (const highres_time_t *cl)
 void
 highres_time (highres_time_t *cl)
 {
-  gettimeofday (cl, NULL /* ignore time zone */);
+  (void) gettimeofday (cl, NULL /* ignore time zone */);
 }
 
 u_int64_t
@@ -72,7 +72,7 @@ highres_time_val (const highres_time_t *cl)
 /**************************************************************/
 progress_t*
 pgs_alloc (progress_cb_t progress_cb,
-	   void *data)
+	   /*@dependent@*/ void *data)
 {
   progress_t *pgs = osal_alloc (sizeof (progress_t));
   if (pgs != NULL)
@@ -115,7 +115,7 @@ pgs_prepare (progress_t *pgs,
       pgs->progress_cb_ = progress_cb;
 
       if (pgs->progress_cb_ != NULL)
-	pgs->progress_cb_ (pgs, pgs->progress_data_);
+	(void) pgs->progress_cb_ (pgs, pgs->progress_data_);
     }
 }
 
@@ -131,7 +131,7 @@ pgs_chunk_complete (progress_t *pgs)
 
 /**************************************************************/
 char*
-fmt_time (char *buffer,
+fmt_time (/*@returned@*/ char *buffer,
 	  int seconds)
 {
   if (seconds >= 60)
@@ -180,7 +180,7 @@ pgs_update (progress_t *pgs,
       pgs->hist_sum_ += (pgs->curr - prev) - hist->how_much;
       hist->how_much = (u_int32_t) (pgs->curr - prev);
       hist->when = now;
-      pgs->hist_pos_ = (++pgs->hist_pos_) % PG_HIST_SIZE;
+      pgs->hist_pos_ = (pgs->hist_pos_ + 1) % PG_HIST_SIZE;
 
       /* elapsed/estimated time */
       pgs->elapsed_ = now - pgs->start_;
@@ -188,7 +188,7 @@ pgs_update (progress_t *pgs,
 	{
 	  pgs->avg_bps = (long) (pgs->curr * HIGHRES_TO_SEC / pgs->elapsed_);
 	  pgs->elapsed = (u_int32_t) (pgs->elapsed_ / HIGHRES_TO_SEC);
-	  fmt_time (pgs->elapsed_text, pgs->elapsed);
+	  (void) fmt_time (pgs->elapsed_text, pgs->elapsed);
 
 	  if (((pgs->elapsed > 10 && pgs->pc_completed > 0) ||
 	       pgs->pc_completed > 10) &&
@@ -198,8 +198,8 @@ pgs_update (progress_t *pgs,
 				       pgs->curr) / HIGHRES_TO_SEC);
 	      pgs->remaining = pgs->estimated - pgs->elapsed + 1;
 	      pgs->last_elapsed_ = pgs->elapsed;
-	      fmt_time (pgs->estimated_text, pgs->estimated);
-	      fmt_time (pgs->remaining_text, pgs->remaining);
+	      (void) fmt_time (pgs->estimated_text, pgs->estimated);
+	      (void) fmt_time (pgs->remaining_text, pgs->remaining);
 	    }
 	}
 

@@ -1,6 +1,6 @@
 /*
- * iin_hdloader.h
- * $Id: iin_hdloader.h,v 1.6 2006/06/18 13:11:36 bobi Exp $
+ * thd_iin.h
+ * $Id: thd_iin.h,v 1.1 2006/09/01 17:37:58 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -21,18 +21,11 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#if !defined (_IIN_HDLOADER_H)
-#define _IIN_HDLOADER_H
+#if !defined (_THD_IIN_H)
+#  define _THD_IIN_H
 
-#include "config.h"
-#include "iin.h"
+/* returns a new iin which is tuned for "streaming" (sequential reading);
+ * current implementation pre-reads sectors in a separate thread */
+iin_t* thd_create (iin_t *worker);
 
-C_START
-
-/* would accept "hdd*:PP.HDL.game_name" */
-int iin_hdloader_probe_path (const char *path,
-			     iin_t **iin);
-
-C_END
-
-#endif /* _IIN_HDLOADER_H defined? */
+#endif /* _THD_IIN_H defined? */

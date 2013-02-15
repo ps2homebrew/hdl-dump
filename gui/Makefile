@@ -1,6 +1,6 @@
 ##
 ## Makefile
-## $Id: Makefile,v 1.8 2006/06/18 13:13:03 bobi Exp $
+## $Id: Makefile,v 1.9 2006/09/01 17:33:52 bobi Exp $
 ##
 ## Copyright 2004 Bobi B., w1zard0f07@yahoo.com
 ##
@@ -36,12 +36,15 @@ DEBUG ?= yes
 RELEASE ?= no
 
 # whether to use memory-mapped I/O when reading from optical drives
-IIN_OPTICAL_MMAP ?= yes
+IIN_OPTICAL_MMAP ?= no
+
+# whether to use iin (ISO inputs) tuned for "streaming" (obsoletes mmap)
+USE_THREADED_IIN ?= yes
 
 # hdl_dump current version/release
 VER_MAJOR = 0
 VER_MINOR = 8
-VER_PATCH = 5
+VER_PATCH = 6
 
 # configuration end
 ###############################################################################
@@ -57,7 +60,8 @@ VPATH = ./:../
 SOURCES = gui_main.c \
 	apa.c common.c progress.c hdl.c isofs.c aligned.c \
 	iin_img_base.c iin_optical.c iin_iso.c iin_cdrwin.c \
-	iin_nero.c iin_gi.c iin_iml.c iin_probe.c \
+	iin_nero.c iin_gi.c iin_iml.c iin_spti.c iin_probe.c \
+	iin_hio.c thd_iin.c iin_aspi.c aspi_hlio.c \
 	hio_probe.c hio_win32.c hio_dbg.c hio_trace.c \
 	osal_win32.c net_common.c byteseq.c dict.c hio_udpnet.c
 
@@ -89,7 +93,7 @@ ifeq ($(WINDOWS), yes)
   CFLAGS += -D_WITH_ASPI -mno-cygwin
   CFLAGS += -ansi -pedantic
 
-  OBJECTS += iin_aspi.o aspi_hlio.o
+  SOURCES += 
   OBJECTS += rsrc.o
   EXESUF = .exe
 
@@ -120,6 +124,12 @@ ifeq ($(DEBUG), yes)
   CFLAGS += -O0 -g -D_DEBUG
 else
   CFLAGS += -O2 -s -DNDEBUG
+endif
+
+ifeq ($(USE_THREADED_IIN), yes)
+  SOURCES += thd_iin.c
+  CFLAGS += -DUSE_THREADED_IIN
+  CXXFLAGS += -DUSE_THREADED_IIN
 endif
 
 

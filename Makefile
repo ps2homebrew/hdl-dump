@@ -1,6 +1,6 @@
 ##
 ## Makefile
-## $Id: Makefile,v 1.20 2006/06/18 13:07:39 bobi Exp $
+## $Id: Makefile,v 1.21 2006/09/01 17:34:44 bobi Exp $
 ##
 ## Copyright 2004 Bobi B., w1zard0f07@yahoo.com
 ##
@@ -36,12 +36,16 @@ DEBUG ?= yes
 RELEASE ?= no
 
 # whether to use memory-mapped I/O when reading from optical drives
-IIN_OPTICAL_MMAP ?= yes
+# currently appears to work on Linux only
+IIN_OPTICAL_MMAP ?= no
+
+# whether to use iin (ISO inputs) tuned for "streaming" (obsoletes mmap)
+USE_THREADED_IIN ?= yes
 
 # hdl_dump current version/release
 VER_MAJOR = 0
 VER_MINOR = 8
-VER_PATCH = 5
+VER_PATCH = 6
 
 # configuration end
 ###############################################################################
@@ -55,7 +59,7 @@ LDFLAGS =
 SOURCES = hdl_dump.c \
 	apa.c common.c progress.c hdl.c isofs.c aligned.c \
 	iin_img_base.c iin_optical.c iin_iso.c iin_cdrwin.c \
-	iin_nero.c iin_gi.c iin_iml.c iin_probe.c \
+	iin_nero.c iin_gi.c iin_iml.c iin_probe.c iin_hio.c \
 	hio_probe.c hio_win32.c hio_dbg.c hio_trace.c \
 	net_common.c byteseq.c dict.c hio_udpnet.c
 
@@ -78,8 +82,8 @@ endif
 
 # Windows/Unix/Linux build
 ifeq ($(WINDOWS), yes)
-  SOURCES += osal_win32.c
-  OBJECTS += iin_aspi.o aspi_hlio.o rsrc.o
+  SOURCES += iin_spti.c iin_aspi.c aspi_hlio.c osal_win32.c
+  OBJECTS += rsrc.o
   CFLAGS += -mno-cygwin -D_BUILD_WIN32
   CXXFLAGS += -mno-cygwin -D_BUILD_WIN32
   LDFLAGS += -lwsock32 -lwinmm
@@ -95,6 +99,7 @@ else
   SOURCES += osal_unix.c
   CFLAGS += -D_GNU_SOURCE -D_BUILD_UNIX
   CXXFLAGS += -D_GNU_SOURCE -D_BUILD_UNIX
+  LDFLAGS += -lpthread
   EXESUF = 
 endif
 
@@ -109,6 +114,12 @@ ifeq ($(DEBUG), yes)
 else
   CFLAGS += -O2 -s -DNDEBUG
   CXXFLAGS += -O2 -s -DNDEBUG
+endif
+
+ifeq ($(USE_THREADED_IIN), yes)
+  SOURCES += thd_iin.c
+  CFLAGS += -DUSE_THREADED_IIN
+  CXXFLAGS += -DUSE_THREADED_IIN
 endif
 
 
@@ -155,6 +166,20 @@ clean:
 
 rmdeps:
 	@rm -f $(DEPENDS)
+
+
+LINT_OFF = +posixlib +unixlib \
+	-fixedformalarray -exitarg -predboolint -boolops +boolint +partial \
+	+matchanyintegral
+lint:
+	for src in $(SOURCES:osal_unix.c=); do \
+		splint -D_LINT -D_BUILD_UNIX -DVERSION="" $(LINT_OFF) $$src; \
+	done
+
+lint2:
+	@splint -D_LINT -D_BUILD_UNIX -DVERSION="" $(LINT_OFF) \
+		-weak -bufferoverflowhigh +longintegral +ignoresigns -ifempty \
+		-varuse -initallelements $(SOURCES:osal_unix.c=)
 
 
 # rules below

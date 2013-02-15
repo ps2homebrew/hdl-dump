@@ -1,5 +1,2 @@
- * access CD-/DVD-ROM drives by letter (to work under wine)
- * SPTI support for Windows NT+, disable ASPI support
+ * extract and rename for hdl_dumb; maybe properties dialog
  * PPF patching: test, mkundo, apply, undo
- * fix iin: "hdd0:/partition name" && "192.168.0.10/partition name"
- * extract for hdl_dumb

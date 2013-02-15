@@ -1,6 +1,6 @@
 /*
  * aspi_hlio.h - ASPI high-level I/O
- * $Id: aspi_hlio.h,v 1.6 2005/07/10 21:06:48 bobi Exp $
+ * $Id: aspi_hlio.h,v 1.7 2006/09/01 17:32:42 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -25,7 +25,9 @@
 #define _ASPI_HLIO_H
 
 #include <stddef.h>
+#include <windows.h>
 #include "config.h"
+#include "wnaspi32.h"
 
 C_START
 
@@ -55,6 +57,12 @@ int aspi_unload (void);
 int aspi_scan_scsi_bus (scsi_devices_list_t **list);
 void aspi_dlist_free (scsi_devices_list_t *list);
 
+SRB_ExecSCSICmd* aspi_prepare_stat (int host,
+				    int scsi_id,
+				    int lun,
+				    /*@out@*/ u_int8_t buf[8],
+				    /*@returned@*/ /*@out@*/ SRB_ExecSCSICmd *cmd);
+
 int aspi_stat (int host,
 	       int scsi_id,
 	       int lun,
@@ -68,6 +76,14 @@ int aspi_mmc_read_cd (int host,
 		      u_int32_t num_sectors,
 		      u_int32_t sector_size,
 		      void *output);
+
+SRB_ExecSCSICmd* aspi_prepare_read_10 (int host,
+				       int scsi_id,
+				       int lun,
+				       u_int32_t start_sector,
+				       u_int32_t num_sectors,
+				       /*@out@*/ void *output,
+				       /*@returned@*/ /*@out@*/ SRB_ExecSCSICmd *cmd);
 
 int aspi_read_10 (int host,
 		  int scsi_id,

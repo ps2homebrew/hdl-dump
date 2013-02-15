@@ -1,6 +1,6 @@
 /*
- * iin_net.h
- * $Id: iin_net.h,v 1.5 2006/06/18 13:11:45 bobi Exp $
+ * iin_spti.h
+ * $Id: iin_spti.h,v 1.1 2006/09/01 17:37:58 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -21,18 +21,24 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#if !defined (_IIN_NET_H)
-#define _IIN_NET_H
+#if !defined (_IIN_SPTI_H)
+#define _IIN_SPTI_H
 
 #include "config.h"
 #include "iin.h"
 
 C_START
 
-/* would accept "IP_address:PP.HDL.game_name", such as "192.168.0.10:Rez" */
-int iin_net_probe_path (const char *path,
-			iin_t **iin);
+unsigned long spti_get_last_error_code (void);
+
+const char* spti_get_last_error_msg (void);
+
+const char* spti_get_error_msg (unsigned long spti_error_code);
+
+/* would accept a drive letter ("d:", "e:",...) of an optical drive */
+int iin_spti_probe_path (const char *path,
+			 /*@special@*/ iin_p_t *iin) /*@allocates *iin@*/ /*@defines *iin@*/;
 
 C_END
 
-#endif /* _IIN_NET_H defined? */
+#endif /* _IIN_OPTICAL_H defined? */

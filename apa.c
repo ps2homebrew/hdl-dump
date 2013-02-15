@@ -1,6 +1,6 @@
 /*
  * apa.c
- * $Id: apa.c,v 1.16 2006/06/18 13:08:10 bobi Exp $
+ * $Id: apa.c,v 1.17 2006/09/01 17:33:34 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -21,6 +21,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#include <assert.h>
 #include <stdio.h>
 #include <time.h>
 #include <string.h>
@@ -32,7 +33,7 @@
 #include "ps2_hdd.h"
 #include "osal.h"
 #include "apa.h"
-#include "hio_probe.h"
+#include "hio.h"
 
 
 #define AUTO_DELETE_EMPTY
@@ -42,7 +43,7 @@
 
 typedef struct ps2_partition_run_type
 {
-  unsigned long sector;
+  u_int32_t sector;
   u_int32_t size_in_mb;
 } ps2_partition_run_t;
 
@@ -90,17 +91,6 @@ is_apa_partitioned (osal_handle_t handle)
 
 
 /**************************************************************/
-static apa_toc_t*
-apa_toc_alloc (void)
-{
-  apa_toc_t *toc = osal_alloc (sizeof (apa_toc_t));
-  if (toc != NULL)
-    memset (toc, 0, sizeof (apa_toc_t));
-  return (toc);
-}
-
-
-/**************************************************************/
 static void
 apa_slice_free (apa_slice_t *slice)
 {
@@ -115,7 +105,7 @@ apa_slice_free (apa_slice_t *slice)
 
 /**************************************************************/
 void
-apa_toc_free (apa_toc_t *toc)
+apa_toc_free (/*@only@*/ apa_toc_t *toc) /*@releases toc@*/
 {
   if (toc != NULL)
     {
@@ -128,10 +118,13 @@ apa_toc_free (apa_toc_t *toc)
 
 /**************************************************************/
 static int
-apa_part_add (apa_slice_t *slice,
+apa_part_add (/*@special@*/ apa_slice_t *slice,
 	      const ps2_partition_header_t *part,
 	      int existing,
 	      int linked)
+     /*@uses slice->part_count, slice->part_alloc_, slice->parts@*/
+     /*@modifies slice->part_count, slice->part_alloc_, slice->parts@*/
+     /*@sets *slice->parts@*/
 {
   if (slice->part_count == slice->part_alloc_)
     { /* grow buffer */
@@ -141,10 +134,12 @@ apa_part_add (apa_slice_t *slice,
       if (tmp != NULL)
 	{
 	  memset (tmp, 0, bytes);
-	  if (slice->parts != NULL) /* copy existing */
-	    memcpy (tmp, slice->parts,
-		    slice->part_count * sizeof (apa_partition_t));
-	  osal_free (slice->parts);
+	  if (slice->parts != NULL)
+	    { /* copy existing */
+	      memcpy (tmp, slice->parts,
+		      slice->part_count * sizeof (apa_partition_t));
+	      osal_free (slice->parts);
+	    }
 	  slice->parts = tmp;
 	  slice->part_alloc_ += GROW;
 	}
@@ -152,11 +147,14 @@ apa_part_add (apa_slice_t *slice,
 	return (RET_NO_MEM);
     }
 
-  memcpy (&slice->parts [slice->part_count].header, part,
+  assert (slice->parts != NULL);
+  if (slice->parts == NULL)
+    return (RET_INVARIANT);
+  memcpy (&slice->parts[slice->part_count].header, part,
 	  sizeof (ps2_partition_header_t));
-  slice->parts [slice->part_count].existing = existing;
-  slice->parts [slice->part_count].modified = !existing;
-  slice->parts [slice->part_count].linked = linked;
+  slice->parts[slice->part_count].existing = existing;
+  slice->parts[slice->part_count].modified = !existing;
+  slice->parts[slice->part_count].linked = linked;
   ++slice->part_count;
   return (RET_OK);
 }
@@ -164,7 +162,10 @@ apa_part_add (apa_slice_t *slice,
 
 /**************************************************************/
 static int
-apa_setup_statistics (apa_slice_t *slice)
+apa_setup_statistics (/*@special@*/ apa_slice_t *slice)
+     /*@uses slice->size_in_mb, slice->part_count, slice->parts@*/
+     /*@sets slice->total_chunks, slice->allocated_chunks,
+       slice->free_chunks, slice->chunks_map, *slice->chunks_map@*/
 {
   u_int32_t i;
   char *map;
@@ -173,24 +174,25 @@ apa_setup_statistics (apa_slice_t *slice)
   map = osal_alloc (slice->total_chunks * sizeof (char));
   if (map != NULL)
     {
-      for (i=0; i<slice->total_chunks; ++i)
-	map [i] = MAP_AVAIL;
+      *map = MAP_AVAIL;
+      for (i = 0; i < slice->total_chunks; ++i)
+	map[i] = MAP_AVAIL;
 
       /* build occupided/available space map */
       slice->allocated_chunks = 0;
       slice->free_chunks = slice->total_chunks;
-      for (i=0; i<slice->part_count; ++i)
+      for (i = 0; i < slice->part_count; ++i)
 	{
-	  const ps2_partition_header_t *part = &slice->parts [i].header;
+	  const ps2_partition_header_t *part = &slice->parts[i].header;
 	  u_int32_t part_no = get_u32 (&part->start) / ((128 _MB) / 512);
 	  u_int32_t num_parts = get_u32 (&part->length) / ((128 _MB) / 512);
 
 	  /* "alloc" num_parts starting at part_no */
 	  while (num_parts)
 	    {
-	      if (map [part_no] == MAP_AVAIL)
-		map [part_no] = (get_u32 (&part->main) == 0 ?
-				 MAP_MAIN : MAP_SUB);
+	      if (map[part_no] == MAP_AVAIL)
+		map[part_no] = (get_u32 (&part->main) == 0 ?
+				MAP_MAIN : MAP_SUB);
 	      else
 		map [part_no] = MAP_COLL; /* collision */
 	      ++part_no;
@@ -215,14 +217,16 @@ apa_setup_statistics (apa_slice_t *slice)
 int
 apa_toc_read (const dict_t *config,
 	      const char *path,
-	      apa_toc_t **toc)
+	      apa_toc_p_t *toc)
 {
-  hio_t *hio;
-  int result = hio_probe (config, path, &hio); /* do not disable caching */
-  if (result == OSAL_OK)
+  /*@only@*/ hio_t *hio = NULL;
+  int result;
+  *toc = NULL;
+  result = hio_probe (config, path, &hio);
+  if (result == OSAL_OK && hio != NULL)
     {
       result = apa_toc_read_ex (hio, toc);
-      hio->close (hio);
+      (void) hio->close (hio), hio = NULL;
     }
   return (result);
 }
@@ -231,9 +235,11 @@ apa_toc_read (const dict_t *config,
 /**************************************************************/
 static int
 apa_slice_read (hio_t *hio,
-		apa_toc_t *toc,
+		/*@special@*/ apa_toc_t *toc,
 		int slice_index,
 		int raw)
+     /*@uses toc->got_2nd_slice,toc->size_in_kb@*/
+     /*@sets toc->slice[slice_index]@*/
 {
   const u_int32_t EXACTLY_128MB = 128 * 1024 * 1024; /* KB */
   const u_int32_t ALMOST_128MB = EXACTLY_128MB - 1; /* KB */
@@ -244,6 +250,7 @@ apa_slice_read (hio_t *hio,
   u_int32_t bytes;
   ps2_partition_header_t part;
   u_int32_t sector = 0;
+  u_int32_t count = 0;
 
   /* calculate total number of sectors for the requested slice */
   if (toc->got_2nd_slice)
@@ -254,6 +261,16 @@ apa_slice_read (hio_t *hio,
       total_sectors = (toc->size_in_kb - EXACTLY_128MB) * 2; /* 2nd */
   else
     total_sectors = toc->size_in_kb * 2; /* the one and only */
+
+  slice->slice_index = slice_index;
+  slice->size_in_mb = total_sectors / 2048;
+
+  slice->total_chunks = slice->allocated_chunks = slice->free_chunks = 0;
+  osal_free (slice->chunks_map), slice->chunks_map = NULL;
+
+  slice->part_alloc_ = 0;
+  slice->part_count = 0;
+  osal_free (slice->parts), slice->parts = NULL;
 
   do
     { /* read partitions */
@@ -271,6 +288,7 @@ apa_slice_read (hio_t *hio,
 	      if (start < total_sectors &&
 		  start + get_u32 (&part.length) < total_sectors)
 		{
+		  ++count;
 		  result = apa_part_add (slice, &part, 1, 1);
 		  if (result == RET_OK)
 		    sector = get_u32 (&part.next);
@@ -297,30 +315,28 @@ apa_slice_read (hio_t *hio,
     }
   while (result == RET_OK && sector != 0);
 
-  if (result == RET_OK)
+  if (!raw)
     {
-      slice->size_in_mb = total_sectors / 2048;
-      slice->slice_index = slice_index;
-      if (!raw)
+      if (count == 0)
+	/* no partitions? __boot should always exists */
+	result = RET_BAD_APA;
+
+      if (result == RET_OK)
 	{
 	  result = apa_setup_statistics (slice);
 	  if (result == RET_OK)
 	    result = apa_check_slice (slice);
+
+#if defined (AUTO_DELETE_EMPTY)
+	  /* automatically remove "__empty" partitions */
+	  while (result == RET_OK)
+	    result = apa_delete_partition_from_slice (slice, "__empty");
+	  if (result == RET_NOT_FOUND)
+	    result = apa_check_slice (slice);
+#endif
 	}
     }
 
-#if defined (AUTO_DELETE_EMPTY)
-  if (!raw && result == RET_OK)
-    { /* automatically delete "__empty" partitions */
-      do
-	{
-	  result = apa_delete_partition_from_slice (slice, "__empty");
-	}
-      while (result == RET_OK);
-      if (result == RET_NOT_FOUND)
-	result = apa_check_slice (slice);
-    }
-#endif
   return (result);
 }
 
@@ -328,41 +344,47 @@ apa_slice_read (hio_t *hio,
 /**************************************************************/
 static int
 apa_toc_read_internal (hio_t *hio,
-		       apa_toc_t **toc,
-		       int raw)
+		       /*@special@*/ apa_toc_p_t *toc2,
+		       int raw) /*@allocates *toc2@*/ /*@defines *toc2@*/
 {
   u_int32_t size_in_kb;
   int result = hio->stat (hio, &size_in_kb);
   if (result == OSAL_OK)
     {
-      *toc = apa_toc_alloc ();
+      /*@only@*/ apa_toc_t *toc = (apa_toc_t*) osal_alloc (sizeof (apa_toc_t));
       if (toc != NULL)
 	{
 	  u_int32_t bytes;
 	  ps2_partition_header_t part;
 
 	  /* read MBR to auto-detect partition dialect */
+	  memset (toc, 0, sizeof (apa_toc_t));
 	  result = hio->read (hio, 0, 2, &part, &bytes);
 	  if (result == RET_OK && bytes == 1024)
 	    {
-	      (*toc)->size_in_kb = size_in_kb;
-	      if (memcmp (part.mbr.toxic_magic, "APAEXT\0\0", 8) == 0)
+	      toc->size_in_kb = size_in_kb;
+	      toc->is_toxic =
+		(memcmp (part.mbr.toxic_magic, "APAEXT\0\0", 8) == 0);
+	      toc->is_2_slice = 0;
+	      toc->got_2nd_slice = 0;
+	      if (toc->is_toxic)
 		{
-		  (*toc)->is_toxic = 1;
-		  (*toc)->is_2_slice = (part.mbr.toxic_flags & 0x01);
-		  if ((*toc)->is_2_slice)
-		    (*toc)->got_2nd_slice = (size_in_kb > 128 * 1024 * 1024);
+		  toc->is_2_slice = (part.mbr.toxic_flags & 0x01) != 0;
+		  if (toc->is_2_slice)
+		    toc->got_2nd_slice = (size_in_kb > 128 * 1024 * 1024);
 		}
+
+	      if (result == RET_OK)
+		result = apa_slice_read (hio, toc, 0, raw); /* only or 1st */
+	      if (result == RET_OK &&
+		  toc->got_2nd_slice)
+		result = apa_slice_read (hio, toc, 1, raw); /* 2nd */
 	    }
 
 	  if (result == RET_OK)
-	    result = apa_slice_read (hio, *toc, 0, raw); /* only or 1st */
-	  if (result == RET_OK &&
-	      (*toc)->got_2nd_slice)
-	    result = apa_slice_read (hio, *toc, 1, raw); /* 2nd */
-
-	  if (result != RET_OK)
-	    apa_toc_free (*toc);
+	    *toc2 = toc;
+	  else
+	    apa_toc_free (toc), toc = NULL;
 	}
       else
 	result = RET_NO_MEM;
@@ -374,9 +396,13 @@ apa_toc_read_internal (hio_t *hio,
 /**************************************************************/
 int
 apa_toc_read_ex (hio_t *hio,
-		 apa_toc_t **toc)
+		 apa_toc_p_t *toc)
 {
-  return (apa_toc_read_internal (hio, toc, 0));
+  /*@only@*/ apa_toc_t *tmp = NULL;
+  int result = apa_toc_read_internal (hio, &tmp, 0);
+  if (result == RET_OK)
+    *toc = tmp;
+  return (result);
 }
 
 
@@ -384,21 +410,21 @@ apa_toc_read_ex (hio_t *hio,
 static int
 apa_find_partition_in_slice (const apa_slice_t *slice,
 			     const char *partition_name,
-			     u_int32_t *partition_index)
+			     /*@out@*/ u_int32_t *partition_index)
 {
   u_int32_t i;
   int result = RET_NOT_FOUND;
-  for (i=0; i<slice->part_count; ++i)
+  *partition_index = (u_int32_t) -1;
+  for (i = 0; i < slice->part_count; ++i)
     {
       const ps2_partition_header_t *part = &slice->parts [i].header;
       if (get_u32 (&part->main) == 0)
 	{ /* trim partition name */
-	  char id_copy [PS2_PART_IDMAX + 1];
-	  char *part_id_end = id_copy + PS2_PART_IDMAX - 1;
+	  char id_copy [PS2_PART_IDMAX + 1], *part_id_end;
 	  memcpy (id_copy, part->id, PS2_PART_IDMAX);
 	  id_copy [PS2_PART_IDMAX] = '\0';
-	  while (part_id_end > id_copy &&
-		 *part_id_end == ' ')
+	  part_id_end = id_copy + PS2_PART_IDMAX - 1;
+	  while (part_id_end > id_copy && *part_id_end == ' ')
 	    *part_id_end-- = '\0';
 	  if (caseless_compare (id_copy, partition_name))
 	    { /* found */
@@ -421,9 +447,8 @@ apa_find_partition (const apa_toc_t *toc,
 {
   int result = apa_find_partition_in_slice (toc->slice + 0, partition_name,
 					    partition_index);
-  if (result == RET_OK)
-    *slice_index = 0;
-  else if (toc->got_2nd_slice)
+  *slice_index = 0;
+  if (result == RET_NOT_FOUND && toc->got_2nd_slice)
     {
       result = apa_find_partition_in_slice (toc->slice + 1, partition_name,
 					    partition_index);
@@ -500,23 +525,33 @@ optimize_partitions (ps2_partition_run_t *partitions,
 
 /**************************************************************/
 static void
-set_ps2fs_datetime (ps2fs_datetime_t *dt,
+set_ps2fs_datetime (/*@out@*/ ps2fs_datetime_t *dt,
 		    time_t to)
 {
-  struct tm tm;
-  memcpy (&tm, localtime (&to), sizeof (struct tm));
-  dt->unused = 0;
-  dt->sec = (u_int8_t) tm.tm_sec;
-  dt->min = (u_int8_t) tm.tm_min;
-  dt->hour = (u_int8_t) tm.tm_hour;
-  dt->day = (u_int8_t) tm.tm_mday;
-  dt->month = (u_int8_t) (tm.tm_mon + 1);
-  set_u16 (&dt->year, (u_int16_t) (tm.tm_year + 1900));
+  const struct tm *tm = localtime (&to);
+  if (tm != NULL)
+    {
+      dt->unused = 0;
+      dt->sec = (u_int8_t) tm->tm_sec;
+      dt->min = (u_int8_t) tm->tm_min;
+      dt->hour = (u_int8_t) tm->tm_hour;
+      dt->day = (u_int8_t) tm->tm_mday;
+      dt->month = (u_int8_t) (tm->tm_mon + 1);
+      set_u16 (&dt->year, (u_int16_t) (tm->tm_year + 1900));
+    }
+  else
+    { /* highly unlikely */
+      dt->unused = 0;
+      dt->sec = dt->min = dt->hour = 0;
+      dt->day = 1;
+      dt->month = 1;
+      set_u16 (&dt->year, 2005);
+    }
 }
 
 
 static void
-setup_main_part (ps2_partition_header_t *part,
+setup_main_part (/*@out@*/ ps2_partition_header_t *part,
 		 const char *name,
 		 const ps2_partition_run_t *partitions,
 		 u_int32_t partitions_used,
@@ -527,8 +562,8 @@ setup_main_part (ps2_partition_header_t *part,
   memcpy (part->magic, PS2_PARTITION_MAGIC, 4);
   set_u32 (&part->next, partitions_used > 0 ? partitions [1].sector : 0);
   set_u32 (&part->prev, last_partition_sector);
-  memcpy (part->id, name,
-	  strlen (name) > PS2_PART_IDMAX ? PS2_PART_IDMAX : strlen (name));
+  memmove (part->id, name,
+	   strlen (name) > PS2_PART_IDMAX ? PS2_PART_IDMAX : strlen (name));
   set_u32 (&part->start, partitions [0].sector);
   set_u32 (&part->length, partitions [0].size_in_mb * ((1 _MB) / 512));
   set_u16 (&part->type, 0x1337);
@@ -615,26 +650,16 @@ static int
 apa_allocate_space_in_slice (apa_slice_t *slice,
 			     const char *partition_name,
 			     u_int32_t size_in_mb,
-			     u_int32_t *new_partition_start,
+			     /*@out@*/ u_int32_t *new_partition_start,
 			     int decreasing_size)
 {
   int result = RET_OK;
   char *map = slice->chunks_map;
   u_int32_t i;
-  int found;
 
-  /* check whether that partition name is not already used */
-  found = 0;
-  for (i=0; i<slice->part_count; ++i)
-    if (get_u16 (&slice->parts [i].header.flags) == 0 &&
-	get_u32 (&slice->parts [i].header.main) == 0)
-      if (caseless_compare (partition_name, slice->parts [i].header.id))
-	{
-	  found = 1;
-	  break;
-	}
-  if (found)
-    return (RET_PART_EXISTS);
+  *new_partition_start = (u_int32_t) -1;
+  if (size_in_mb == 0)
+    return (RET_INVARIANT);
 
   if (slice->free_chunks * 128 >= size_in_mb)
     {
@@ -651,18 +676,19 @@ apa_allocate_space_in_slice (apa_slice_t *slice,
 	     fill from the first gap onwards */
 	  u_int32_t mb_remaining = size_in_mb;
 	  u_int32_t allocated_mb, overhead_mb;
-	  for (i=0; i<estimated_entries; ++i)
+	  partitions->sector = partitions->size_in_mb = 0;
+	  for (i = 0; i < estimated_entries; ++i)
 	    { /* initialize */
-	      partitions [i].sector = 0;
-	      partitions [i].size_in_mb = 0;
+	      partitions[i].sector = 0;
+	      partitions[i].size_in_mb = 0;
 	    }
-	  for (i=0; mb_remaining>0 && i<slice->total_chunks; ++i)
-	    if (map [i] == MAP_AVAIL)
+	  for (i = 0; mb_remaining > 0 && i < slice->total_chunks; ++i)
+	    if (map[i] == MAP_AVAIL)
 	      {
-		partitions [partitions_used].sector = i * ((128 _MB) / 512);
-		partitions [partitions_used].size_in_mb = 128;
-		map [i] = MAP_ALLOC; /* "allocate" chunk */
-		++(partitions_used);
+		partitions[partitions_used].sector = i * ((128 _MB) / 512);
+		partitions[partitions_used].size_in_mb = 128;
+		map[i] = MAP_ALLOC; /* "allocate" chunk */
+		++partitions_used;
 		mb_remaining = (mb_remaining > 128 ? mb_remaining - 128 : 0);
 	      }
 
@@ -672,9 +698,9 @@ apa_allocate_space_in_slice (apa_slice_t *slice,
 	  /* calculate overhead (4M for main + 1M for each sub)
 	     and allocate additional 128 M partition if necessary */
 	  allocated_mb = 0; overhead_mb = 3;
-	  for (i=0; i<partitions_used; ++i)
+	  for (i = 0; i < partitions_used; ++i)
 	    {
-	      allocated_mb += partitions [i].size_in_mb;
+	      allocated_mb += partitions[i].size_in_mb;
 	      ++overhead_mb;
 	    }
 	  if (allocated_mb < size_in_mb + overhead_mb)
@@ -720,7 +746,7 @@ apa_allocate_space_in_slice (apa_slice_t *slice,
 	      if (result == RET_OK)
 		{
 		  normalize_linked_list (slice);
-		  *new_partition_start = partitions [0].sector;
+		  *new_partition_start = partitions[0].sector;
 		}
 	    }
 	  osal_free (partitions);
@@ -745,6 +771,14 @@ apa_allocate_space (apa_toc_t *toc,
 		    int decreasing_size)
 {
   int result;
+  int tmp_slice_index = 0;
+  u_int32_t tmp_partition_index = 0;
+
+  /* check if such name exists */
+  result = apa_find_partition (toc, partition_name, &tmp_slice_index,
+			       &tmp_partition_index);
+  if (result == RET_OK)
+    return (RET_PART_EXISTS);
 
   if (!(*slice_index == 0 || (*slice_index == 1 && toc->got_2nd_slice)))
     *slice_index = (toc->got_2nd_slice ? 1 : 0); /* try in 2nd first */
@@ -852,12 +886,16 @@ apa_commit (const dict_t *config,
   int result = apa_check (toc);
   if (result == RET_OK)
     {
-      hio_t *hio;
+      /*@only@*/ hio_t *hio = NULL;
       result = hio_probe (config, path, &hio);
-      if (result == OSAL_OK)
+      if (result == OSAL_OK && hio != NULL)
 	{
 	  result = apa_commit_ex (hio, toc);
-	  result = hio->close (hio) == OSAL_OK ? result : OSAL_ERR;
+	  if (result == RET_OK)
+	    result = hio->close (hio);
+	  else
+	    (void) hio->close (hio); /* ignore close error in this case */
+	  hio = NULL;
 	}
     }
   return (result);
@@ -924,11 +962,11 @@ apa_commit_ex (hio_t *hio,
 
 static int
 apa_list_problems (const apa_slice_t *slice,
-		   char *buffer,
+		   /*@out@*/ char *buffer,
 		   size_t buffer_size)
 { /* NOTE: keep in sync with apa_check */
   u_int32_t i, j, k;
-  char tmp [1024];
+  char tmp[1024];
   size_t len;
 
   const u_int32_t total_sectors = slice->size_in_mb * 1024 * 2;
@@ -1146,12 +1184,12 @@ apa_check (const apa_toc_t *toc)
 /**************************************************************/
 int
 apa_diag_ex (hio_t *hio,
-	     char *buffer,
+	     /*@out@*/ char *buffer,
 	     size_t buffer_size)
 {
-  apa_toc_t *toc = NULL;
+  /*@only@*/ apa_toc_t *toc = NULL;
   int result = apa_toc_read_internal (hio, &toc, 1);
-  if (result == RET_OK)
+  if (result == RET_OK && toc != NULL)
     {
       if (toc->got_2nd_slice)
 	ADD_PROBLEM (buffer, buffer_size, "Slice 1\n", strlen ("Slice 1\n"));
@@ -1161,7 +1199,7 @@ apa_diag_ex (hio_t *hio,
 	  ADD_PROBLEM (buffer, buffer_size, "Slice 2\n", strlen ("Slice 2\n"));
 	  result = apa_list_problems (toc->slice + 1, buffer, buffer_size);
 	}
-      apa_toc_free (toc);
+      apa_toc_free (toc), toc = NULL;
     }
   return (result);
 }
@@ -1174,12 +1212,14 @@ apa_diag (const dict_t *config,
 	  char *buffer,
 	  size_t buffer_size)
 {
-  hio_t *hio = NULL;
-  int result = hio_probe (config, device, &hio);
-  if (result == RET_OK)
+  /*@only@*/ hio_t *hio = NULL;
+  int result;
+  *buffer = '\0';
+  result = hio_probe (config, device, &hio);
+  if (result == RET_OK && hio != NULL)
     {
       result = apa_diag_ex (hio, buffer, buffer_size);
-      hio->close (hio);
+      (void) hio->close (hio), hio = NULL;
     }
   return (result);
 }
@@ -1190,12 +1230,16 @@ int
 apa_initialize (const dict_t *config,
 		const char *device)
 {
-  hio_t *hio;
+  /*@out@*/ hio_t *hio = NULL;
   int result = hio_probe (config, device, &hio);
-  if (result == RET_OK)
+  if (result == RET_OK && hio != NULL)
     {
       result = apa_initialize_ex (hio);
-      hio->close (hio);
+      if (result == RET_OK)
+	result = hio->close (hio);
+      else
+	(void) hio->close (hio); /* ignore close error in this case */
+      hio = NULL;
     }
   return (result);
 }
@@ -1227,7 +1271,7 @@ apa_initialize_ex (hio_t *hio)
   set_u16 (&header.type, 0x0001);
   set_ps2fs_datetime (&header.created, time (NULL));
   strcpy (header.mbr.magic, "Sony Computer Entertainment Inc.");
-  header.mbr.unknown_0x02 = 2;
+  header.mbr.unknown_0x02 = 0x02;
   set_ps2fs_datetime (&header.mbr.created, time (NULL));
   set_u32 (&header.checksum, apa_partition_checksum (&header));
 

@@ -1,6 +1,6 @@
 /*
  * hdl.c
- * $Id: hdl.c,v 1.16 2006/06/18 13:08:45 bobi Exp $
+ * $Id: hdl.c,v 1.17 2006/09/01 17:31:19 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -32,7 +32,7 @@
 #include "retcodes.h"
 #include "osal.h"
 #include "common.h"
-#include "hio_probe.h"
+#include "hio.h"
 #if defined (BUILTIN_ICON)
 #  include "icon.h"
 #endif
@@ -80,10 +80,10 @@ prepare_main (const hdl_game_t *details,
 	      int slice_index,
 	      u_int32_t starting_partition_sector,
 	      u_int32_t size_in_kb,
-	      unsigned char *buffer_4m)
+	      /*@out@*/ u_int8_t *buffer_4m)
 {
   int result;
-  u_int32_t i, index = (u_int32_t) -1;
+  u_int32_t i;
 #if defined (BUILTIN_ICON)
   const char *icon = (const char*) hdloader_icon;
   u_int32_t icon_length = HDLOADER_ICON_LEN;
@@ -91,7 +91,7 @@ prepare_main (const hdl_game_t *details,
   char *icon = NULL;
   u_int32_t icon_length;
 #endif
-  char icon_props [1024];
+  char icon_props[1024];
   const ps2_partition_header_t *part;
   const apa_slice_t *slice = toc->slice + slice_index;
 
@@ -107,15 +107,14 @@ prepare_main (const hdl_game_t *details,
     for (i = 0; i < slice->part_count; ++i)
       if (get_u32 (&slice->parts[i].header.start) == starting_partition_sector)
 	{ /* locate starting partition index */
-	  index = i;
-	  part = &slice->parts[index].header;
+	  part = &slice->parts[i].header;
 	  break;
 	}
 
-  if (index == (u_int32_t) -1)
+  if (part == NULL)
     result = RET_NOT_FOUND;
 
-  if (result == OSAL_OK)
+  if (result == OSAL_OK && part != NULL)
     {
       const u_int32_t SLICE_2_OFFS = 0x10000000; /* sectors */
       u_int32_t *tmp;
@@ -185,11 +184,8 @@ prepare_main (const hdl_game_t *details,
        *101000: ed fe ad de 00 00 01 00  54 77 69 73 74 65 64 20  ........Twisted 
        *101010: 4d 65 74 61 6c 3a 20 42  6c 61 63 6b 00 00 00 00  Metal: Black....
        */
-      buffer_4m [0x101000] = 0xed;
-      buffer_4m [0x101001] = 0xfe;
-      buffer_4m [0x101002] = 0xad;
-      buffer_4m [0x101003] = 0xde;
-      buffer_4m [0x101006] = 0x01;
+      set_u32 (buffer_4m + 0x101000, 0xdeadfeed);
+      buffer_4m[0x101006] = 0x01;
       memcpy (buffer_4m + 0x101008, details->name, strlen (details->name));
 
       /*
@@ -198,7 +194,7 @@ prepare_main (const hdl_game_t *details,
        *1010a0: 00 00 00 00 00 00 00 00  00 00 00 00 53 43 45 53  ............SCES
        *1010b0: 5f 35 30 33 2e 36 30 00  00 00 00 00 00 00 00 00  _503.60.........
        */
-      set_u16 (buffer_4m + 0x1010a8, details->compat_flags);
+      set_u16 (buffer_4m + 0x1010a8, (u_int16_t) details->compat_flags);
       memcpy (buffer_4m + 0x1010ac, details->startup, strlen (details->startup));
 
       /*
@@ -212,15 +208,15 @@ prepare_main (const hdl_game_t *details,
        *	f4 0b 00 00 08 44 00 00 00 f0 07 00	;; 0x00440000, 128MB
        *	f2 0c 00 00 08 48 00 00 00 25 01 00	;; 0x00480000, 128MB
        *	 ^  ^  ^  ^  ^  ^  ^  ^  ^  ^  ^  ^
-       *	 +--+--+--+  +--+--+--+  +--+--+--+- BE, x / 4 = part size in kilobytes [!]
+       *	 +--+--+--+  +--+--+--+  +--+--+--+- BE, x / 4 = part size in kilobytes[!]
        *	          |           +- x << 8 = data start in HDD-sectors
-       *	          +- BE, x * 512 = part offset in megabytes, incremental counter [!]
+       *	          +- BE, x * 512 = part offset in megabytes, incremental counter[!]
        */
 
       /* that is aerial acrobatics :-) */
       set_u32 (buffer_4m + 0x1010e8, details->layer_break);
-      buffer_4m [0x1010ec] = details->is_dvd ? 0x14 : 0x12;
-      buffer_4m [0x1010f0] = (u_int8_t) (get_u32 (&part->nsub) + 1);
+      buffer_4m[0x1010ec] = (u_int8_t) (details->is_dvd ? 0x14 : 0x12);
+      buffer_4m[0x1010f0] = (u_int8_t) (get_u32 (&part->nsub) + 1);
       tmp = (u_int32_t*) (buffer_4m + 0x1010f5);
 
       partition_usable_size_in_kb = (get_u32 (&part->length) - 0x2000) / 2; /* 2 sectors == 1K */
@@ -241,7 +237,7 @@ prepare_main (const hdl_game_t *details,
       for (i=0; size_remaining_in_kb>0 && i<get_u32 (&part->nsub); ++i)
 	{
 	  partition_usable_size_in_kb =
-	    (get_u32 (&part->subs [i].length) - 0x0800) / 2;
+	    (get_u32 (&part->subs[i].length) - 0x0800) / 2;
 	  partition_data_len_in_kb =
 	    size_remaining_in_kb < partition_usable_size_in_kb ?
 	    size_remaining_in_kb : partition_usable_size_in_kb;
@@ -249,17 +245,17 @@ prepare_main (const hdl_game_t *details,
 	  /* offset, start, data length */
 	  set_u32 (tmp++, offset);
 	  /* 0x0800 sec = 1M (sub part. offs) */
-	  sector = (get_u32 (&part->subs [i].start) + 0x0800 +
+	  sector = (get_u32 (&part->subs[i].start) + 0x0800 +
 		    SLICE_2_OFFS * slice_index);
 	  set_u32 (tmp++, sector >> 8);
 	  set_u32 (tmp++, partition_data_len_in_kb * 4);
 	  ++partitions_used;
 
-	  offset += (get_u32 (&part->subs [i].length) - 0x0800) / 1024;
+	  offset += (get_u32 (&part->subs[i].length) - 0x0800) / 1024;
 	  size_remaining_in_kb -= partition_data_len_in_kb;
 	}
 
-      buffer_4m [0x1010f0] = (u_int8_t) partitions_used;
+      buffer_4m[0x1010f0] = (u_int8_t) partitions_used;
     }
 
 #if !defined (BUILTIN_ICON)
@@ -274,17 +270,17 @@ prepare_main (const hdl_game_t *details,
 /**************************************************************/
 void
 hdl_pname (const char *name,
-	   char partition_name [PS2_PART_IDMAX + 1])
+	   char partition_name[PS2_PART_IDMAX + 1])
 {
   u_int32_t game_name_len = PS2_PART_IDMAX - 1 - 7; /* limit partition name length */
   char *p;
 
   game_name_len = strlen (name) < game_name_len ? strlen (name) : game_name_len;
   strcpy (partition_name, "PP.HDL.");
-  memcpy (partition_name + 7, name, game_name_len);
-  partition_name [7 + game_name_len] = '\0';
+  memmove (partition_name + 7, name, game_name_len);
+  partition_name[7 + game_name_len] = '\0';
   p = partition_name + 7; /* len ("PP.HDL.") */
-  while (*p)
+  while (*p != '\0')
     {
       if (!isalnum (*p) && *p != ' ' && *p != '.')
 	*p = '_'; /* escape non-alphanumeric characters with `_' */
@@ -300,9 +296,9 @@ hdl_extract_ex (hio_t *hio,
 		const char *output_file,
 		progress_t *pgs)
 {
-  apa_toc_t *toc = NULL;
+  /*@only@*/ apa_toc_t *toc = NULL;
   int result = apa_toc_read_ex (hio, &toc);
-  if (result == RET_OK)
+  if (result == RET_OK && toc != NULL)
     {
       int slice_index = -1;
       u_int32_t partition_index;
@@ -310,7 +306,7 @@ hdl_extract_ex (hio_t *hio,
 				   &partition_index);
       if (result == RET_NOT_FOUND)
 	{ /* assume it is `game_name' and not a partition name */
-	  char partition_id [PS2_PART_IDMAX + 8];
+	  char partition_id[PS2_PART_IDMAX + 8];
 	  result = hdl_lookup_partition_ex (hio, game_name, partition_id);
 	  if (result == RET_OK)
 	    result = apa_find_partition (toc, partition_id,
@@ -324,53 +320,55 @@ hdl_extract_ex (hio_t *hio,
 	    osal_alloc ((IIN_NUM_SECTORS + 1) * IIN_SECTOR_SIZE);
 	  result = (buffer != NULL ? RET_OK : RET_NO_MEM);
 	  if (result == RET_OK)
-	    result = hdl_read_game_alloc_table (hio, toc, slice_index,
-						partition_index, &gat);
-	  if (result == RET_OK)
 	    {
-	      osal_handle_t file;
-	      u_int64_t total_size = (u_int64_t) gat.size_in_kb * 1024;
-
-	      pgs_prepare (pgs, total_size);
-
-	      /* create file and copy data */
-	      result = osal_create_file (output_file, &file, total_size);
-	      if (result == OSAL_OK)
+	      result = hdl_read_game_alloc_table (hio, toc, slice_index,
+						  partition_index, &gat);
+	      if (result == RET_OK)
 		{
-		  u_int32_t i;
-		  u_int8_t *aligned =
-		    (void*) (((long) buffer + 511) & ~511);
-		  for (i = 0; result == OSAL_OK && i < gat.count; ++i)
-		    { /* seek and copy */
-		      u_int32_t start_s = gat.part[i].start;
-		      u_int32_t length_s = gat.part[i].len;
-		      u_int64_t curr = 0;
-		      while (length_s > 0 && result == OSAL_OK)
-			{
-			  u_int32_t len;
-			  u_int32_t count_s = (length_s < IIN_NUM_SECTORS ?
-					       length_s : IIN_NUM_SECTORS);
-			  result = hio->read (hio, start_s, count_s,
-					      aligned, &len);
-			  if (result == OSAL_OK)
+		  /*@only@*/ osal_handle_t file = OSAL_HANDLE_INIT;
+		  u_int64_t total_size = (u_int64_t) gat.size_in_kb * 1024;
+
+		  pgs_prepare (pgs, total_size);
+
+		  /* create file and copy data */
+		  result = osal_create_file (output_file, &file, total_size);
+		  if (result == OSAL_OK)
+		    {
+		      u_int32_t i;
+		      u_int8_t *aligned =
+			(void*) (((long) buffer + 511) & ~511);
+		      for (i = 0; result == OSAL_OK && i < gat.count; ++i)
+			{ /* seek and copy */
+			  u_int32_t start_s = gat.part[i].start;
+			  u_int32_t length_s = gat.part[i].len;
+			  u_int64_t curr = 0;
+			  while (length_s > 0 && result == OSAL_OK)
 			    {
-			      u_int32_t written;
-			      result = osal_write (file, aligned,
-						   count_s * 512,
-						   &written);
+			      u_int32_t len;
+			      u_int32_t count_s = (length_s < IIN_NUM_SECTORS ?
+						   length_s : IIN_NUM_SECTORS);
+			      result = hio->read (hio, start_s, count_s,
+						  aligned, &len);
 			      if (result == OSAL_OK)
 				{
-				  start_s += count_s;
-				  length_s -= count_s;
-				  curr += count_s * 512;
-				  result = pgs_update (pgs, curr);
+				  u_int32_t written;
+				  result = osal_write (file, aligned,
+						       count_s * 512,
+						       &written);
+				  if (result == OSAL_OK)
+				    {
+				      start_s += count_s;
+				      length_s -= count_s;
+				      curr += count_s * 512;
+				      result = pgs_update (pgs, curr);
+				    }
 				}
 			    }
-			}
-		      pgs_chunk_complete (pgs);
-		    } /* for */
-		  result = (osal_close (file) == OSAL_OK ?
-			    result : OSAL_ERR);
+			  pgs_chunk_complete (pgs);
+			} /* for */
+		      result = (osal_close (&file) == OSAL_OK ?
+				result : OSAL_ERR);
+		    }
 		}
 	    }
 	  if (buffer != NULL)
@@ -390,12 +388,12 @@ hdl_extract (const dict_t *config,
 	     const char *output_file,
 	     progress_t *pgs)
 {
-  hio_t *hio;
+  /*@only@*/ hio_t *hio = NULL;
   int result = hio_probe (config, device_name, &hio);
-  if (result == OSAL_OK)
+  if (result == OSAL_OK && hio != NULL)
     {
       result = hdl_extract_ex (hio, game_name, output_file, pgs);
-      hio->close (hio);
+      (void) hio->close (hio), hio = NULL;
     }
   return (result);
 }
@@ -416,24 +414,24 @@ inject_data (hio_t *hio,
   u_int32_t i;
   const ps2_partition_header_t *part;
   const apa_slice_t *slice = toc->slice + slice_index;
-  char *buffer = osal_alloc (4 _MB);
+  char *buffer;
 
   part = NULL;
-  if (buffer != NULL)
-    {
-      result = RET_NOT_FOUND;
-      for (i = 0; i < slice->part_count; ++i)
-	if (get_u32 (&slice->parts[i].header.start) == starting_partition_sector)
-	  { /* locate starting partition index */
-	    part = &slice->parts[i].header;
-	    result = RET_OK;
-	    break;
-	  }
-    }
-  else
-    result = RET_NO_MEM;
+  result = RET_NOT_FOUND;
+  for (i = 0; i < slice->part_count; ++i)
+    if (get_u32 (&slice->parts[i].header.start) == starting_partition_sector)
+      { /* locate starting partition index */
+	part = &slice->parts[i].header;
+	result = RET_OK;
+	break;
+      }
+  if (part == NULL)
+    return (RET_INVARIANT);
 
-  if (result == RET_OK)
+  buffer = osal_alloc (4 _MB);
+  if (buffer == NULL)
+    result = RET_NO_MEM;
+  if (result == RET_OK && part != NULL && buffer != NULL)
     {
       const u_int32_t SLICE_2_OFFS = 0x10000000; /* sectors */
       result = prepare_main (details, toc, slice_index,
@@ -458,7 +456,7 @@ inject_data (hio_t *hio,
 	  osal_free (buffer), buffer = NULL;
 
 	  /* track header, otherwise it would influence progress calculation */
-	  pgs_update (pgs, 4 _MB);
+	  (void) pgs_update (pgs, 4 _MB);
 	  pgs_chunk_complete (pgs);
 
 	  /* next: fill-in 1st partition */
@@ -484,7 +482,7 @@ inject_data (hio_t *hio,
 	    { /* next: fill-in remaining partitions */
 	      u_int32_t SUB_PART_HDR_SIZE_S = (1 _MB) / 512;
 	      u_int64_t part_size =
-		((u_int64_t) get_u32 (&part->subs [i].length)) * 512 - (1 _MB);
+		((u_int64_t) get_u32 (&part->subs[i].length)) * 512 - (1 _MB);
 	      u_int64_t chunk_length = /* in bytes */
 		((u_int64_t) kb_remaining) * 1024 < part_size ?
 		((u_int64_t) kb_remaining) * 1024 : part_size;
@@ -525,9 +523,9 @@ hdl_inject (hio_t *hio,
 	    int slice_index,
 	    progress_t *pgs)
 {
-  apa_toc_t *toc = NULL;
+  /*@only@*/ apa_toc_t *toc = NULL;
   int result = apa_toc_read_ex (hio, &toc);
-  if (result == OSAL_OK)
+  if (result == OSAL_OK && toc != NULL)
     {
       u_int32_t sector_size, num_sectors;
       result = iin->stat (iin, &sector_size, &num_sectors);
@@ -581,7 +579,7 @@ hdl_ginfo_read (hio_t *hio,
    * (1 main + 64 sub) by 12 bytes each */
   const u_int32_t SLICE_2_OFFS = 0x10000000; /* sectors */
   const u_int32_t HDL_HEADER_OFFS = 0x101000;
-  char buffer [1024];
+  char buffer[1024];
   int result;
   u_int32_t bytes;
   u_int32_t sector = (get_u32 (&part->start) + HDL_HEADER_OFFS / 512 +
@@ -592,13 +590,13 @@ hdl_ginfo_read (hio_t *hio,
     {
       if (bytes == 1024)
 	{
-	  u_int32_t num_parts = buffer[0x00f0];
+	  u_int32_t num_parts = (u_int32_t) buffer[0x00f0];
 	  const u_int32_t *data = (u_int32_t*) (buffer + 0x00f5);
 
 	  /* calculate allocated size */
 	  size = get_u32 (&part->length);
 	  for (i = 0; i < get_u32 (&part->nsub); ++i)
-	    size += get_u32 (&part->subs [i].length);
+	    size += get_u32 (&part->subs[i].length);
 	  ginfo->alloc_size_in_kb = size / 2;
 
 	  size = 0;
@@ -607,11 +605,11 @@ hdl_ginfo_read (hio_t *hio,
 	  ginfo->raw_size_in_kb = size / 4;
 
 	  memcpy (ginfo->partition_name, part->id, PS2_PART_IDMAX);
-	  ginfo->partition_name [PS2_PART_IDMAX] = '\0';
+	  ginfo->partition_name[PS2_PART_IDMAX] = '\0';
 	  strcpy (ginfo->name, buffer + 0x0008);
 	  strcpy (ginfo->startup, buffer + 0x00ac);
-	  ginfo->compat_flags = buffer[0x00a8];
-	  ginfo->is_dvd = buffer[0x00ec] == 0x14;
+	  ginfo->compat_flags = (compat_flags_t) get_u16 (buffer + 0x00a8);
+	  ginfo->is_dvd = (buffer[0x00ec] == 0x14);
 	  ginfo->slice_index = slice_index;
 	  ginfo->start_sector = get_u32 (&part->start);
 	}
@@ -624,7 +622,7 @@ hdl_ginfo_read (hio_t *hio,
 
 
 /**************************************************************/
-static int
+static size_t
 hdl_games_count (const apa_slice_t *slice)
 {
   size_t i, count = 0;
@@ -647,7 +645,7 @@ hdl_glist_read_slice (hio_t *hio,
   for (i = 0; result == RET_OK && i < toc->slice[slice_index].part_count; ++i)
     {
       const ps2_partition_header_t *part =
-	&toc->slice[slice_index].parts [i].header;
+	&toc->slice[slice_index].parts[i].header;
       if (get_u16 (&part->flags) == 0x00 &&
 	  get_u16 (&part->type) == 0x1337)
 	result = hdl_ginfo_read (hio, slice_index, part,
@@ -662,13 +660,11 @@ int
 hdl_glist_read (hio_t *hio,
 		hdl_games_list_t **glist)
 {
-  apa_toc_t *toc;
-  int result;
-
-  result = apa_toc_read_ex (hio, &toc);
-  if (result == RET_OK)
+  /*@only@*/ apa_toc_t *toc = NULL;
+  int result = apa_toc_read_ex (hio, &toc);
+  if (result == RET_OK && toc != NULL)
     {
-      u_int32_t count;
+      size_t count;
       void *tmp;
 
       count = (hdl_games_count (toc->slice + 0) +
@@ -726,17 +722,20 @@ hdl_glist_free (hdl_games_list_t *glist)
 int
 hdl_lookup_partition_ex (hio_t *hio,
 			 const char *game_name,
-			 char partition_id [PS2_PART_IDMAX + 1])
+			 char partition_id[PS2_PART_IDMAX + 1])
 {
-  hdl_games_list_t *games = NULL;
-  int result = hdl_glist_read (hio, &games);
-  if (result == RET_OK)
+  /*@only@*/ hdl_games_list_t *games = NULL;
+  int result;
+  *partition_id = '\0';
+  result = hdl_glist_read (hio, &games);
+  if (result == RET_OK && games != NULL)
     {
-      int i, found = 0;
-      for (i=0; i<games->count; ++i)
-	if (caseless_compare (game_name, games->games [i].name))
+      size_t i;
+      int found = 0;
+      for (i = 0; i < games->count; ++i)
+	if (caseless_compare (game_name, games->games[i].name))
 	  { /* found */
-	    strcpy (partition_id, games->games [i].partition_name);
+	    strcpy (partition_id, games->games[i].partition_name);
 	    found = 1;
 	    break;
 	  }
@@ -754,14 +753,16 @@ int
 hdl_lookup_partition (const dict_t *config,
 		      const char *device_name,
 		      const char *game_name,
-		      char partition_id [PS2_PART_IDMAX + 1])
+		      char partition_id[PS2_PART_IDMAX + 1])
 {
-  hio_t *hio = NULL;
-  int result = hio_probe (config, device_name, &hio);
-  if (result == RET_OK)
+  /*@only@*/ hio_t *hio = NULL;
+  int result;
+  *partition_id = '\0';
+  result = hio_probe (config, device_name, &hio);
+  if (result == RET_OK && hio != NULL)
     {
       result = hdl_lookup_partition_ex (hio, game_name, partition_id);
-      hio->close (hio);
+      (void) hio->close (hio);
     }
   return (result);
 }
@@ -784,10 +785,7 @@ hdl_read_game_alloc_table (hio_t *hio,
   int result = hio->read (hio, sect, 2, buffer, &len);
   if (result == OSAL_OK)
     {
-      if (buffer[0x0000] == 0xed &&
-	  buffer[0x0001] == 0xfe &&
-	  buffer[0x0002] == 0xad &&
-	  buffer[0x0003] == 0xde)
+      if (get_u32 (buffer) == 0xdeadfeed)
 	{ /* 0xdeadfeed magic found */
 	  const u_int32_t *data = (u_int32_t*) (buffer + 0x00f5);
 	  u_int32_t i;
@@ -803,6 +801,75 @@ hdl_read_game_alloc_table (hio_t *hio,
 	}
       else
 	result = RET_NOT_HDL_PART;
+    }
+  return (result);
+}
+
+
+/**************************************************************/
+int
+hdl_modify_game (hio_t *hio,
+		 apa_toc_t *toc,
+		 int slice_index,
+		 u_int32_t starting_partition_sector,
+		 const char *new_name, /* or NULL */
+		 compat_flags_t new_compat_flags) /* or COMPAT_FLAGS_INVALID */
+{
+  apa_slice_t *slice = toc->slice + slice_index;
+  const u_int32_t SLICE_2_OFFS = 0x10000000; /* sectors */
+  apa_partition_t *part = NULL;
+  u_int32_t i;
+  u_int8_t hdl_hdr[1024];
+  u_int32_t sector, bytes = 0;
+  int result;
+
+  for (i = 0; part == NULL && i < slice->part_count; ++i)
+    if (get_u32 (&slice->parts[i].header.start) == starting_partition_sector)
+      /* starting partition index located */
+      part = slice->parts + i;
+  if (part == NULL)
+    return (RET_NOT_FOUND);
+
+  /* BUG: hdl_modify_game wouldn't change part name in Sony HDD browser */
+  sector = (get_u32 (&part->header.start) +
+	    0x00101000 / 512 + slice_index * SLICE_2_OFFS);
+  result = hio->read (hio, sector, 2, hdl_hdr, &bytes);
+  if (result == RET_OK)
+    {
+      if (new_name != NULL && !toc->is_toxic)
+	{ /* HD Loader partition naming: "PP.HDL.Game name" */
+	  char part_id[PS2_PART_IDMAX];
+	  int tmp_slice_index = 0;
+	  u_int32_t tmp_partition_index = 0;
+	  hdl_pname (new_name, part_id);
+	  result = apa_find_partition (toc, part_id, &tmp_slice_index,
+				       &tmp_partition_index);
+	  if (result == RET_NOT_FOUND)
+	    {
+	      strcpy (part->header.id, part_id);
+	      set_u32 (&part->header.checksum,
+		       apa_partition_checksum (&part->header));
+	      part->modified = 1;
+	      result = RET_OK;
+	    }
+	  else if (result == RET_OK)
+	    /* partition with such name already exists */
+	    result = RET_PART_EXISTS;
+	}
+
+      if (result == RET_OK)
+	{
+	  if (new_name != NULL)
+	    {
+	      memset (hdl_hdr + 0x08, 0, 0xa0);
+	      memcpy (hdl_hdr + 0x08, new_name, strlen (new_name));
+	    }
+	  if (new_compat_flags != COMPAT_FLAGS_INVALID)
+	    set_u16 (hdl_hdr + 0xa8, new_compat_flags);
+	  result = hio->write (hio, sector, 2, hdl_hdr, &bytes);
+	}
+      if (result == RET_OK)
+	result = apa_commit_ex (hio, toc);
     }
   return (result);
 }

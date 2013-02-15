@@ -1,6 +1,6 @@
 /*
  * isofs.h
- * $Id: isofs.h,v 1.7 2006/06/18 13:12:10 bobi Exp $
+ * $Id: isofs.h,v 1.8 2006/09/01 17:22:31 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -43,7 +43,7 @@ typedef struct ps2_cdvd_info_type
 } ps2_cdvd_info_t;
 
 int isofs_get_ps2_cdvd_info (iin_t *iin,
-			     ps2_cdvd_info_t *info);
+			     /*@out@*/ ps2_cdvd_info_t *info);
 
 C_END
 

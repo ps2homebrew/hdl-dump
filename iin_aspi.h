@@ -1,6 +1,6 @@
 /*
  * iin_aspi.h
- * $Id: iin_aspi.h,v 1.6 2006/06/18 13:11:20 bobi Exp $
+ * $Id: iin_aspi.h,v 1.7 2006/09/01 17:26:12 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -32,7 +32,7 @@ C_START
 /* would accept "cd0:2:0" */
 int
 iin_aspi_probe_path (const char *path,
-		     iin_t **iin);
+		     /*@special@*/ iin_p_t *iin) /*@allocates *iin@*/ /*@defines *iin@*/;
 
 C_END
 

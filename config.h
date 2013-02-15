@@ -1,6 +1,6 @@
 /*
  * config.h
- * $Id: config.h,v 1.13 2006/06/18 13:08:31 bobi Exp $
+ * $Id: config.h,v 1.14 2006/09/01 17:31:46 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -51,6 +51,7 @@ typedef unsigned long u_int32_t;
 typedef unsigned __int64 u_int64_t; /* Microsoft Visual C/C++ compiler */
 #    else
 typedef unsigned long long u_int64_t; /* GNU C/C++ compiler */
+typedef signed int ssize_t;
 #    endif
 #  else
 #    include <sys/types.h>
@@ -58,6 +59,12 @@ typedef unsigned long long u_int64_t; /* GNU C/C++ compiler */
 
 #elif defined (_BUILD_UNIX)
 #  include <sys/types.h>
+#  if defined (_LINT)
+typedef uint8_t u_int8_t;
+typedef uint16_t u_int16_t;
+typedef uint32_t u_int32_t;
+typedef uint64_t u_int64_t;
+#  endif
 
 #elif defined (_BUILD_PS2)
 #  if defined (_EE)
@@ -84,7 +91,7 @@ static const compat_flags_t COMPAT_FLAGS_INVALID = (compat_flags_t) -1;
 
 /* control whether infrequently-used commands to be built */
 #define INCLUDE_DUMP_CMD
-#undef INCLUDE_COMPARE_IIN_CMD
+#define INCLUDE_COMPARE_IIN_CMD
 #undef INCLUDE_MAP_CMD
 #define INCLUDE_INFO_CMD
 #undef INCLUDE_ZERO_CMD
@@ -93,8 +100,9 @@ static const compat_flags_t COMPAT_FLAGS_INVALID = (compat_flags_t) -1;
 #define INCLUDE_INITIALIZE_CMD
 #define INCLUDE_DELETE_CMD
 #define INCLUDE_BACKUP_TOC_CMD
-#undef INCLUDE_RESTORE_TOC_CMD
+#define INCLUDE_RESTORE_TOC_CMD
 #define INCLUDE_DIAG_CMD
+#define INCLUDE_MODIFY_CMD
 
 /* option names and values for the config file */
 #define CONFIG_ENABLE_ASPI_FLAG           "enable_aspi"

@@ -1,6 +1,6 @@
 /*
  * net_common.c
- * $Id: net_common.c,v 1.1 2005/12/08 20:46:02 bobi Exp $
+ * $Id: net_common.c,v 1.2 2006/09/01 17:22:24 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -49,7 +49,7 @@ recv_exact (int s,
 	    u_int32_t bytes,
 	    int flags)
 {
-  int total = 0, result = 1;
+  ssize_t total = 0, result = 1;
   while (bytes > 0 && result > 0)
     {
       result = recv (s, buf, bytes, flags);
@@ -60,7 +60,7 @@ recv_exact (int s,
 	  bytes -= result;
 	}
     }
-  return (result >= 0 ? total : result);
+  return ((int) (result >= 0 ? total : result));
 }
 
 
@@ -71,7 +71,7 @@ send_exact (int s,
 	    u_int32_t bytes,
 	    int flags)
 {
-  int total = 0, result = 1;
+  ssize_t total = 0, result = 1;
   while (bytes > 0 && result > 0)
     {
       result = send (s, buf, bytes, flags);
@@ -82,5 +82,5 @@ send_exact (int s,
 	  bytes -= result;
 	}
     }
-  return (result >= 0 ? total : result);
+  return ((int) (result >= 0 ? total : result));
 }

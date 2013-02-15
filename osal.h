@@ -1,6 +1,6 @@
 /*
  * osal.h
- * $Id: osal.h,v 1.12 2006/05/21 21:40:46 bobi Exp $
+ * $Id: osal.h,v 1.13 2006/09/01 17:21:57 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -39,9 +39,10 @@ C_START
 #endif
 
 
-#define OSAL_OK       0
-#define OSAL_ERR     -1
-#define OSAL_NO_MEM  -2
+#include "retcodes.h"
+#define OSAL_OK      RET_OK
+#define OSAL_ERR     RET_ERR
+#define OSAL_NO_MEM  RET_NO_MEM
 
 #define _MB * (1024 * 1024) /* really ugly :-) */
 
@@ -64,73 +65,75 @@ typedef struct
 #  define MAX_PATH 256
 
 #endif
+typedef /*@special@*/ /*@only@*/ /*@out@*/ osal_handle_t* osal_handle_p_t;
 
 
 /* pointer should be passed to osal_dispose_error_msg when no longer needed */
 unsigned long osal_get_last_error_code (void);
-char* osal_get_last_error_msg (void);
-char* osal_get_error_msg (unsigned long error);
-void osal_dispose_error_msg (char *msg);
+/*@special@*/ /*@only@*/ char* osal_get_last_error_msg (void) /*@allocates result@*/ /*@defines result@*/;
+/*@special@*/ /*@only@*/ char* osal_get_error_msg (unsigned long error) /*@allocates result@*/ /*@defines result@*/;
+void osal_dispose_error_msg (/*@special@*/ /*@only@*/ char *msg) /*@releases msg@*/;
 
 
 int osal_open (const char *name,
-	       osal_handle_t *handle,
-	       int no_cache);
+	       /*@special@*/ osal_handle_p_t handle,
+	       int no_cache) /*@allocates handle@*/ /*@defines *handle@*/;
 
 int osal_open_device_for_writing (const char *device_name,
-				  osal_handle_t *handle);
+				  /*@special@*/ osal_handle_p_t handle) /*@allocates handle@*/ /*@defines *handle@*/;
 
 int osal_create_file (const char *path,
-		      osal_handle_t *handle,
-		      u_int64_t estimated_size);
+		      /*@special@*/ osal_handle_p_t handle,
+		      u_int64_t estimated_size) /*@allocates handle@*/ /*@defines *handle@*/;
 
 int osal_get_estimated_device_size (osal_handle_t handle,
-				    u_int64_t *size_in_bytes);
+				    /*@out@*/ u_int64_t *size_in_bytes);
 
 int osal_get_device_size (osal_handle_t handle,
-			  u_int64_t *size_in_bytes);
+			  /*@out@*/ u_int64_t *size_in_bytes);
 
 int osal_get_device_sect_size (osal_handle_t handle,
-			       u_int32_t *size_in_bytes);
+			       /*@out@*/ u_int32_t *size_in_bytes);
 
 int osal_get_volume_sect_size (const char *volume_root,
-			       u_int32_t *size_in_bytes);
+			       /*@out@*/ u_int32_t *size_in_bytes);
 
 int osal_get_file_size_ex (const char *path,
-			   u_int64_t *size_in_bytes);
+			   /*@out@*/ u_int64_t *size_in_bytes);
 
 int osal_get_file_size (osal_handle_t handle,
-			u_int64_t *size_in_bytes);
+			/*@out@*/ u_int64_t *size_in_bytes);
 
 int osal_seek (osal_handle_t handle,
 	       u_int64_t abs_pos);
 
 int osal_read (osal_handle_t handle,
-	       void *out,
+	       /*@out@*/ void *out,
 	       u_int32_t bytes,
-	       u_int32_t *stored);
+	       /*@out@*/ u_int32_t *stored);
 
 int osal_write (osal_handle_t handle,
 		const void *in,
 		u_int32_t bytes,
-		u_int32_t *stored);
+		/*@out@*/ u_int32_t *stored);
 
-int osal_close (osal_handle_t handle);
+int osal_close (/*@special@*/ /*@only@*/ osal_handle_t *handle) /*@releases handle@*/;
 
 
-void* osal_alloc (u_int32_t bytes);
-void osal_free (void *ptr);
+/*@special@*/ /*@only@*/ /*@null@*/ void* osal_alloc (u_int32_t bytes) /*@allocates result@*/;
+void osal_free (/*@special@*/ /*@only@*/ void *ptr) /*@releases ptr@*/;
 
 
 /* support for memory-mapped files/devices */
 typedef struct osal_mmap_type osal_mmap_t;
-int osal_mmap (osal_mmap_t **mm,
-	       void **p,
+typedef /*@only@*/ /*@out@*/ /*@null@*/ osal_mmap_t* osal_mmap_p_t;
+int osal_mmap (/*@special@*/ osal_mmap_p_t *mm,
+	       /*@out@*/ void **p,
 	       osal_handle_t handle,
 	       u_int64_t offset,
-	       u_int32_t length);
+	       u_int32_t length) /*@allocates *mm@*/ /*@defines *mm@*/;
 
-int osal_munmap (osal_mmap_t *mm);
+int osal_munmap (/*@special@*/ /*@only@*/ osal_mmap_t *mm) /*@releases *mm@*/;
 
 
 #define DEV_MAX_NAME_LEN       16
@@ -148,17 +151,18 @@ typedef struct osal_dlist_type /* devices list */
   u_int32_t allocated, used;
   osal_dev_t *device;
 } osal_dlist_t;
+typedef /*@only@*/ /*@out@*/ /*@null@*/ osal_dlist_t* osal_dlist_p_t;
 
 
-int osal_query_hard_drives (osal_dlist_t **hard_drives);
-int osal_query_optical_drives (osal_dlist_t **optical_drives);
-int osal_query_devices (osal_dlist_t **hard_drives,
-			osal_dlist_t **optical_drives);
-void osal_dlist_free (osal_dlist_t *dlist);
+int osal_query_hard_drives (/*@special@*/ osal_dlist_p_t *hard_drives) /*@allocates *hard_drives@*/ /*@defines *hard_drives@*/;
+int osal_query_optical_drives (/*@special@*/ osal_dlist_p_t *optical_drives) /*@allocates *optical_drives@*/ /*@defines *optical_drives@*/;
+int osal_query_devices (/*@special@*/ osal_dlist_p_t *hard_drives,
+			/*@special@*/ osal_dlist_p_t *optical_drives) /*@allocates *hard_drives,*optical_drives@*/ /*@defines *hard_drives,*optical_drives@*/;
+void osal_dlist_free (/*@special@*/ /*@only@*/ osal_dlist_t *dlist) /*@releases dlist@*/;
 
 int /* RET_OK, RET_BAD_FORMAT, RET_BAD_DEVICE */
 osal_map_device_name (const char *input,
-		      char output [MAX_PATH]);
+		      /*@out@*/ char output[MAX_PATH]);
 
 C_END
 
