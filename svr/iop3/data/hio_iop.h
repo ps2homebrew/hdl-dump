@@ -1,6 +1,6 @@
 /*
  * hio_iop.h
- * $Id: hio_iop.h,v 1.3 2004/12/04 10:28:45 b081 Exp $
+ * $Id: hio_iop.h,v 1.1 2006/05/21 21:48:28 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -24,7 +24,7 @@
 #if !defined (_SVR_IOP_HIO_IOP_H)
 #define _SVR_IOP_HIO_IOP_H
 
-#include "../../hio.h"
+#include "../../../../hio.h"
 
 
 int hio_iop_probe (const char *path,

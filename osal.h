@@ -1,6 +1,6 @@
 /*
  * osal.h
- * $Id: osal.h,v 1.11 2005/07/10 21:06:48 bobi Exp $
+ * $Id: osal.h,v 1.12 2006/05/21 21:40:46 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -58,10 +58,10 @@ typedef struct
   int desc; /* file descriptor */
 } osal_handle_t;
 
-#define OSAL_HANDLE_INIT { -1 } /* file descriptor */
-#define OSAL_IS_OPENED(x) ((x).desc != -1)
+#  define OSAL_HANDLE_INIT { -1 } /* file descriptor */
+#  define OSAL_IS_OPENED(x) ((x).desc != -1)
 
-#define MAX_PATH 256
+#  define MAX_PATH 256
 
 #endif
 
@@ -120,6 +120,17 @@ int osal_close (osal_handle_t handle);
 
 void* osal_alloc (u_int32_t bytes);
 void osal_free (void *ptr);
+
+
+/* support for memory-mapped files/devices */
+typedef struct osal_mmap_type osal_mmap_t;
+int osal_mmap (osal_mmap_t **mm,
+	       void **p,
+	       osal_handle_t handle,
+	       u_int64_t offset,
+	       u_int32_t length);
+
+int osal_munmap (osal_mmap_t *mm);
 
 
 #define DEV_MAX_NAME_LEN       16

@@ -1,4 +1,4 @@
-$Id: README,v 1.1 2005/12/08 20:44:22 bobi Exp $
+$Id: README,v 1.2 2006/05/21 21:47:48 bobi Exp $
 
 The new hdld_svr.elf README
 ===========================
@@ -7,23 +7,17 @@ What's all this about?
 ----------------------
 
 The new server uses UDP, instead of TCP. Because UDP is unreliable,
-now and then client asks the server if there is a need to retransmit
+client asks the server now and then, if there is a need to retransmit
 any part of the data.
 
-Basically, protocol works as follows: client tells the server
-"I'm want to write # sectors, starting at #"; then it starts to flood
-the server with data via UDP. If client sends the data too fast
-server cannot "consume" it, hence the data gets lost and should be
-retransmitted. If client sends the data too slow, you loose speed.
-For not to drown server the client sends a small number of packets
-then sleeps for a tiny amount of time. Number of packets and time
-to sleep are controlable via configuration file. On Windows time
-is in milliseconds, whereas on Unix is in microseconds (1000 times
-less). hdl_dump client comes with a reasonable defaults, but you
-can change those numbers (with some limits).
+Basically, protocol works as follows: client tells the server "I'm
+want to write # sectors, starting at #"; then it starts to flood the
+server with data via UDP. If client sends the data too fast server
+will miss some packets and they should be retransmitted. If client
+sends the data too slow, you waste bandwidth.
 
-It should be clear already, that the new server is not compatible with
-older servers, therefore server port has been changed.
+The client has been carefully optimized to keep a constant transfer
+rate and there is no configuration necessary.
 
 
 HOWTO setup environment

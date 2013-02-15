@@ -1,6 +1,6 @@
 ##
 ## Makefile
-## $Id: Makefile,v 1.6 2005/07/10 21:06:48 bobi Exp $
+## $Id: Makefile,v 1.7 2006/05/21 21:42:17 bobi Exp $
 ##
 ## Copyright 2004 Bobi B., w1zard0f07@yahoo.com
 ##
@@ -21,6 +21,8 @@
 ## Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 ##
 
+# NOTE: this Makefile REQUIRES GNU make (gmake)
+
 ###############################################################################
 # configuration start
 # NOTE: don't forget, that changing some options REQUIRES `make clean' next!
@@ -30,23 +32,16 @@ BUILTIN_ICON ?= yes
 
 # `yes' - debug build; something else - release build
 # `RELEASE=yes make' makes a release build no matter what DEBUG flag is
-RELEASE ?= no
 DEBUG ?= yes
+RELEASE ?= no
 
-# `yes' - don't expect ACK when streaming data to the PS2 (works faster?)
-#
-# combination RAW_speed compressed_dummy_file_speed
-# no/no/no    0,68MBps  2,90MBps
-# no/no/yes   0,76MBps  2,95MBps
-# no/yes/yes  0,80MBps  3,00MBps
-SEND_NOACK ?= no
-QUICK_ACK ?= yes
-DUMMY_ACK ?= yes
+# whether to use memory-mapped I/O when reading from optical drives
+IIN_OPTICAL_MMAP ?= yes
 
 # hdl_dump current version/release
 VER_MAJOR = 0
 VER_MINOR = 8
-VER_PATCH = 2
+VER_PATCH = 4
 
 # configuration end
 ###############################################################################
@@ -58,11 +53,12 @@ LDFLAGS =
 
 VPATH = ./:../
 
-SOURCES = gui_main.c osal_win32.c apa.c common.c progress.c \
-	hdl.c isofs.c aligned.c \
-	iin_probe.c iin_img_base.c iin_iso.c iin_optical.c iin_cdrwin.c \
-	iin_hdloader.c iin_iml.c iin_nero.c iin_gi.c iin_net.c net_io.c \
-	hio_probe.c hio_win32.c hio_net.c byteseq.c dict.c
+SOURCES = gui_main.c \
+	apa.c common.c progress.c hdl.c isofs.c aligned.c \
+	iin_img_base.c iin_optical.c iin_iso.c iin_hdloader.c iin_cdrwin.c \
+	iin_nero.c iin_gi.c iin_iml.c iin_probe.c iin_net.c \
+	hio_probe.c hio_win32.c \
+	osal_win32.c net_common.c byteseq.c dict.c hio_udpnet.c
 
 
 # "autodetect" Windows builds
@@ -74,9 +70,18 @@ else
   WINDOWS = no
 endif
 
+# Windows cross-compilation with mingw32* on Debian
+# make XC=win ...
+WINDRES = windres
+ifeq ($(XC), win)
+  WINDOWS = yes
+  CC = i586-mingw32msvc-gcc
+  WINDRES = i586-mingw32msvc-windres
+endif
+
 
 CFLAGS += -mwindows -D_BUILD_WIN32
-LDFLAGS += -lwsock32 -lcomctl32
+LDFLAGS += -lwsock32 -lcomctl32 -lwinmm
 
 # whether to include ASPI support or not
 ifeq ($(WINDOWS), yes)
@@ -86,6 +91,9 @@ ifeq ($(WINDOWS), yes)
   OBJECTS += iin_aspi.o aspi_hlio.o
   OBJECTS += rsrc.o
   EXESUF = .exe
+
+  # it looks like Windows doesn't support memory-mapping on optical drives
+  IIN_OPTICAL_MMAP = no
 else
   # assume it is winelib/wine build
   CFLAGS += -D_BUILD_WINE
@@ -128,15 +136,8 @@ ifeq ($(BUILTIN_ICON), yes)
 endif
 
 
-# ACK/NOACK support
-ifeq ($(SEND_NOACK), yes)
-  CFLAGS += -DNET_SEND_NOACK
-endif
-ifeq ($(DUMMY_ACK), yes)
-  CFLAGS += -DNET_DUMMY_ACK
-endif
-ifeq ($(QUICK_ACK), yes)
-  CFLAGS += -DNET_QUICK_ACK
+ifeq ($(IIN_OPTICAL_MMAP), yes)
+  CFLAGS += -DIIN_OPTICAL_MMAP
 endif
 
 
@@ -153,16 +154,21 @@ all: $(BINARY)
 
 
 clean:
-	rm -f $(BINARY) $(OBJECTS)
+	@rm -f $(BINARY) $(OBJECTS)
+ifeq ($(WINDOWS), no)
+	@rm -f $(BINARY).exe.so
+endif
 
 rmdeps:
-	rm -f $(DEPENDS)
+	@rm -f $(DEPENDS)
 
 
 rsrc.o: rsrc.rc rsrc.h rsrc/app.ico rsrc/manifest.bin \
 	rsrc/ps2_cd.bmp rsrc/ps2_dvd.bmp rsrc/ps2_dvd9.bmp
 	@echo -e "\tRES $<"
-	@windres $(VERSION) -o $@ -i $<
+	@echo '#include <windows.h>' > afxres.h
+	@echo '#define IDC_STATIC -1' >> afxres.h
+	@$(WINDRES) $(VERSION) -o $@ -i $<
 
 
 $(BINARY): $(OBJECTS)
@@ -192,5 +198,5 @@ $(BINARY): $(OBJECTS)
 
 
 ifneq ($(MAKECMDGOAL),rmdeps)
-  include $(DEPENDS)
+  -include $(DEPENDS)
 endif

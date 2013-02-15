@@ -1,6 +1,6 @@
 /*
  * osal_unix.c
- * $Id: osal_unix.c,v 1.6 2005/12/08 20:46:02 bobi Exp $
+ * $Id: osal_unix.c,v 1.7 2006/05/21 21:41:15 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -26,15 +26,25 @@
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#if defined (__APPLE__) /* patch for MacOS X + external USB HDD box by G.S. */
+#if defined (__APPLE__) || defined (__FreeBSD__)
+/* patch for MacOS X + external USB HDD box by G.S. */
 #  include <sys/disk.h>
 #endif
 #include <fcntl.h>
 #include "retcodes.h"
 #include "osal.h"
 #include "apa.h"
+
+
+/* memory-mapped files */
+struct osal_mmap_type
+{ /* keep anything required for unmap operation */
+  void *start;
+  size_t length;
+};
 
 
 /**************************************************************/
@@ -100,7 +110,7 @@ osal_create_file (const char *path,
   int result = RET_ERR;
   handle->desc = open64 (path,
 			 O_CREAT | O_EXCL | O_LARGEFILE | O_RDWR,
-			 S_IRUSR | S_IWUSR);
+			 S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
   if (handle->desc != -1)
     { /* success */
       if (estimated_size > 0)
@@ -154,7 +164,8 @@ osal_get_estimated_device_size (osal_handle_t handle,
 	  if (curr >= 0)
 	    {
 	      off64_t size = lseek64 (handle.desc, 0, SEEK_END);
-#if defined (__APPLE__) /* patch for MacOS X + external USB HDD box by G.S. */
+#if defined (__APPLE__)
+	      /* patch for MacOS X + external USB HDD box by G.S. */
 	      if (size == 0)
 		{
 		  u_int32_t blocksize;
@@ -164,6 +175,18 @@ osal_get_estimated_device_size (osal_handle_t handle,
 		  if (ioctl (handle.desc, DKIOCGETBLOCKCOUNT, &blockcount) < 0)
 		    return (OSAL_ERR);
 		  size = blockcount * blocksize;
+		}
+#elif defined (__FreeBSD__)
+	      /* basically the same as MacOS X patch, but ioctl is different */
+	      if (size == 0)
+		{
+		  u_int blocksize;
+		  off_t mediasize;
+		  if (ioctl (handle.desc, DIOCGSECTORSIZE, &blocksize) < 0)
+		    return (OSAL_ERR);
+		  if (ioctl (handle.desc, DIOCGMEDIASIZE, &mediasize) < 0)
+		    return (OSAL_ERR);
+		  size = mediasize;
 		}
 #endif
 	      if (size >= 0)
@@ -327,6 +350,48 @@ osal_free (void *ptr)
 
 /**************************************************************/
 int
+osal_mmap (osal_mmap_t **mm,
+	   void **p,
+	   osal_handle_t handle,
+	   u_int64_t offset,
+	   u_int32_t length)
+{
+  *mm = osal_alloc (sizeof (osal_mmap_t));
+  if (*mm != NULL)
+    {
+      void *addr = mmap64 (NULL, length, PROT_READ, MAP_SHARED,
+			   handle.desc, offset);
+      if (addr != MAP_FAILED)
+	{ /* success */
+	  (*mm)->start = addr;
+	  (*mm)->length = length;
+	  *p = addr;
+	  return (OSAL_OK);
+	}
+      else
+	{ /* mmap failed */
+	  osal_free (*mm), *mm = NULL;
+	  return (OSAL_ERR);
+	}
+    }
+  else /* malloc failed */
+    return (OSAL_NO_MEM);
+}
+
+
+/**************************************************************/
+int
+osal_munmap (osal_mmap_t *mm)
+{
+  int result = munmap (mm->start, mm->length);
+  if (result == 0)
+    osal_free (mm);
+  return (result == 0 ? OSAL_OK : OSAL_ERR);
+}
+
+
+/**************************************************************/
+int
 osal_query_hard_drives (osal_dlist_t **hard_drives)
 {
   /* TODO: under unix, they are like files */
@@ -377,7 +442,7 @@ osal_map_device_name (const char *input,
   int result = stat (input, &st) == 0 ? RET_OK : RET_ERR;
   if (result == RET_OK)
     { /* accept the input, only if it is a block device */
-#if 0 /* when 0 it will treat files like devices; for testing purposes */
+#if !defined (_DEBUG) /* in debug mode treat files as devices */
       result = st.st_mode & S_IFBLK ? RET_OK : RET_BAD_DEVICE;
 #endif
       if (result == RET_OK)

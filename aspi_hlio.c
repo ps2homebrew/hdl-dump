@@ -1,6 +1,6 @@
 /*
  * aspi_hlio.c - ASPI high-level I/O
- * $Id: aspi_hlio.c,v 1.5 2005/07/10 21:06:48 bobi Exp $
+ * $Id: aspi_hlio.c,v 1.6 2006/05/21 21:35:29 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -170,6 +170,7 @@ aspi_unload (void)
 
 
 /**************************************************************/
+#if 0
 static int
 aspi_reset_device (int host,
 		   int scsi_id,
@@ -196,9 +197,11 @@ aspi_reset_device (int host,
       return (RET_ERR);
     }
 }
+#endif
 
 
 /**************************************************************/
+#if 0
 static int
 aspi_rescan_host (int host)
 {
@@ -216,6 +219,7 @@ aspi_rescan_host (int host)
       return (RET_ERR);
     }
 }
+#endif
 
 
 /**************************************************************/

@@ -1,6 +1,6 @@
 /*
  * config.h
- * $Id: config.h,v 1.11 2005/12/08 20:40:05 bobi Exp $
+ * $Id: config.h,v 1.12 2006/05/21 21:36:33 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -25,7 +25,7 @@
 #define _CONFIG_H
 
 /* MacOS X support patch; there is more in osal_unix.c */
-#if defined (__APPLE__)
+#if defined (__APPLE__) || defined (__FreeBSD__)
 #  undef _BUILD_UNIX
 #  define _BUILD_UNIX
 #  define lseek64 lseek
@@ -33,6 +33,7 @@
 #  define open64 open
 #  define off64_t off_t
 #  define fstat64 fstat
+#  define mmap64 mmap
 #  define O_LARGEFILE 0
 #endif
 /* end of MacOS X support patch */
@@ -99,11 +100,9 @@ static const compat_flags_t COMPAT_FLAGS_INVALID = (compat_flags_t) -1;
 #define CONFIG_PARTITION_NAMING           "partition_naming"
 #define CONFIG_PARTITION_NAMING_STANDARD  "standard"
 #define CONFIG_PARTITION_NAMING_TOXICOS   "toxicos"
-#define CONFIG_USE_COMPRESSION_FLAG       "use_compression"
 #define CONFIG_DISC_DATABASE_FILE         "disc_database_file"
 #define CONFIG_LAST_IP                    "last_ip"
-#define CONFIG_UDP_QUICK_PACKETS          "udp_quick_packets"
-#define CONFIG_UDP_DELAY_TIME             "udp_delay_time"
+#define CONFIG_TARGET_KBPS                "target_kbps"
 
 
 #if defined (__cplusplus)

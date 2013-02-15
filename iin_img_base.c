@@ -1,6 +1,6 @@
 /*
  * iin_img_base.c
- * $Id: iin_img_base.c,v 1.7 2004/12/04 10:20:52 b081 Exp $
+ * $Id: iin_img_base.c,v 1.8 2006/05/21 21:38:18 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -345,7 +345,8 @@ img_base_alloc (u_int32_t raw_sector_size,
 	  iin->dispose_error = &img_base_dispose_error;
 	  img_base->unaligned = buffer;
 	  img_base->buffer =
-	    (void*) (((unsigned long) buffer + IIN_SECTOR_SIZE - 1) & ~(IIN_SECTOR_SIZE - 1));
+	    (void*) (((unsigned long) buffer + IIN_SECTOR_SIZE - 1) &
+		     ~(IIN_SECTOR_SIZE - 1));
 	  assert (img_base->buffer >= img_base->unaligned);
 	  img_base->raw_sector_size = raw_sector_size;
 	  img_base->raw_skip_offset = raw_skip_offset;

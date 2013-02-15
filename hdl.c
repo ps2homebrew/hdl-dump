@@ -1,6 +1,6 @@
 /*
  * hdl.c
- * $Id: hdl.c,v 1.14 2005/12/08 20:40:22 bobi Exp $
+ * $Id: hdl.c,v 1.15 2006/05/21 21:36:41 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -33,7 +33,6 @@
 #include "osal.h"
 #include "common.h"
 #include "hio_probe.h"
-#include "net_io.h"
 #if defined (BUILTIN_ICON)
 #  include "icon.h"
 #endif

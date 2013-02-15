@@ -1,6 +1,6 @@
 /*
  * svr/ee/loader.c
- * $Id: loader.c,v 1.9 2005/12/08 20:43:11 bobi Exp $
+ * $Id: loader.c,v 1.10 2006/05/21 21:44:09 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -63,7 +63,7 @@
  */
 
 #define APP_NAME "hdld_svr"
-#define VERSION "0.8.3"
+#define VERSION "0.8.4"
 
 
 #if 1 /* debugging */
@@ -77,9 +77,6 @@
 #define RESET_IOP
 #define LOAD_MRBROWN_PATCHES
 #define LOAD_SIOMAN_AND_MC
-/* #define LOAD_POWEROFF */
-#define LOAD_PS2ATAD
-/*#define LOAD_SERVER*/
 
 
 extern u8 *iomanx_irx;
@@ -96,12 +93,6 @@ extern int size_ps2smap_irx;
 
 extern u8 *ps2atad_irx;
 extern int size_ps2atad_irx;
-
-extern u8 *poweroff_irx;
-extern int size_poweroff_irx;
-
-extern u8 *hdlsvr_iop_irx;
-extern int size_hdlsvr_iop_irx;
 
 
 #define IPCONF_MAX_LEN (3 * 16)
@@ -157,7 +148,7 @@ setup_ip (char outp [IPCONF_MAX_LEN], int *retval)
     }
 #else
   *retval = 0;
-#endif
+#endif /* LOAD_SIOMAN_AND_MC? */
 
   if (!conf_ok)
     { /* configuration file not found; use hard-coded defaults */
@@ -183,16 +174,10 @@ setup_ip (char outp [IPCONF_MAX_LEN], int *retval)
 
 /**************************************************************/
 static int
-load_modules (int init_tcpip)
+load_modules ()
 {
   const char *STEP_OK = "*";
   const char *FAILED = "failed to load with";
-#if defined (LOAD_LIBHDD) && defined (LOAD_PS2HDD)
-  static const char *hddarg = "-o\0" "4\0" "-n\0" "20";
-#endif
-#if defined (LOAD_PS2FS)
-  static const char *pfsarg = "-m\0" "4\0" "-o\0" "10\0" "-n\0" "40";
-#endif
   int ret, ipcfg_ret = 0;
 
 #if defined (LOAD_MRBROWN_PATCHES)
@@ -248,7 +233,6 @@ load_modules (int init_tcpip)
       return (-1);
     }
 
-#if defined (LOAD_PS2ATAD)
   SifExecModuleBuffer (&ps2atad_irx, size_ps2atad_irx, 0, NULL, &ret);
   if (ret == 0)
     scr_printf (STEP_OK);
@@ -257,44 +241,27 @@ load_modules (int init_tcpip)
       scr_printf ("PS2ATAD.IRX %s %d\n", FAILED, ret);
       return (-1);
     }
-#endif
 
-  if (init_tcpip)
-    {
-      SifExecModuleBuffer (&ps2ip_irx, size_ps2ip_irx, 0, NULL, &ret);
-      if (ret == 0)
-	scr_printf (STEP_OK);
-      else
-	{
-	  scr_printf ("PS2IP.IRX %s %d\n", FAILED, ret);
-	  return (-1);
-	}
-
-      if_conf_len = setup_ip (if_conf, &ipcfg_ret);
-
-      SifExecModuleBuffer (&ps2smap_irx, size_ps2smap_irx,
-			   if_conf_len, if_conf, &ret);
-      if (ret == 0)
-	scr_printf (STEP_OK);
-      else
-	{
-	  scr_printf ("PS2SMAP.IRX %s %d\n", FAILED, ret);
-	  return (-1);
-	}
-    }
-  else
-    printf ("Assuming TCP/IP is already initialized\n");
-
-#if defined (LOAD_SERVER)
-  SifExecModuleBuffer (&hdlsvr_iop_irx, size_hdlsvr_iop_irx, 0, NULL, &ret);
+  SifExecModuleBuffer (&ps2ip_irx, size_ps2ip_irx, 0, NULL, &ret);
   if (ret == 0)
     scr_printf (STEP_OK);
   else
     {
-      scr_printf ("HDLD_SVR.IRX %s %d\n", FAILED, ret);
+      scr_printf ("PS2IP.IRX %s %d\n", FAILED, ret);
       return (-1);
     }
-#endif
+
+  if_conf_len = setup_ip (if_conf, &ipcfg_ret);
+
+  SifExecModuleBuffer (&ps2smap_irx, size_ps2smap_irx,
+		       if_conf_len, if_conf, &ret);
+  if (ret == 0)
+    scr_printf (STEP_OK);
+  else
+    {
+      scr_printf ("PS2SMAP.IRX %s %d\n", FAILED, ret);
+      return (-1);
+    }
 
   scr_printf ("\n");
 
@@ -318,30 +285,12 @@ int
 main (int argc,
       char *argv [])
 {
-  int init_tcpip = 0;
-
   SifInitRpc (0);
 
   init_scr ();
   scr_printf (APP_NAME "-" VERSION "\n");
 
   /* decide whether to load TCP/IP or it is already loaded */
-#if !defined (RESET_IOP)
-  if (argc == 0) /* Naplink */
-    init_tcpip = 1;
-  else
-    {
-      if (strncmp (argv [0], "host:", 5) == 0)
-	init_tcpip = 0; /* assume loading from PS2LINK */
-      if (strncmp (argv [0], "mc0:", 4) == 0 || /* loading from memory card */
-	  strncmp (argv [0], "cdrom", 5) == 0)  /* loading from CD */
-	init_tcpip = 1;
-    }
-#else
-  init_tcpip = 1;
-#endif
-
-#if defined (RESET_IOP)
   SifExitIopHeap ();
   SifLoadFileExit ();
   SifExitRpc ();
@@ -350,9 +299,8 @@ main (int argc,
   while (SifIopSync ())
     ;
   SifInitRpc (0);
-#endif
 
-  if (load_modules (init_tcpip) == 0)
+  if (load_modules () == 0)
     {
       scr_printf ("Ready\n");
     }

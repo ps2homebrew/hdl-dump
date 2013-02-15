@@ -1,6 +1,6 @@
 ##
 ## svr/ee/Makefile
-## $Id: Makefile,v 1.5 2005/05/06 14:50:35 b081 Exp $
+## $Id: Makefile,v 1.6 2006/05/21 21:43:56 bobi Exp $
 ##
 ## Copyright 2004 Bobi B., w1zard0f07@yahoo.com
 ##
@@ -32,8 +32,8 @@ EE_LIBS = -lc -lpatches
 
 EE_BIN = hdld_svr.elf
 
-EE_OBJS = loader.o graph.o font.o hdld_svr_iop.o \
-	iomanx.o ps2dev9.o ps2ip.o ps2smap.o ps2atad.o
+EE_OBJS = loader.o \
+	graph.o font.o iomanx.o ps2dev9.o ps2ip.o ps2smap.o ps2atad.o
 
 IRX_PATH = ../irx
 
@@ -44,7 +44,7 @@ clean:
 
 load: $(EE_BIN)
 	ps2client reset
-	sleep 2
+	sleep 3
 	ps2client execee host:$(EE_BIN)
 
 iomanx.s: $(IRX_PATH)/iomanX.irx
@@ -61,12 +61,6 @@ ps2ip.s: $(IRX_PATH)/ps2ip.irx
 
 ps2smap.s: $(IRX_PATH)/ps2smap.irx
 	@bin2s $< $@ ps2smap_irx
-
-poweroff.s: $(IRX_PATH)/poweroff.irx
-	@bin2s $< $@ poweroff_irx
-
-hdld_svr_iop.s: ../iop/hdld_svr.irx
-	@bin2s $< $@ hdlsvr_iop_irx
 
 include ../Defs.make
 include ../ee-rules.make

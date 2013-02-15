@@ -1,6 +1,6 @@
 /*
  * iin_aspi.c
- * $Id: iin_aspi.c,v 1.7 2005/07/10 21:06:48 bobi Exp $
+ * $Id: iin_aspi.c,v 1.8 2006/05/21 21:38:06 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -153,7 +153,8 @@ aspicd_alloc (int host, int scsi_id, int lun,
 	  aspi->size_in_sectors = size_in_sectors;
 	  aspi->sector_size = sector_size;
 	  aspi->unaligned = tmp;
-	  aspi->buffer = (void*) (((long) tmp + reqd_alignment - 1) & ~(reqd_alignment - 1));
+	  aspi->buffer = (void*) (((unsigned long) tmp + reqd_alignment - 1) &
+				  ~((unsigned long) reqd_alignment - 1));
 	}
       else
 	{ /* unable to allocate read buffer */

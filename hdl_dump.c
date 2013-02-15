@@ -1,6 +1,6 @@
 /*
  * hdl_dump.c
- * $Id: hdl_dump.c,v 1.17 2005/12/08 20:40:48 bobi Exp $
+ * $Id: hdl_dump.c,v 1.18 2006/05/21 21:37:14 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -48,7 +48,6 @@
 #include "iin.h"
 #include "aligned.h"
 #include "hio_probe.h"
-#include "net_io.h"
 #include "dict.h"
 #include "aspi_hlio.h"
 
@@ -314,8 +313,8 @@ show_hdl_game_info (const char *device_name,
 			    }
 			  for (i=0; i<num_parts; ++i)
 			    {
-			      unsigned long start = get_u32 (data + (i * 3 + 1));
-			      unsigned long length = get_u32 (data + (i * 3 + 2));
+			      u_int32_t start = get_u32 (data + (i * 3 + 1));
+			      u_int32_t length = get_u32 (data + (i * 3 + 2));
 			      total_size += ((u_int64_t) length) << 8;
 			      fprintf (stdout,
 				       "\tpart %2u is from sector 0x%06lx00, "
@@ -841,6 +840,10 @@ inject (const dict_t *config,
 	}
       game.compat_flags = compat_flags;
       game.is_dvd = is_dvd;
+
+      if (result == RET_OK)
+	/* update compatibility database */
+	ddb_update (config, game.startup, game.name, game.compat_flags);
 
       if (result == RET_OK)
 	result = hdl_inject (config, hio, iin, &game, pgs);
@@ -1371,54 +1374,14 @@ int
 main (int argc, char *argv[])
 {
   dict_t *config = NULL;
-  char config_file[256] = { "" };
 
-  /* decide where config file is */
-#if defined (_BUILD_WIN32)
-  char *profile = getenv ("USERPROFILE");
-  if (profile != NULL)
-    {
-      strcpy (config_file, profile);
-      strcat (config_file, "\\Application Data\\hdl_dump.conf");
-    }
-  else
-    strcpy (config_file, "./hdl_dump.conf");
-#elif defined (_BUILD_UNIX)
-  char *home = getenv ("HOME");
-  if (home != NULL)
-    {
-      strcpy (config_file, home);
-      strcat (config_file, "/.hdl_dump.conf");
-    }
-  else
-    strcpy (config_file, "./hdl_dump.conf");
-#endif
-
+  /* load configuration */
   config = dict_alloc ();
   if (config != NULL)
-    { /* initialize defaults */
-      dict_put_flag (config, CONFIG_LIMIT_TO_28BIT_FLAG, 1);
-      dict_put_flag (config, CONFIG_ENABLE_ASPI_FLAG, 0);
-      dict_put (config, CONFIG_PARTITION_NAMING,
-		CONFIG_PARTITION_NAMING_TOXICOS);
-#if 0
-      dict_put_flag (config, CONFIG_USE_COMPRESSION_FLAG, 1);
-#endif
-      dict_put (config, CONFIG_DISC_DATABASE_FILE, "./hdl_dump.list");
-
-#if defined (_BUILD_WIN32)
-      /* good combinations for Win32:
-       *  5/2 = 2,05 MB/sec,
-       * 10/3 = 2,06 MB/sec,
-       * 14/4 = 2,07 MB/sec */
-      dict_put (config, CONFIG_UDP_QUICK_PACKETS, "5");
-      dict_put (config, CONFIG_UDP_DELAY_TIME, "2");
-#else
-      dict_put (config, CONFIG_UDP_QUICK_PACKETS, "7");
-      dict_put (config, CONFIG_UDP_DELAY_TIME, "1000");
-#endif
-      dict_restore (config, config_file);
-      dict_store (config, config_file);
+    {
+      set_config_defaults (config);
+      dict_restore (config, get_config_file ());
+      dict_store (config, get_config_file ());
     }
 
   /* handle Ctrl+C gracefully */

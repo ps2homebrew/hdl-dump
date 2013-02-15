@@ -1,6 +1,6 @@
 ##
 ## svr/Makefile
-## $Id: Makefile,v 1.2 2004/12/04 10:28:43 b081 Exp $
+## $Id: Makefile,v 1.3 2006/05/21 21:43:32 bobi Exp $
 ##
 ## Copyright 2004 Bobi B., w1zard0f07@yahoo.com
 ##
@@ -22,11 +22,9 @@
 ##
 
 all:
-	$(MAKE) -C ./iop
+	$(MAKE) -C ./iop3
 	$(MAKE) -C ./ee
-	$(MAKE) -C ./win32
 
 clean:
-	$(MAKE) -C ./iop clean
+	$(MAKE) -C ./iop3 clean
 	$(MAKE) -C ./ee clean
-	$(MAKE) -C ./win32 clean
