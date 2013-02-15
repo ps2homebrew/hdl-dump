@@ -1,6 +1,6 @@
 /*
  * iin_iso.c
- * $Id: iin_iso.c,v 1.5 2004/08/15 16:44:19 b081 Exp $
+ * $Id: iin_iso.c,v 1.6 2004/08/20 12:35:17 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -22,107 +22,11 @@
  */
 
 #include <ctype.h>
+#include <string.h>
 #include "iin_iso.h"
+#include "iin_img_base.h"
 #include "osal.h"
 #include "retcodes.h"
-#include "aligned.h"
-
-
-typedef struct iin_iso_type
-{
-  iin_t iin;
-  osal_handle_t file;
-  aligned_t *al;
-} iin_iso_t;
-
-
-static int iso_stat (iin_t *iin,
-		     size_t *sector_size,
-		     size_t *num_sectors);
-
-static int iso_read (iin_t *iin,
-		     size_t start_sector,
-		     size_t num_sectors,
-		     const char **data,
-		     size_t *length);
-
-static int iso_close (iin_t *iin);
-
-
-/**************************************************************/
-static iin_iso_t*
-iso_alloc (osal_handle_t file,
-	   size_t device_sector_size)
-{
-  iin_iso_t *iso = (iin_iso_t*) osal_alloc (sizeof (iin_iso_t));
-  if (iso != NULL)
-    {
-      iin_t *iin = &iso->iin;
-      aligned_t *al = al_alloc (file, device_sector_size,
-				IIN_SECTOR_SIZE * IIN_NUM_SECTORS / device_sector_size);
-      if (al != NULL)
-	{ /* success */
-	  memset (iso, 0, sizeof (iin_iso_t));
-	  iin->stat = &iso_stat;
-	  iin->read = &iso_read;
-	  iin->close = &iso_close;
-	  strcpy (iin->source_type, "Plain ISO file");
-	  iso->file = file;
-	  iso->al = al;
-	}
-      else
-	{ /* failed */
-	  osal_free (iso);
-	  iso = NULL;
-	}
-    }
-  return (iso);
-}
-
-
-/**************************************************************/
-static int
-iso_stat (iin_t *iin,
-	  size_t *sector_size,
-	  size_t *num_sectors)
-{
-  iin_iso_t *iso = (iin_iso_t*) iin;
-  bigint_t size_in_bytes;
-  int result = osal_get_file_size (iso->file, &size_in_bytes);
-  if (result == OSAL_OK)
-    {
-      *sector_size = IIN_SECTOR_SIZE;
-      *num_sectors = (size_t) (size_in_bytes / *sector_size);
-    }
-  return (result);
-}
-
-
-/**************************************************************/
-static int
-iso_read (iin_t *iin,
-	  size_t start_sector,
-	  size_t num_sectors,
-	  const char **data,
-	  size_t *length)
-{
-  iin_iso_t *iso = (iin_iso_t*) iin;
-  return (al_read (iso->al, (bigint_t) start_sector * IIN_SECTOR_SIZE, data,
-		   num_sectors * IIN_SECTOR_SIZE, length));
-}
-
-
-/**************************************************************/
-static int
-iso_close (iin_t *iin)
-{
-  iin_iso_t *iso = (iin_iso_t*) iin;
-  int result;
-  al_free (iso->al);
-  result = osal_close (iso->file);
-  osal_free (iin);
-  return (result);
-}
 
 
 /**************************************************************/
@@ -131,7 +35,8 @@ iin_iso_probe_path (const char *path,
 		    iin_t **iin)
 {
   osal_handle_t file;
-  int result = osal_open (path, &file, 0);
+  size_t size_in_sectors, volume_sector_size;
+  int result = osal_open (path, &file, 0); /* open with caching enabled */
   if (result == OSAL_OK)
     { /* at offset 0x00008000 there should be "\x01CD001" */
       result = osal_seek (file, (bigint_t) 0x00008000);
@@ -144,33 +49,42 @@ iin_iso_probe_path (const char *path,
 	    {
 	      if (bytes == 6 &&
 		  memcmp (buffer, "\001CD001", 6) == 0)
-		;
+		; /* success */
 	      else
 		result = RET_NOT_COMPAT;
 	    }
 	}
+
+      if (result == OSAL_OK)
+	{
+	  bigint_t size_in_bytes;
+	  result = osal_get_file_size (file, &size_in_bytes);
+	  if (result == OSAL_OK)
+	    size_in_sectors = (size_t) (size_in_bytes / 2048);
+	}
+
+      if (result == OSAL_OK)
+	result = osal_get_volume_sect_size (path, &volume_sector_size);
+
       osal_close (file);
     }
 
   if (result == OSAL_OK)
-    { /* open ISO image file again, with no cache this time */
-      result = osal_open (path, &file, 1);
-      if (result == OSAL_OK)
+    {
+      iin_img_base_t *img_base = img_base_alloc (2048, 0);
+      if (img_base != NULL)
 	{
-	  size_t sector_size;
-	  result = osal_get_volume_sect_size (path, &sector_size);
+	  result = img_base_add_part (img_base, path, size_in_sectors, 0, volume_sector_size);
 	  if (result == OSAL_OK)
 	    {
-	      *iin = (iin_t*) iso_alloc (file, sector_size);
-	      if (*iin != NULL)
-		; /* success */
-	      else
-		{ /* iso_alloc failed */
-		  osal_close (file);
-		  result = RET_NO_MEM;
-		}
+	      *iin = (iin_t*) img_base;
+	      strcpy ((*iin)->source_type, "Plain ISO file");
 	    }
+	  else
+	    ((iin_t*) img_base)->close ((iin_t*) img_base);
 	}
+      else
+	result = RET_NO_MEM;
     }
   return (result);
 }

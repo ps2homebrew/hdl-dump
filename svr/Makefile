@@ -1,6 +1,6 @@
 ##
 ## svr/Makefile
-## $Id$
+## $Id: Makefile,v 1.1 2004/08/20 12:35:17 b081 Exp $
 ##
 ## Copyright 2004 Bobi B., w1zard0f07@yahoo.com
 ##

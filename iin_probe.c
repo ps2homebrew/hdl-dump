@@ -1,6 +1,6 @@
 /*
  * iin_probe.c
- * $Id: iin_probe.c,v 1.3 2004/08/15 16:44:19 b081 Exp $
+ * $Id: iin_probe.c,v 1.4 2004/08/20 12:35:17 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -23,13 +23,14 @@
 
 #include "iin.h"
 #include "iin_optical.h"
-#include "iin_iso.h"
+#include "iin_aspi.h"
 #include "iin_hdloader.h"
+#include "iin_net.h"
+#include "iin_nero.h"
 #include "iin_cdrwin.h"
 #include "iin_gi.h"
-#include "iin_nero.h"
+#include "iin_iso.h"
 #include "iin_iml.h"
-#include "iin_net.h"
 #include "retcodes.h"
 
 
@@ -42,6 +43,8 @@ iin_probe (const char *path,
   /* prefix-driven inputs first */
   if (result == RET_NOT_COMPAT)
     result = iin_optical_probe_path (path, iin);
+  if (result == RET_NOT_COMPAT)
+    result = iin_aspi_probe_path (path, iin);
   if (result == RET_NOT_COMPAT)
     result = iin_hdloader_probe_path (path, iin);
   if (result == RET_NOT_COMPAT)

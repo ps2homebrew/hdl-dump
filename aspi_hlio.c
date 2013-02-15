@@ -1,6 +1,6 @@
 /*
  * aspi_hlio.c - ASPI high-level I/O
- * $Id: aspi_hlio.c,v 1.2 2004/08/15 16:44:19 b081 Exp $
+ * $Id: aspi_hlio.c,v 1.3 2004/08/20 12:35:17 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -23,6 +23,7 @@
 
 #include "aspi_hlio.h"
 #include <windows.h>
+#include <stdio.h>
 #include <time.h>
 #include "wnaspi32.h"
 #include "osal.h"
@@ -37,15 +38,32 @@ typedef DWORD (*aspi_send_cmd_t) (LPSRB srb);
 typedef DWORD (*aspi_get_info_t) (void);
 
 /* globals */
-static int aspi_initialized = 0;
+static int aspi_initialized = 0; /* reference counter */
 static HMODULE aspi_lib = NULL;
 static aspi_send_cmd_t aspi_send_cmd;
 static aspi_get_info_t aspi_get_info;
-static int err_sense = 0, err_asc = 0, err_ascq = 0; /* last sense error */
+
+/* NOTICE: those are not thread-safe */
+static int err_srb_status = 0, err_sense = 0, err_asc = 0, err_ascq = 0;
 
 
 /**************************************************************/
-void
+static void
+aspi_set_last_error (int srb_status,
+		     int sense_key,
+		     int asc,
+		     int ascq)
+{
+  /* NOTICE: that is not thread-safe */
+  err_srb_status = srb_status;
+  err_sense = sense_key;
+  err_asc = asc;
+  err_ascq = ascq;
+}
+
+
+/**************************************************************/
+static void
 copy_and_reduce_spaces (char *out,
 			const char *in)
 {
@@ -78,7 +96,10 @@ aspi_load (void)
 {
   int result;
   if (aspi_initialized)
-    return (RET_OK);
+    {
+      ++aspi_initialized;
+      return (RET_OK);
+    }
 
 #if 0
   /* try loading both sequentially */
@@ -123,20 +144,27 @@ aspi_load (void)
 int
 aspi_unload (void)
 {
-  /* the old ASPI could crash if freed imediately after init */
-  Sleep (200);
-
-  /* unload and clean-up */
-  aspi_get_info = NULL;
-  aspi_send_cmd = NULL;
-
-  if (aspi_lib != NULL)
+  if (aspi_initialized)
     {
-      FreeLibrary (aspi_lib);
-      aspi_lib = NULL;
-    }
+      --aspi_initialized;
+      if (aspi_initialized == 0)
+	{
+	  /* the old ASPI could crash if freed imediately after init;
+	     borrowed from don't remember where */
+	  Sleep (200);
 
-  aspi_initialized = 0;
+	  /* unload and clean-up */
+	  aspi_get_info = NULL;
+	  aspi_send_cmd = NULL;
+
+	  if (aspi_lib != NULL)
+	    {
+	      FreeLibrary (aspi_lib);
+	      aspi_lib = NULL;
+	    }
+	  return (RET_OK);
+	}
+    }
   return (RET_OK);
 }
 
@@ -163,7 +191,10 @@ aspi_reset_device (int host,
   if (reset.SRB_Status == SS_COMP)
     return (RET_OK);
   else
-    return (RET_ERR);
+    {
+      aspi_set_last_error (reset.SRB_Status, 0, 0, 0);
+      return (RET_ERR);
+    }
 }
 
 
@@ -180,11 +211,15 @@ aspi_rescan_host (int host)
       rescan.SRB_Status == SS_NO_DEVICE)
     return (RET_OK);
   else
-    return (RET_ERR);
+    {
+      aspi_set_last_error (rescan.SRB_Status, 0, 0, 0);
+      return (RET_ERR);
+    }
 }
 
 
 /**************************************************************/
+#if 0 /* not used */
 static int
 aspi_exec (SRB_ExecSCSICmd *exec)
 {
@@ -203,14 +238,21 @@ aspi_exec (SRB_ExecSCSICmd *exec)
     { /* poll */
       aspi_send_cmd ((LPSRB) exec);
       while (exec->SRB_Status == SS_PENDING)
-	Sleep (1);
+	Sleep (1); /* don't 100% CPU, but Sleep (1) usually == Sleep (10) */
     }
   /* process the result code */
   if (exec->SRB_Status == SS_COMP)
     return (RET_OK);
   else
-    return (RET_ERR);
+    { /* keep error details */
+      int sense = exec->SenseArea [2] & 0x0f;
+      int asc = exec->SenseArea [12];
+      int ascq = exec->SenseArea [13];
+      aspi_set_last_error (exec->SRB_Status, sense, asc, ascq);
+      return (RET_ERR);
+    }
 }
+#endif
 
 
 /**************************************************************/
@@ -248,7 +290,7 @@ aspi_exec_to (SRB_ExecSCSICmd *exec,
 	      abort = 1;
 	      break;
 	    }
-	  Sleep (1);
+	  Sleep (1); /* don't 100% CPU, but Sleep (1) usually == Sleep (10) */
 	}
     }
 
@@ -259,26 +301,19 @@ aspi_exec_to (SRB_ExecSCSICmd *exec,
       abort.SRB_Cmd = SC_ABORT_SRB;
       abort.SRB_HaId = exec->SRB_HaId;
       abort.SRB_ToAbort = (void*) exec;
+      /* abort is synchronious - would not return until operation is aborted */
       aspi_send_cmd ((LPSRB) &abort);
-
-      /* abort is issued; however should we wait for operation to be aborted? */
-      /*
-      while (exec->SRB_Status == SS_PENDING)
-	Sleep (1);
-      */
     }
 
   /* process the result code */
   if (exec->SRB_Status == SS_COMP)
     return (RET_OK);
   else
-    {
-      if (exec->SRB_TargStat == 0x02) /* check status */
-	{
-	  err_sense = exec->SenseArea [2] & 0x0f;
-	  err_asc = exec->SenseArea [12];
-	  err_ascq = exec->SenseArea [13];
-	}
+    { /* keep error details */
+      int sense = exec->SenseArea [2] & 0x0f;
+      int asc = exec->SenseArea [12];
+      int ascq = exec->SenseArea [13];
+      aspi_set_last_error (exec->SRB_Status, sense, asc, ascq);
       return (RET_ERR);
     }
 }
@@ -305,7 +340,9 @@ aspi_dlist_add (scsi_devices_list_t *list,
 		int lun,
 		int type,
 		size_t align,
-		const char *name)
+		const char *name,
+		size_t sector_size,
+		size_t size_in_sectors)
 {
   scsi_device_t *dev;
   if (list->used == list->alloc)
@@ -333,6 +370,8 @@ aspi_dlist_add (scsi_devices_list_t *list,
   dev->type = type;
   dev->align = align;
   strcpy (dev->name, name);
+  dev->sector_size = sector_size;
+  dev->size_in_sectors = size_in_sectors;
   ++list->used;
   return (RET_OK);
 }
@@ -383,7 +422,7 @@ aspi_inquiry (int host,
       return (RET_OK);
     }
   else
-    return (RET_ERR);
+    return (RET_ERR); /* aspi_exec_to would track error by itself */
 }
 
 
@@ -443,18 +482,20 @@ aspi_scan_scsi_bus (scsi_devices_list_t **list)
 		      if (dtype.SRB_Status == SS_COMP)
 			{ /* device found */
 			  char device_name [28 + 1];
+			  size_t sector_size, size_in_sectors;
+
+			  /* prepare for an error */
+			  strcpy (device_name, "???");
+			  sector_size = size_in_sectors = -1;
 #if 1
-			  result = aspi_inquiry (host_adapter, scsi_id, lun, device_name);
-#else
-			  result = RET_ERR;
+			  /* return codes are intentionately ignored */
+			  aspi_inquiry (host_adapter, scsi_id, lun, device_name);
+			  aspi_stat (host_adapter, scsi_id, lun, &sector_size, &size_in_sectors);
 #endif
-			  if (result == RET_OK)
-			    result = aspi_dlist_add (*list, host_adapter, scsi_id, lun,
-						     dtype.SRB_DeviceType, alignment_mask,
-						     device_name);
-			  else
-			    result = aspi_dlist_add (*list, host_adapter, scsi_id, lun,
-						     dtype.SRB_DeviceType, alignment_mask, "???");
+			  result = aspi_dlist_add (*list, host_adapter, scsi_id, lun,
+						   dtype.SRB_DeviceType, alignment_mask,
+						   device_name, sector_size, size_in_sectors);
+
 #if 0 /* left to see how it is done */
 			  const char *type;
 			  char device_name [42];
@@ -494,8 +535,8 @@ int
 aspi_stat (int host,
 	   int scsi_id,
 	   int lun,
-	   size_t *size_in_sectors,
-	   size_t *sector_size)
+	   size_t *sector_size,
+	   size_t *size_in_sectors)
 {
   SRB_ExecSCSICmd exec;
   unsigned char capacity [8];
@@ -616,4 +657,195 @@ aspi_read_10 (int host,
   exec.CDBByte [11] = 0x00;
 
   return (aspi_exec_to (&exec, ASPI_TIMEOUT_IN_SEC * 1000));
+}
+
+
+/**************************************************************/
+static const char*
+aspi_srb_status_meaning (int status)
+{
+  switch (status)
+    { /* from wnaspi32.h: */
+    case SS_PENDING:                return ("SRB being processed");
+    case SS_COMP:                   return ("SRB completed without error");
+    case SS_ABORTED:                return ("SRB aborted");
+    case SS_ABORT_FAIL:             return ("Unable to abort SRB");
+    case SS_ERR:                    return ("SRB completed with error");
+    case SS_INVALID_CMD:            return ("Invalid ASPI command");
+    case SS_INVALID_HA:             return ("Invalid host adapter number");
+    case SS_NO_DEVICE:              return ("SCSI device not installed");
+    case SS_INVALID_SRB:            return ("Invalid parameter set in SRB");
+    case SS_BUFFER_ALIGN:           return ("Buffer not aligned");
+    case SS_ILLEGAL_MODE:           return ("Unsupported Windows mode");
+    case SS_NO_ASPI:                return ("No ASPI managers resident");
+    case SS_FAILED_INIT:            return ("ASPI for windows failed init");
+    case SS_ASPI_IS_BUSY:           return ("No resources available to execute cmd");
+    case SS_BUFFER_TO_BIG:          return ("Buffer size to big to handle");
+    case SS_MISMATCHED_COMPONENTS:  return ("The DLLs/EXEs of ASPI don't version check");
+    case SS_NO_ADAPTERS:            return ("No host adapters to manage");
+    case SS_INSUFFICIENT_RESOURCES: return ("Couldn't allocate resources needed to init");
+    case SS_ASPI_IS_SHUTDOWN:       return ("Call came to ASPI after PROCESS_DETACH");
+    case SS_BAD_INSTALL:            return ("DLL or other components are installed wrong");
+    default:                        return ("Unknown");
+    }
+}
+
+
+/**************************************************************/
+static const char*
+aspi_sense_key_meaning (int sense)
+{
+  switch (sense)
+    { /* from SPC-R11A.PDF: */
+    case 0x00: return ("No sense");
+    case 0x01: return ("Recovered error");
+    case 0x02: return ("Not ready");
+    case 0x03: return ("Medium error");
+    case 0x04: return ("Hadrware error");
+    case 0x05: return ("Illegal request");
+    case 0x06: return ("Unit attention");
+    case 0x07: return ("Data protect");
+    case 0x08: return ("Blank check");
+    case 0x09: return ("Vendor specific");
+    case 0x0a: return ("Copy aborted");
+    case 0x0b: return ("Aborted command");
+    case 0x0c: return ("Obsolete");
+    case 0x0d: return ("Volume overflow");
+    case 0x0e: return ("Miscompare");
+    case 0x0f: return ("Reserved");
+    default:   return ("Unknown");
+    }
+}
+
+
+/**************************************************************/
+static const char*
+aspi_sense_asc_ascq_meaning (int asc, int ascq)
+{
+  /* NOTICE: using a static buffer is not a thread-safe */
+  static char message [100];
+
+  /* from SPC-R11A.PDF: */
+  /**/ if (asc == 0x00 && ascq == 0x00) return ("No additional sense information");
+  else if (asc == 0x00 && ascq == 0x06) return ("I/O process terminated");
+  else if (asc == 0x00 && ascq == 0x11) return ("Audio play operation in progress");
+  else if (asc == 0x00 && ascq == 0x12) return ("Audio play operation paused");
+  else if (asc == 0x00 && ascq == 0x13) return ("Audio play operation successfully completed");
+  else if (asc == 0x00 && ascq == 0x14) return ("Audio play operation stopped due to error");
+  else if (asc == 0x00 && ascq == 0x16) return ("Operation in progress");
+  else if (asc == 0x00 && ascq == 0x17) return ("Cleaning requested");
+  else if (asc == 0x04 && ascq == 0x00) return ("Logical unit not ready, cause not reportable");
+  else if (asc == 0x04 && ascq == 0x01) return ("Logical unit is in process of becoming ready");
+  else if (asc == 0x04 && ascq == 0x02) return ("Logical unit not ready, initializing cmd. reqd");
+  else if (asc == 0x04 && ascq == 0x03) return ("Logical unit not ready, manual intervention reqd");
+  else if (asc == 0x04 && ascq == 0x07) return ("Logical unit not ready, operation in progress");
+  else if (asc == 0x04 && ascq == 0x08) return ("Logical unit not ready, long write in progress");
+  else if (asc == 0x05 && ascq == 0x00) return ("Logical unit does not respond to selection");
+  else if (asc == 0x08 && ascq == 0x00) return ("Logical unit communication failure");
+  else if (asc == 0x08 && ascq == 0x01) return ("Logical unit communication time-out");
+  else if (asc == 0x08 && ascq == 0x02) return ("Logical unit communication parity error");
+  else if (asc == 0x08 && ascq == 0x03) return ("Logical unit communication CRC error");
+  else if (asc == 0x09 && ascq == 0x00) return ("Track following error");
+  else if (asc == 0x09 && ascq == 0x01) return ("Track servo failure");
+  else if (asc == 0x10 && ascq == 0x00) return ("ID CRC or ECC error");
+  else if (asc == 0x11 && ascq == 0x00) return ("Unrecovered read error");
+  else if (asc == 0x11 && ascq == 0x06) return ("CIRC unrecovered error");
+  else if (asc == 0x11 && ascq == 0x11) return ("Read error - loss of streaming");
+  else if (asc == 0x15 && ascq == 0x00) return ("Random positioning error");
+  else if (asc == 0x16 && ascq == 0x00) return ("Data synchronization mark error");
+  else if (asc == 0x16 && ascq == 0x01) return ("Data sync error - data rewritten");
+  else if (asc == 0x16 && ascq == 0x02) return ("Data sync error - reccomend rewrite");
+  else if (asc == 0x16 && ascq == 0x03) return ("Data sync error - data auto-reallocated");
+  else if (asc == 0x16 && ascq == 0x04) return ("Data sync error - reccomend reassignment");
+  else if (asc == 0x1a && ascq == 0x00) return ("Parameter list length error");
+  else if (asc == 0x1b && ascq == 0x00) return ("Synchronious data transfer error");
+  else if (asc == 0x20 && ascq == 0x00) return ("Invalid command operation code");
+  else if (asc == 0x21 && ascq == 0x00) return ("LBA (logical block address) out of range");
+  else if (asc == 0x21 && ascq == 0x01) return ("Invalid element address");
+  else if (asc == 0x24 && ascq == 0x00) return ("Invalid field in CDB");
+  else if (asc == 0x26 && ascq == 0x00) return ("Invalid field in parameter list");
+  else if (asc == 0x26 && ascq == 0x01) return ("Parameter not supported");
+  else if (asc == 0x26 && ascq == 0x02) return ("Parameter value invalid");
+  else if (asc == 0x29 && ascq == 0x04) return ("Device internal reset");
+  else if (asc == 0x2b && ascq == 0x00) return ("Copy cannot execute since host cannot disconnect");
+  else if (asc == 0x2c && ascq == 0x00) return ("Command sequence error");
+  else if (asc == 0x2f && ascq == 0x00) return ("Commands cleared by another initiator");
+  else if (asc == 0x30 && ascq == 0x00) return ("Incompatible medium installed");
+  else if (asc == 0x30 && ascq == 0x01) return ("Cannot read medium - unknown format");
+  else if (asc == 0x30 && ascq == 0x02) return ("Cannot read medium - incompatible format");
+  else if (asc == 0x30 && ascq == 0x07) return ("Cleaning failure");
+  else if (asc == 0x3a && ascq == 0x00) return ("Medium not present");
+  else if (asc == 0x3a && ascq == 0x01) return ("Medium not present - tray closed");
+  else if (asc == 0x3a && ascq == 0x02) return ("Medium not present - tray open");
+  else if (asc == 0x3b && ascq == 0x04) return ("End of medium reached");
+  else if (asc == 0x3d && ascq == 0x00) return ("Invalid bits in identify message");
+  else if (asc == 0x3f && ascq == 0x02) return ("Changed operating definition");
+  else if (asc == 0x3f && ascq == 0x03) return ("Inquiry data has changed");
+  else if (asc == 0x40)
+    {
+      sprintf (message, "Diagnostic failure on component %02x", ascq);
+      return (message);
+    }
+  else if (asc == 0x44 && ascq == 0x00) return ("Internal target failure");
+  else if (asc == 0x47 && ascq == 0x00) return ("SCSI parity error");
+  else if (asc == 0x49 && ascq == 0x00) return ("Invalid message error");
+  else if (asc == 0x4a && ascq == 0x00) return ("Command phase error");
+  else if (asc == 0x4b && ascq == 0x00) return ("Data phase error");
+  else if (asc == 0x63 && ascq == 0x00) return ("End of user data encountered on this track");
+  else if (asc == 0x64 && ascq == 0x00) return ("Illegal mode for this track");
+  else if (asc == 0x64 && ascq == 0x01) return ("Invalid packet size");
+  else if (asc == 0x73 && ascq == 0x00) return ("CD control error");
+
+  else
+    {
+      sprintf (message, "ASC %02x, ASCQ %02x", asc, ascq);
+      return (message);
+    }
+}
+
+
+/**************************************************************/
+unsigned long
+aspi_get_last_error_code (void)
+{
+  /* NOTICE: that is not thread safe */
+  return ((err_srb_status << 24) |
+	  (err_sense << 16) |
+	  (err_asc << 8) |
+	  (err_ascq));
+}
+
+
+/**************************************************************/
+const char*
+aspi_get_last_error_msg (void)
+{
+  return (aspi_get_error_msg (aspi_get_last_error_code ()));
+}
+
+
+/**************************************************************/
+const char*
+aspi_get_error_msg (unsigned long aspi_error_code)
+{
+  int srb_status = (aspi_error_code >> 24) & 0xff;
+  int sense_key = (aspi_error_code >> 16) & 0xff;
+  int asc = (aspi_error_code >> 8) & 0xff;
+  int ascq = aspi_error_code & 0xff;
+
+  /**/ if (asc != 0x00 && ascq != 0x00)
+    return (aspi_sense_asc_ascq_meaning (asc, ascq));
+  else if (srb_status != SS_COMP)
+    return (aspi_srb_status_meaning (srb_status));
+  else
+    return (aspi_sense_key_meaning (sense_key));
+}
+
+
+/**************************************************************/
+void
+aspi_dispose_error_msg (char *msg)
+{
+  /* do nothing */
+  msg = NULL;
 }

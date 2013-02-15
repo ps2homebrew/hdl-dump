@@ -1,6 +1,6 @@
 /*
  * iin_net.c, based on iin_hdloader.c, v 1.1
- * $Id: iin_net.c,v 1.2 2004/08/15 16:44:19 b081 Exp $
+ * $Id: iin_net.c,v 1.3 2004/08/20 12:35:17 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -23,6 +23,8 @@
 
 #include <ctype.h>
 #include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
 #include "iin_net.h"
 #include "osal.h"
 #include "retcodes.h"
@@ -51,62 +53,6 @@ typedef struct iin_net_type
   hdl_part_t *parts;
   const hdl_part_t *last_part; /* the last partition where requested sectors were */
 } iin_net_t;
-
-
-static int net_stat (iin_t *iin,
-		     size_t *sector_size,
-		     size_t *num_sectors);
-
-static int net_read (iin_t *iin,
-		     size_t start_sector,
-		     size_t num_sectors,
-		     const char **data,
-		     size_t *length);
-
-static int net_close (iin_t *iin);
-
-
-/**************************************************************/
-static iin_net_t*
-net_alloc (hio_t *hio,
-	   size_t num_parts,
-	   const hdl_part_t *parts)
-{
-  iin_net_t *net = osal_alloc (sizeof (iin_net_t));
-  if (net != NULL)
-    {
-      iin_t *iin = &net->iin;
-      hdl_part_t *parts2 = osal_alloc (sizeof (hdl_part_t) * num_parts);
-      char *buffer = osal_alloc (IIN_SECTOR_SIZE * IIN_NUM_SECTORS + HDD_SECTOR_SIZE);
-      if (parts2 != NULL && buffer != NULL)
-	{ /* success */
-	  size_t i;
-	  memset (net, 0, sizeof (iin_net_t));
-	  iin->stat = &net_stat;
-	  iin->read = &net_read;
-	  iin->close = &net_close;
-	  strcpy (iin->source_type, "HD Loader partition via TCP/IP");
-	  net->hio = hio;
-	  net->unaligned = buffer;
-	  net->buffer = (void*) (((long) buffer + HDD_SECTOR_SIZE - 1) & ~(HDD_SECTOR_SIZE - 1));
-	  net->num_parts = num_parts;
-	  net->parts = parts2;
-	  for (i=0; i<num_parts; ++i)
-	    net->parts [i] = parts [i];
-	  net->last_part = net->parts;
-	}
-      else
-	{ /* failed */
-	  if (parts2 != NULL)
-	    osal_free (parts2);
-	  if (buffer != NULL)
-	    osal_free (buffer);
-	  osal_free (net);
-	  net = NULL;
-	}
-    }
-  return (net);
-}
 
 
 /**************************************************************/
@@ -190,6 +136,70 @@ net_close (iin_t *iin)
   net->hio->close (net->hio);
   osal_free (net);
   return (RET_OK);
+}
+
+
+/**************************************************************/
+static char*
+net_last_error (iin_t *iin)
+{
+  iin_net_t *net = (iin_net_t*) iin;
+  return (net->hio->last_error (net->hio));
+}
+
+
+/**************************************************************/
+static void
+net_dispose_error (iin_t *iin,
+		   char* error)
+{
+  iin_net_t *net = (iin_net_t*) iin;
+  net->hio->dispose_error (net->hio, error);
+}
+
+
+/**************************************************************/
+static iin_net_t*
+net_alloc (hio_t *hio,
+	   size_t num_parts,
+	   const hdl_part_t *parts)
+{
+  iin_net_t *net = osal_alloc (sizeof (iin_net_t));
+  if (net != NULL)
+    {
+      iin_t *iin = &net->iin;
+      hdl_part_t *parts2 = osal_alloc (sizeof (hdl_part_t) * num_parts);
+      char *buffer = osal_alloc (IIN_SECTOR_SIZE * IIN_NUM_SECTORS + HDD_SECTOR_SIZE);
+      if (parts2 != NULL && buffer != NULL)
+	{ /* success */
+	  size_t i;
+	  memset (net, 0, sizeof (iin_net_t));
+	  iin->stat = &net_stat;
+	  iin->read = &net_read;
+	  iin->close = &net_close;
+	  iin->last_error = &net_last_error;
+	  iin->dispose_error = &net_dispose_error;
+	  strcpy (iin->source_type, "HD Loader partition via TCP/IP");
+	  net->hio = hio;
+	  net->unaligned = buffer;
+	  net->buffer = (void*) (((long) buffer + HDD_SECTOR_SIZE - 1) & ~(HDD_SECTOR_SIZE - 1));
+	  net->num_parts = num_parts;
+	  net->parts = parts2;
+	  for (i=0; i<num_parts; ++i)
+	    net->parts [i] = parts [i];
+	  net->last_part = net->parts;
+	}
+      else
+	{ /* failed */
+	  if (parts2 != NULL)
+	    osal_free (parts2);
+	  if (buffer != NULL)
+	    osal_free (buffer);
+	  osal_free (net);
+	  net = NULL;
+	}
+    }
+  return (net);
 }
 
 

@@ -1,6 +1,6 @@
 /*
  * svr/ee/loader.c
- * $Id: loader.c,v 1.3 2004/08/15 16:44:19 b081 Exp $
+ * $Id: loader.c,v 1.4 2004/08/20 12:35:17 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -57,7 +57,7 @@
 #endif
 
 
-#define RESET_IOP
+/* #define RESET_IOP */
 #define LOAD_MRBROWN_PATCHES
 #define LOAD_SIOMAN_AND_MC
 /* #define LOAD_POWEROFF */
@@ -180,12 +180,6 @@ load_modules (int init_tcpip)
   printf (": %d\n", ret);
   printf ("MCSERV");
   ret = SifLoadModule ("rom0:MCSERV", 0, NULL);
-  printf (": %d\n", ret);
-#endif
-
-#if defined (LOAD_POWEROFF)
-  printf ("POWEROFF.IRX");
-  SifExecModuleBuffer (&poweroff_irx, size_poweroff_irx, 0, NULL, &ret);
   printf (": %d\n", ret);
 #endif
 

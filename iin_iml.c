@@ -1,6 +1,6 @@
 /*
  * iin_iml.c
- * $Id: iin_iml.c,v 1.4 2004/08/15 16:44:19 b081 Exp $
+ * $Id: iin_iml.c,v 1.5 2004/08/20 12:35:17 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -23,6 +23,8 @@
 
 #include <stdio.h>
 #include <ctype.h>
+#include <string.h>
+#include <stdlib.h>
 #include "iin_iml.h"
 #include "iin_img_base.h"
 #include "osal.h"

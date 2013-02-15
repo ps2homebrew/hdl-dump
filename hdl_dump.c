@@ -1,6 +1,6 @@
 /*
  * hdl_dump.c
- * $Id: hdl_dump.c,v 1.9 2004/08/15 16:44:19 b081 Exp $
+ * $Id: hdl_dump.c,v 1.10 2004/08/20 12:35:17 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -21,11 +21,14 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include <windows.h>
+#if defined (_BUILD_WIN32)
+#  include <windows.h>
+#endif
 #include <assert.h>
 #include <ctype.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <time.h>
 
 #include "config.h"
@@ -40,24 +43,40 @@
 #include "aligned.h"
 #include "hio_probe.h"
 #include "net_io.h"
-#include "aspi_hlio.h"
+#if defined (_WITH_ASPI)
+#  include "aspi_hlio.h"
+#endif
 
 
 /* command names */
 #define CMD_QUERY "query"
-#define CMD_DUMP "dump"
-#define CMD_COMPARE "compare"
+#if defined (INCLUDE_DUMP_CMD)
+#  define CMD_DUMP "dump"
+#endif
+#if defined (INCLUDE_COMPARE_CMD)
+#  define CMD_COMPARE "compare"
+#endif
 #define CMD_TOC "toc"
-#define CMD_MAP "map"
+#if defined (INCLUDE_MAP_CMD)
+#  define CMD_MAP "map"
+#endif
 #define CMD_DELETE "delete"
-#define CMD_ZERO "zero"
-#define CMD_CUTOUT "cutout"
-#define CMD_HDL_INFO "info"
+#if defined (INCLUDE_ZERO_CMD)
+#  define CMD_ZERO "zero"
+#endif
+#if defined (INCLUDE_CUTOUT_CMD)
+#  define CMD_CUTOUT "cutout"
+#endif
+#if defined (INCLUDE_INFO_CMD)
+#  define CMD_HDL_INFO "info"
+#endif
 #define CMD_HDL_EXTRACT "extract"
 #define CMD_HDL_INJECT_CD "inject_cd"
 #define CMD_HDL_INJECT_DVD "inject_dvd"
 #define CMD_CDVD_INFO "cdvd_info"
-#define CMD_READ_TEST "read_test"
+#if defined (INCLUDE_READ_TEST_CMD)
+#  define CMD_READ_TEST "read_test"
+#endif
 
 
 /**************************************************************/
@@ -74,13 +93,14 @@ show_apa_toc (const apa_partition_table_t *table)
 	       (unsigned long) (part->start >> 8),
 	       table->parts [i].existing ? '.' : '*',
 	       table->parts [i].modified ? '*' : ':',
-	       part->length / 2048);
+	       (unsigned long) (part->length / 2048));
       if (part->main == 0)
 	fprintf (stdout, "%4x [%-*s]\n",
 		 part->type, PS2_PART_IDMAX, part->id);
       else
 	fprintf (stdout, "      part # %2lu in %06lx00\n",
-		 part->number, (unsigned long) (part->main >> 8));
+		 (unsigned long) (part->number),
+		 (unsigned long) (part->main >> 8));
     }
 
   fprintf (stdout, "Total device size: %uMB, used: %uMB, available: %uMB\n",
@@ -89,6 +109,7 @@ show_apa_toc (const apa_partition_table_t *table)
 
 
 /**************************************************************/
+#if defined (INCLUDE_MAP_CMD)
 static void
 show_apa_map (const apa_partition_table_t *table)
 {
@@ -116,6 +137,7 @@ show_apa_map (const apa_partition_table_t *table)
   fprintf (stdout, "\nTotal device size: %uMB, used: %uMB, available: %uMB\n",
 	   table->device_size_in_mb, table->allocated_chunks * 128, table->free_chunks * 128);
 }
+#endif /* INCLUDE_MAP_CMD defined? */
 
 
 /**************************************************************/
@@ -134,6 +156,7 @@ show_toc (const char *device_name)
 
 
 /**************************************************************/
+#if defined (INCLUDE_MAP_CMD)
 static int
 show_map (const char *device_name)
 {
@@ -146,9 +169,11 @@ show_map (const char *device_name)
     }
   return (result);
 }
+#endif /* INCLUDE_MAP_CMD defined? */
 
 
 /**************************************************************/
+#if defined (INCLUDE_INFO_CMD)
 static int
 show_hdl_game_info (const char *device_name,
 		    const char *game_name)
@@ -223,9 +248,11 @@ show_hdl_game_info (const char *device_name,
     }
   return (result);
 }
+#endif /* INCLUDE_INFO_CMD defined? */
 
 
 /**************************************************************/
+#if defined (INCLUDE_CUTOUT_CMD)
 static int
 show_apa_cut_out_for_inject (const char *device_name,
 			     size_t size_in_mb)
@@ -250,6 +277,7 @@ show_apa_cut_out_for_inject (const char *device_name,
     }
   return (result);
 }
+#endif /* INCLUDE_CUTOUT_CMD defined? */
 
 
 /**************************************************************/
@@ -273,13 +301,14 @@ delete_partition (const char *device_name,
 
 
 /**************************************************************/
+#if defined (INCLUDE_COMPARE_CMD)
 static int
 compare (const char *file_name_1,
 	 int file_name_1_is_device,
 	 const char *file_name_2,
 	 int file_name_2_is_device)
 {
-  osal_handle_t file1 = 0, file2 = 0;
+  osal_handle_t file1 = OSAL_HANDLE_INIT, file2 = OSAL_HANDLE_INIT;
   int different = 0;
   int result = osal_open (file_name_1, &file1, 1);
   if (result == OSAL_OK)
@@ -324,9 +353,11 @@ compare (const char *file_name_1,
     }
   return (result == RET_OK ? (!different ? RET_OK : RET_DIFFERENT) : result);
 }
+#endif /* INCLUDE_COMPARE_CMD defined? */
 
 
 /**************************************************************/
+#if defined (INCLUDE_ZERO_CMD)
 static int
 zero_device (const char *device_name)
 {
@@ -351,6 +382,7 @@ zero_device (const char *device_name)
     }
   return (result);
 }
+#endif /* INCLUDE_ZERO_CMD defined? */
 
 
 /**************************************************************/
@@ -372,7 +404,7 @@ query_devices (void)
 	  fprintf (stdout, "\t%s ", dev->name);
 	  if (dev->status == 0)
 	    {
-	      fprintf (stdout, "%ld MB", (long) (dev->capacity / 1024) / 1024);
+	      fprintf (stdout, "%lu MB", (unsigned long) (dev->capacity / 1024) / 1024);
 	      if (dev->is_ps2 == RET_OK)
 		fprintf (stdout, ", formatted Playstation 2 HDD\n");
 	      else
@@ -384,7 +416,7 @@ query_devices (void)
 	      if (error != NULL)
 		{
 		  fprintf (stdout, error);
-		  osal_free (error);
+		  osal_dispose_error_msg (error);
 		}
 	      else
 		fprintf (stdout, "error querying device.\n");
@@ -397,14 +429,14 @@ query_devices (void)
 	  const osal_dev_t *dev = optical_drives->device + i;
 	  fprintf (stdout, "\t%s ", dev->name);
 	  if (dev->status == 0)
-	    fprintf (stdout, "%ld MB\n", (long) (dev->capacity / 1024) / 1024);
+	    fprintf (stdout, "%lu MB\n", (unsigned long) (dev->capacity / 1024) / 1024);
 	  else
 	    {
 	      char *error = osal_get_error_msg (dev->status);
 	      if (error != NULL)
 		{
 		  fprintf (stdout, error);
-		  osal_free (error);
+		  osal_dispose_error_msg (error);
 		}
 	      else
 		fprintf (stdout, "error querying device.\n");
@@ -414,6 +446,53 @@ query_devices (void)
       osal_dlist_free (optical_drives);
       osal_dlist_free (hard_drives);
     }
+
+#if defined (_WITH_ASPI)
+  if (aspi_load () == RET_OK)
+    {
+      scsi_devices_list_t *dlist;
+      result = aspi_scan_scsi_bus (&dlist);
+      if (result == RET_OK)
+	{
+	  size_t i;
+
+	  fprintf (stdout, "\nDrives via ASPI:\n");
+	  for (i=0; i<dlist->used; ++i)
+	    {
+	      switch (dlist->device [i].type)
+		{
+		case 0x00: /* HDD most likely */
+		  printf ("\thdd%d:%d:%d ",
+			  dlist->device [i].host,
+			  dlist->device [i].scsi_id,
+			  dlist->device [i].lun);
+		  break;
+
+		case 0x05: /* MMC device */
+		  printf ("\tcd%d:%d:%d  ",
+			  dlist->device [i].host,
+			  dlist->device [i].scsi_id,
+			  dlist->device [i].lun);
+		  break;
+		}
+	      if (dlist->device [i].size_in_sectors != -1 &&
+		  dlist->device [i].sector_size != -1)
+		printf ("%lu MB\n",
+			(unsigned long) (((bigint_t) dlist->device [i].size_in_sectors *
+					  dlist->device [i].sector_size) / (1024 * 1024)));
+	      else
+		printf ("Stat failed.\n");
+	    }
+	  aspi_dlist_free (dlist);
+	}
+      else
+	fprintf (stderr, "\nError scanning SCSI bus.\n");
+      aspi_unload ();
+    }
+  else
+    fprintf (stderr, "\nUnable to initialize ASPI.\n");
+#endif /* _WITH_ASPI */
+
   return (result);
 }
 
@@ -531,6 +610,7 @@ cdvd_info (const char *path)
 
 
 /**************************************************************/
+#if defined (INCLUDE_READ_TEST_CMD)
 static int
 read_test (const char *path,
 	   progress_t *pgs)
@@ -549,19 +629,26 @@ read_test (const char *path,
 	  pgs_prepare (pgs, (bigint_t) num_sectors * sector_size);
 	  do
 	    {
-	      const char *data;
+	      const char *data; /* not used */
+	      size_t sectors = (num_sectors > IIN_NUM_SECTORS ? IIN_NUM_SECTORS : num_sectors);
 	      /* TODO: would "buffer overflow" if read more than IIN_NUM_SECTORS? */
-	      result = iin->read (iin, sector, IIN_NUM_SECTORS, &data, &len);
-	      sector += len / IIN_SECTOR_SIZE;
-	      pgs_update (pgs, sector * IIN_SECTOR_SIZE);
+	      result = iin->read (iin, sector, sectors, &data, &len);
+	      if (result == RET_OK)
+		{
+		  size_t sectors_read = len / IIN_SECTOR_SIZE;
+		  sector += sectors_read;
+		  num_sectors -= sectors_read;
+		  pgs_update (pgs, sector * IIN_SECTOR_SIZE);
+		}
 	    }
-	  while (result == OSAL_OK && len > 0);
+	  while (result == OSAL_OK && num_sectors > 0 && len > 0);
 	}
       
       iin->close (iin);
     }
   return (result);
 }
+#endif /* INCLUDE_READ_TEST_CMD defined? */
 
 
 /**************************************************************/
@@ -610,32 +697,42 @@ show_usage_and_exit (const char *app_path,
       { CMD_QUERY, NULL,
 	"Displays a list of all hard- and optical drives.",
 	NULL, NULL, 0 },
+#if defined (INCLUDE_DUMP_CMD)
       { CMD_DUMP, "device file",
 	"Makes device image (AKA ISO-image).",
 	"cd0: c:\\tekken.iso", NULL, 0 },
-      { CMD_COMPARE, "file_or_device file_or_device",
-	"Binary compares two files/devices.",
-	"c:\\file1.bin c:\\file2.bin", "cd0: c:\\tekken.iso", 0 },
+#endif
+#if defined (INCLUDE_COMPARE_CMD)
+      { CMD_COMPARE, "iin1 iin2",
+	"Compares two ISO inputs.",
+	"c:\\mc.cue c:\\mc.iso", "cd0: c:\\tekken.iso", 0 },
+#endif
       { CMD_TOC, "device",
 	"Displays PlayStation 2 HDD TOC.",
 	"hdd1:", NULL, 0 },
+#if defined (INCLUDE_MAP_CMD)
       { CMD_MAP, "device",
 	"Displays PlayStation 2 HDD usage map.",
 	"hdd1:", NULL, 0 },
+#endif
       { CMD_DELETE, "device partition",
 	"Deletes PlayStation 2 HDD partition. Use \"map\" to find exact partition name.",
 	"hdd1: \"PP.HDL.Tekken Tag Tournament\"", NULL, 1 },
+#if defined (INCLUDE_ZERO_CMD)
       { CMD_ZERO, "device",
 	"Fills HDD with zeroes. All information on the HDD will be lost.",
 	"hdd1:", NULL, 1 },
-#if !defined (CRIPPLED_INJECTION)
+#endif
+#if !defined (CRIPPLED_INJECTION) && defined (INCLUDE_CUTOUT_CMD)
       { CMD_CUTOUT, "device size_in_MB",
 	"Displays partition table as if a new partition has been created.",
 	"hdd1: 2560", NULL, 0 },
 #endif
+#if defined (INCLUDE_INFO_CMD)
       { CMD_HDL_INFO, "device partition",
 	"Displays information about HD Loader partition.",
 	"hdd1: \"tekken tag tournament\"", NULL, 0 },
+#endif
       { CMD_HDL_EXTRACT, "device partition output_file",
 	"Extracts application image from HD Loader partition.",
 	"hdd1: \"tekken tag tournament\" c:\\tekken.iso", NULL, 0 },
@@ -659,9 +756,11 @@ show_usage_and_exit (const char *app_path,
 	"Displays signature (startup file) and volume label for a CD-/DVD-drive\n"
 	"or image file.",
 	"c:\\gt3.gi", "\"hdd2:Gran Turismo 3\"", 0 },
+#if defined (INCLUDE_READ_TEST_CMD)
       { CMD_READ_TEST, "iin_input",
 	"Consecutively reads all sectors from the specified input.",
 	"cd0:", NULL, 0 },
+#endif /* INCLUDE_READ_TEST_CMD defined? */
       { NULL, NULL,
 	NULL,
 	NULL, NULL, 0 }
@@ -731,7 +830,6 @@ show_usage_and_exit (const char *app_path,
 
       while (h->command_name != NULL)
 	{
-	  ++count;
 	  if (!is_first)
 	    {
 	      if ((count % 5) == 0)
@@ -745,6 +843,7 @@ show_usage_and_exit (const char *app_path,
 	  if (h->dangerous)
 	    fprintf (stdout, "*");
 	  ++h;
+	  ++count;
 	}
       fprintf (stdout, "\n");
 
@@ -780,8 +879,8 @@ map_device_name_or_exit (const char *input,
   switch (result)
     {
     case RET_OK: return;
-    case RET_BAD_FORMAT: fprintf (stderr, "%s: bad format.\n", input); exit (50);
-    case RET_BAD_DEVICE: fprintf (stderr, "%s: bad device.\n", input); exit (51);
+    case RET_BAD_FORMAT: fprintf (stderr, "%s: bad format.\n", input); exit (100 + RET_BAD_FORMAT);
+    case RET_BAD_DEVICE: fprintf (stderr, "%s: bad device.\n", input); exit (100 + RET_BAD_DEVICE);
     }
 }
 
@@ -800,7 +899,10 @@ handle_result_and_exit (int result,
 	unsigned long err_code = osal_get_last_error_code ();
 	char *error = osal_get_last_error_msg ();
 	if (error != NULL)
-	  fprintf (stderr, "%08lx (%lu): %s", err_code, err_code, error);
+	  {
+	    fprintf (stderr, "%08lx (%lu): %s\n", err_code, err_code, error);
+	    osal_dispose_error_msg (error);
+	  }
 	else
 	  fprintf (stderr, "%08lx (%lu): Unknown error.\n", err_code, err_code);
       }
@@ -901,14 +1003,21 @@ handle_result_and_exit (int result,
 int
 main (int argc, char *argv [])
 {
+  /*
+  go_aspi ();
+  return (0);
+  */
+
   if (argc > 1)
     {
       const char *command_name = argv [1];
+
       if (caseless_compare (command_name, CMD_QUERY))
 	{ /* show all devices */
 	  handle_result_and_exit (query_devices (), NULL, NULL);
 	}
 
+#if defined (INCLUDE_DUMP_CMD)
       else if (caseless_compare (command_name, CMD_DUMP))
 	{ /* dump CD/DVD-ROM to the HDD */
 	  char device_name [30];
@@ -921,7 +1030,9 @@ main (int argc, char *argv [])
 	  handle_result_and_exit (dump_device (device_name, argv [3], 0, get_progress ()),
 				  argv [2], NULL);
 	}
+#endif /* INCLUDE_DUMP_CMD defined? */
 
+#if defined (INCLUDE_COMPARE_CMD)
       else if (caseless_compare (command_name, CMD_COMPARE))
 	{ /* compare two files or devices or etc. */
 	  char device_name_1 [30];
@@ -938,6 +1049,7 @@ main (int argc, char *argv [])
 					   is_device_2 ? device_name_2 : argv [3], is_device_2),
 				  NULL, NULL);
 	}
+#endif /* INCLUDE_COMPARE_CMD defined? */
 
       else if (caseless_compare (command_name, CMD_TOC))
 	{ /* show TOC of a PlayStation 2 HDD */
@@ -947,6 +1059,7 @@ main (int argc, char *argv [])
 	  handle_result_and_exit (show_toc (argv [2]), argv [2], NULL);
 	}
 
+#if defined (INCLUDE_MAP_CMD)
       else if (caseless_compare (command_name, CMD_MAP))
 	{ /* show map of a PlayStation 2 HDD */
 	  if (argc != 3)
@@ -954,6 +1067,7 @@ main (int argc, char *argv [])
 
 	  handle_result_and_exit (show_map (argv [2]), argv [2], NULL);
 	}
+#endif /* INCLUDE_MAP_CMD defined? */
 
       else if (caseless_compare (command_name, CMD_DELETE))
 	{ /* delete partition */
@@ -964,6 +1078,7 @@ main (int argc, char *argv [])
 				  argv [2], argv [3]);
 	}
 
+#if defined (INCLUDE_ZERO_CMD)
       else if (caseless_compare (command_name, CMD_ZERO))
 	{ /* zero HDD */
 	  char device_name [30];
@@ -976,7 +1091,9 @@ main (int argc, char *argv [])
 	  handle_result_and_exit (zero_device (device_name),
 				  argv [2], NULL);
 	}
+#endif /* INCLUDE_ZERO_CMD defined? */
 
+#if defined (INCLUDE_INFO_CMD)
       else if (caseless_compare (command_name, CMD_HDL_INFO))
 	{ /* show HD Loader game info */
 	  if (argc != 4)
@@ -985,6 +1102,7 @@ main (int argc, char *argv [])
 	  handle_result_and_exit (show_hdl_game_info (argv [2], argv [3]),
 				  argv [2], argv [3]);
 	}
+#endif /* INCLUDE_INFO_CMD defined? */
 
       else if (caseless_compare (command_name, CMD_HDL_EXTRACT))
 	{ /* extract game image from a HD Loader partition */
@@ -1016,6 +1134,7 @@ main (int argc, char *argv [])
 				  argv [2], argv [3]);
 	}
 
+#if defined (INCLUDE_CUTOUT_CMD)
       else if (caseless_compare (command_name, CMD_CUTOUT))
 	{ /* calculate and display how to arrange a new HD Loader partition */
 	  char device_name [30];
@@ -1028,6 +1147,7 @@ main (int argc, char *argv [])
 	  handle_result_and_exit (show_apa_cut_out_for_inject (device_name, atoi (argv [3])),
 				  argv [2], NULL);
 	}
+#endif /* INCLUDE_CUTOUT_CMD defined? */
 
       else if (caseless_compare (command_name, CMD_CDVD_INFO))
 	{ /* try to display startup file and volume label for an iin */
@@ -1037,6 +1157,7 @@ main (int argc, char *argv [])
 	  handle_result_and_exit (cdvd_info (argv [2]), argv [2], NULL);
 	}
 
+#if defined (INCLUDE_READ_TEST_CMD)
       else if (caseless_compare (command_name, CMD_READ_TEST))
 	{
 	  if (argc != 3)
@@ -1044,6 +1165,7 @@ main (int argc, char *argv [])
 
 	  handle_result_and_exit (read_test (argv [2], get_progress ()), argv [2], NULL);
 	}
+#endif /* INCLUDE_READ_TEST_CMD defined? */
 
       else
 	{ /* something else... -h perhaps? */

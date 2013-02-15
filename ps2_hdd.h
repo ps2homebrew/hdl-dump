@@ -1,6 +1,6 @@
 /*
  * ps2_hdd.h
- * $Id: ps2_hdd.h,v 1.2 2004/08/15 16:44:19 b081 Exp $
+ * $Id: ps2_hdd.h,v 1.3 2004/08/20 12:35:17 b081 Exp $
  *
  * borrowed from ps2fdisk
  */
@@ -8,9 +8,14 @@
 #if !defined (_PS2_HDD_H)
 #define _PS2_HDD_H
 
+#if defined(_BUILD_WIN32)
 typedef unsigned char u_int8_t;
 typedef unsigned short u_int16_t;
 typedef unsigned long u_int32_t;
+
+#elif defined (_BUILD_UNIX)
+#  include <sys/types.h>
+#endif
 
 /* Various PS2 partition constants */
 #define PS2_PARTITION_MAGIC	0x00415041	/* "APA\0" */

@@ -1,6 +1,6 @@
 /*
  * iin.h
- * $Id: iin.h,v 1.4 2004/08/15 16:44:19 b081 Exp $
+ * $Id: iin.h,v 1.5 2004/08/20 12:35:17 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -55,6 +55,11 @@ typedef int (*iin_read_t) (iin_t *iin,
 			   const char **data,
 			   size_t *length);
 
+/* return last error text in a memory buffer, that would be freed by calling iin_dispose_error_t */
+typedef char* (*iin_last_error_t) (iin_t *iin);
+typedef void (*iin_dispose_error_t) (iin_t *iin,
+				     char* error);
+
 /* iin should not be used after close */
 typedef int (*iin_close_t) (iin_t *iin);
 
@@ -63,6 +68,8 @@ struct iin_type
   iin_stat_t stat;
   iin_read_t read;
   iin_close_t close;
+  iin_last_error_t last_error;
+  iin_dispose_error_t dispose_error;
   char source_type [36];
 };
 

@@ -1,6 +1,6 @@
 /*
  * iin_aspi.h
- * $Id: iin_aspi.h,v 1.2 2004/08/15 16:44:19 b081 Exp $
+ * $Id: iin_aspi.h,v 1.3 2004/08/20 12:35:17 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -25,7 +25,12 @@
 #define _IIN_ASPI_H
 
 
-int go_aspi (void);
+#include "iin.h"
+
+/* would accept "cd0:2:0" */
+int
+iin_aspi_probe_path (const char *path,
+		     iin_t **iin);
 
 
 #endif /* _IIN_ASPI_H defined? */

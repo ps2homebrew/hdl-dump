@@ -1,6 +1,6 @@
 ##
 ## Makefile
-## $Id: Makefile,v 1.10 2004/08/15 16:44:18 b081 Exp $
+## $Id: Makefile,v 1.11 2004/08/20 12:35:17 b081 Exp $
 ##
 ## Copyright 2004 Bobi B., w1zard0f07@yahoo.com
 ##
@@ -22,7 +22,7 @@
 ##
 
 CFLAGS = -O0 -g -Wall -ansi -pedantic -Wno-long-long -mno-cygwin \
-	-D_BUILD_WIN32 -D_DEBUG #-DCRIPPLED_INJECTION
+	-D_BUILD_WIN32 -D_DEBUG # -D_WITH_ASPI #-DCRIPPLED_INJECTION
 LDFLAGS = -lwsock32
 
 all: hdl_dump.exe
@@ -40,11 +40,11 @@ rsrc.o: rsrc.rc
 	@echo -e "\tR $<"
 	@windres -o $@ -i $<
 
-# +ioctl_hlio.o +iin_aspi.o aspi_hlio.o
+# +ioctl_hlio.o 
 hdl_dump.exe: hdl_dump.o rsrc.o osal_win32.o apa.o common.o progress.o hdl.o isofs.o \
 		iin_img_base.o iin_optical.o iin_iso.o iin_hdloader.o iin_cdrwin.o \
 		iin_nero.o iin_gi.o iin_iml.o iin_probe.o iin_net.o aligned.o \
-		hio_probe.o hio_win32.o hio_net.o net_io.o
+		hio_probe.o hio_win32.o hio_net.o net_io.o iin_aspi.o aspi_hlio.o
 	@echo -e "\tL $@"
 	@$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 

@@ -1,6 +1,6 @@
 /*
  * iin_img_base.c
- * $Id: iin_img_base.c,v 1.5 2004/08/15 16:44:19 b081 Exp $
+ * $Id: iin_img_base.c,v 1.6 2004/08/20 12:35:17 b081 Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -23,6 +23,7 @@
 
 #include <assert.h>
 #include <ctype.h>
+#include <string.h>
 #include "iin_img_base.h"
 #include "osal.h"
 #include "retcodes.h"
@@ -55,54 +56,21 @@ struct iin_img_base_type
 
   size_t num_parts, alloc_parts;
   part_t *parts;
+
+  unsigned long error_code; /* against osal_... */
 };
-
-static int img_base_stat (iin_t *iin,
-			  size_t *sector_size,
-			  size_t *num_sectors);
-
-static int img_base_read (iin_t *iin,
-			  size_t start_sector,
-			  size_t num_sectors,
-			  const char **data,
-			  size_t *length);
-
-static int img_base_close (iin_t *iin);
-
-static void close_current (iin_img_base_t *img_base);
 
 
 /**************************************************************/
-iin_img_base_t*
-img_base_alloc (size_t raw_sector_size,
-		size_t raw_skip_offset)
+static void
+close_current (iin_img_base_t *img_base)
 {
-  iin_img_base_t *img_base = (iin_img_base_t*) osal_alloc (sizeof (iin_img_base_t));
-  if (img_base != NULL)
-    {
-      iin_t *iin = &img_base->iin;
-      size_t buffer_size = (IIN_NUM_SECTORS + 1) * IIN_SECTOR_SIZE;
-      char *buffer = osal_alloc (buffer_size);
-      if (buffer != NULL)
-	{ /* success */
-	  memset (img_base, 0, sizeof (iin_img_base_t));
-	  iin->stat = &img_base_stat;
-	  iin->read = &img_base_read;
-	  iin->close = &img_base_close;
-	  img_base->unaligned = buffer;
-	  img_base->buffer =
-	    (void*) (((unsigned long) buffer + IIN_SECTOR_SIZE - 1) & ~(IIN_SECTOR_SIZE - 1));
-	  assert (img_base->buffer >= img_base->unaligned);
-	  img_base->raw_sector_size = raw_sector_size;
-	  img_base->raw_skip_offset = raw_skip_offset;
-	}
-      else
-	{ /* failed */
-	  osal_free (img_base);
-	  img_base = NULL;
-	}
+  if (img_base->current != NULL)
+    { /* close the old input */
+      al_free (img_base->al);
+      osal_close (img_base->file);
+      img_base->current = NULL;
     }
-  return (img_base);
 }
 
 
@@ -315,6 +283,8 @@ img_base_read (iin_t *iin,
 		--(*length);
 	    }
 	}
+      else
+	img_base->error_code = osal_get_last_error_code ();
     }
   return (result);
 }
@@ -337,13 +307,54 @@ img_base_close (iin_t *iin)
 
 
 /**************************************************************/
-static void
-close_current (iin_img_base_t *img_base)
+static char*
+img_base_last_error (iin_t *iin)
 {
-  if (img_base->current != NULL)
-    { /* close the old input */
-      al_free (img_base->al);
-      osal_close (img_base->file);
-      img_base->current = NULL;
+  iin_img_base_t *img_base = (iin_img_base_t*) iin;
+  return (osal_get_error_msg (img_base->error_code));
+}
+
+
+/**************************************************************/
+static void
+img_base_dispose_error (iin_t *iin,
+			char* error)
+{
+  osal_dispose_error_msg (error);
+}
+
+
+/**************************************************************/
+iin_img_base_t*
+img_base_alloc (size_t raw_sector_size,
+		size_t raw_skip_offset)
+{
+  iin_img_base_t *img_base = (iin_img_base_t*) osal_alloc (sizeof (iin_img_base_t));
+  if (img_base != NULL)
+    {
+      iin_t *iin = &img_base->iin;
+      size_t buffer_size = (IIN_NUM_SECTORS + 1) * IIN_SECTOR_SIZE;
+      char *buffer = osal_alloc (buffer_size);
+      if (buffer != NULL)
+	{ /* success */
+	  memset (img_base, 0, sizeof (iin_img_base_t));
+	  iin->stat = &img_base_stat;
+	  iin->read = &img_base_read;
+	  iin->close = &img_base_close;
+	  iin->last_error = &img_base_last_error;
+	  iin->dispose_error = &img_base_dispose_error;
+	  img_base->unaligned = buffer;
+	  img_base->buffer =
+	    (void*) (((unsigned long) buffer + IIN_SECTOR_SIZE - 1) & ~(IIN_SECTOR_SIZE - 1));
+	  assert (img_base->buffer >= img_base->unaligned);
+	  img_base->raw_sector_size = raw_sector_size;
+	  img_base->raw_skip_offset = raw_skip_offset;
+	}
+      else
+	{ /* failed */
+	  osal_free (img_base);
+	  img_base = NULL;
+	}
     }
+  return (img_base);
 }
