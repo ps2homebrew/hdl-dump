@@ -169,6 +169,7 @@ clean:
 ifeq ($(WINDOWS), no)
 	@rm -f $(BINARY).exe.so
 endif
+	rm -f *.d *.exe *.o
 
 rmdeps:
 	@rm -f $(DEPENDS)

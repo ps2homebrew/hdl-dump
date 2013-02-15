@@ -1,3 +1,10 @@
+0.9.0a
+	+ KELF injection into source code
+	~ KELF can be 2.5Mb or less it will be injected at partition
+	  area header at offset 0x111000
+	~ elf name is PATINFO.KELF and elf must be placed into folder
+	  with working HDL Dumb
+
 0.9.0
 	+ new networking server
 	+ copy_hdd command (doing what the name says), contributed by JimmyZ

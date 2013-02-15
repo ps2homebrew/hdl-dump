@@ -162,7 +162,8 @@ all: $(BINARY)
 
 clean:
 	@rm -f $(BINARY) $(OBJECTS)
-
+	@rm -f $(DEPENDS)
+	rm -f *.d *.o *.exe
 
 rmdeps:
 	@rm -f $(DEPENDS)
