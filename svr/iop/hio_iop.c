@@ -1,0 +1,167 @@
+/*
+ * hio_iop.c
+ * $Id: hio_iop.c,v 1.2 2004/08/15 16:44:20 b081 Exp $
+ *
+ * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
+ *
+ * This file is part of hdl_dump.
+ *
+ * hdl_dump is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * hdl_dump is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with hdl_dump; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ */
+
+#include <sysmem.h>
+#include <sysclib.h>
+#include <atad.h>
+#include "net_io.h"
+#include "hio_iop.h"
+#include "retcodes.h"
+
+
+typedef struct hio_iop_type
+{
+  hio_t hio;
+  int unit;
+  size_t size_in_sectors;
+} hio_iop_t;
+
+
+static int iop_stat (hio_t *hio,
+		     size_t *size_in_kb);
+
+static int iop_read (hio_t *hio,
+		     size_t start_sector,
+		     size_t num_sectors,
+		     void *output,
+		     size_t *bytes);
+
+static int iop_write (hio_t *hio,
+		      size_t start_sector,
+		      size_t num_sectors,
+		      const void *input,
+		      size_t *bytes);
+
+static int iop_close (hio_t *hio);
+
+
+/**************************************************************/
+static hio_t*
+iop_alloc (int unit,
+	   size_t size_in_sectors)
+{
+  hio_iop_t *iop = AllocSysMemory (ALLOC_FIRST, sizeof (hio_iop_t), NULL);
+  if (iop != NULL)
+    {
+      hio_t *hio = &iop->hio;
+      hio->stat = &iop_stat;
+      hio->read = &iop_read;
+      hio->write = &iop_write;
+      hio->close = &iop_close;
+      iop->unit = unit;
+      iop->size_in_sectors = size_in_sectors;
+    }
+  return ((hio_t*) iop);
+}
+
+
+/**************************************************************/
+static int
+iop_stat (hio_t *hio,
+	  size_t *size_in_kb)
+{
+  hio_iop_t *iop = (hio_iop_t*) hio;
+  *size_in_kb = iop->size_in_sectors / 2;
+  return (RET_OK);
+}
+
+
+/**************************************************************/
+static int
+iop_read (hio_t *hio,
+	  size_t start_sector,
+	  size_t num_sectors,
+	  void *output,
+	  size_t *bytes)
+{
+  hio_iop_t *iop = (hio_iop_t*) hio;
+  int result = atadDmaTransfer (iop->unit, output,
+				start_sector, num_sectors, ATA_DIR_READ);
+  if (result == 0)
+    {
+      *bytes = num_sectors * HDD_SECTOR_SIZE;
+      return (RET_OK);
+    }
+  else
+    return (RET_ERR);
+}
+
+
+/**************************************************************/
+static int
+iop_write (hio_t *hio,
+	   size_t start_sector,
+	   size_t num_sectors,
+	   const void *input,
+	   size_t *bytes)
+{
+  hio_iop_t *iop = (hio_iop_t*) hio;
+  int result = atadDmaTransfer (iop->unit, (char*) input,
+				start_sector, num_sectors, ATA_DIR_WRITE);
+  if (result == 0)
+    {
+      result = atadFlushCache (iop->unit);
+      if (result == 0)
+	{
+	  *bytes = num_sectors * HDD_SECTOR_SIZE;
+	  return (RET_OK);
+	}
+    }
+  return (RET_ERR);
+}
+
+
+/**************************************************************/
+static int
+iop_close (hio_t *hio)
+{
+  FreeSysMemory (hio);
+  return (RET_OK);
+}
+
+
+/**************************************************************/
+int
+hio_iop_probe (const char *path,
+	       hio_t **hio)
+{
+  if (tolower (path [0]) == 'h' &&
+      tolower (path [1]) == 'd' &&
+      tolower (path [2]) == 'd' &&
+      (path [3] >= '0' && path [3] <= '9') &&
+      path [4] == ':' &&
+      path [5] == '\0')
+    {
+      int unit = path [3] - '0';
+      ata_devinfo_t *dev_info = atadInit (unit);
+      if (dev_info != NULL && dev_info->exists)
+	{
+	  *hio = iop_alloc (unit, dev_info->total_sectors);
+	  if (*hio != NULL)
+	    return (RET_OK);
+	  else
+	    return (RET_NO_MEM);
+	}
+    }
+  return (RET_NOT_COMPAT);
+}
