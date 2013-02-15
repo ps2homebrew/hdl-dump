@@ -1,6 +1,6 @@
 /*
  * isofs.h
- * $Id: isofs.h,v 1.6 2005/07/10 21:06:48 bobi Exp $
+ * $Id: isofs.h,v 1.7 2006/06/18 13:12:10 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -29,10 +29,21 @@
 
 C_START
 
-int isofs_get_ps_cdvd_details (iin_t *iin,
-			       char volume_id [32 + 1],
-			       char signature [12 + 1],
-			       u_int64_t *layer_pvd);
+typedef struct ps2_cdvd_info_type
+{
+  enum
+    {
+      mt_unknown,
+      mt_cd,
+      mt_dvd
+    } media_type;
+  char volume_id[32 + 1];
+  char startup_elf[12 + 1];
+  u_int64_t layer_pvd;
+} ps2_cdvd_info_t;
+
+int isofs_get_ps2_cdvd_info (iin_t *iin,
+			     ps2_cdvd_info_t *info);
 
 C_END
 

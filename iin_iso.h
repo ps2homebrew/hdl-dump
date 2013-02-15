@@ -1,6 +1,6 @@
 /*
  * iin_iso.h
- * $Id: iin_iso.h,v 1.5 2005/07/10 21:06:48 bobi Exp $
+ * $Id: iin_iso.h,v 1.6 2006/06/18 13:11:41 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -30,8 +30,7 @@
 C_START
 
 /* would accept any plain ISO file */
-int iin_iso_probe_path (const dict_t *config,
-			const char *path,
+int iin_iso_probe_path (const char *path,
 			iin_t **iin);
 
 C_END

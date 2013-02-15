@@ -1,6 +1,6 @@
 /*
  * hdl_dump.c
- * $Id: hdl_dump.c,v 1.18 2006/05/21 21:37:14 bobi Exp $
+ * $Id: hdl_dump.c,v 1.19 2006/06/18 13:09:08 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -50,15 +50,13 @@
 #include "hio_probe.h"
 #include "dict.h"
 #include "aspi_hlio.h"
+#include "net_io.h"
 
 
 /* command names */
 #define CMD_QUERY "query"
 #if defined (INCLUDE_DUMP_CMD)
 #  define CMD_DUMP "dump"
-#endif
-#if defined (INCLUDE_COMPARE_CMD)
-#  define CMD_COMPARE "compare"
 #endif
 #if defined (INCLUDE_COMPARE_IIN_CMD)
 #  define CMD_COMPARE_IIN "compare_iin"
@@ -68,7 +66,9 @@
 #if defined (INCLUDE_MAP_CMD)
 #  define CMD_MAP "map"
 #endif
-#define CMD_DELETE "delete"
+#if defined (INCLUDE_DELETE_CMD)
+#  define CMD_DELETE "delete"
+#endif
 #if defined (INCLUDE_ZERO_CMD)
 #  define CMD_ZERO "zero"
 #endif
@@ -83,6 +83,7 @@
 #define CMD_HDL_INJECT_DVD "inject_dvd"
 #define CMD_HDL_INSTALL "install"
 #define CMD_CDVD_INFO "cdvd_info"
+#define CMD_CDVD_INFO2 "cdvd_info2"
 #if defined (INCLUDE_READ_TEST_CMD)
 #  define CMD_READ_TEST "read_test"
 #endif
@@ -93,22 +94,31 @@
 #if defined (INCLUDE_INITIALIZE_CMD)
 #  define CMD_INITIALIZE "initialize"
 #endif
+#if defined (INCLUDE_BACKUP_TOC_CMD)
+#  define CMD_BACKUP_TOC "backup_toc"
+#endif
+#if defined (INCLUDE_RESTORE_TOC_CMD)
+#  define CMD_RESTORE_TOC "restore_toc"
+#endif
+#if defined (INCLUDE_DIAG_CMD)
+#  define CMD_DIAG "diag"
+#endif
 
 
 /**************************************************************/
 static void
-show_apa_toc (const apa_partition_table_t *table)
+show_apa_slice (const apa_slice_t *slice)
 {
   u_int32_t i;
 
-  for (i=0; i<table->part_count; ++i)
+  for (i=0; i<slice->part_count; ++i)
     {
-      const ps2_partition_header_t *part = &table->parts[i].header;
+      const ps2_partition_header_t *part = &slice->parts[i].header;
 	  
       fprintf (stdout, "%06lx00%c%c %5luMB ",
 	       (unsigned long) (get_u32 (&part->start) >> 8),
-	       table->parts[i].existing ? '.' : '*',
-	       table->parts[i].modified ? '*' : ':',
+	       slice->parts[i].existing ? '.' : '*',
+	       slice->parts[i].modified ? '*' : ':',
 	       (unsigned long) (get_u32 (&part->length) / 2048));
       if (get_u32 (&part->main) == 0)
 	fprintf (stdout, "%4x [%-*s]\n",
@@ -119,24 +129,80 @@ show_apa_toc (const apa_partition_table_t *table)
 		 (unsigned long) (get_u32 (&part->main) >> 8));
     }
 
-  fprintf (stdout, "Total device size: %uMB, used: %uMB, available: %uMB\n",
-	   (unsigned int) table->device_size_in_mb,
-	   (unsigned int) (table->allocated_chunks * 128),
-	   (unsigned int) (table->free_chunks * 128));
+  fprintf (stdout, "Total slice size: %uMB, used: %uMB, available: %uMB\n",
+	   (unsigned int) slice->size_in_mb,
+	   (unsigned int) (slice->allocated_chunks * 128),
+	   (unsigned int) (slice->free_chunks * 128));
+}
+
+
+/**************************************************************/
+static void
+show_apa_slice2 (const apa_slice_t *slice)
+{
+  u_int32_t i;
+
+  fprintf (stdout, "type   start     #parts size name\n");
+  for (i = 0; i < slice->part_count; ++i)
+    {
+      const ps2_partition_header_t *part = &slice->parts[i].header;
+      if (get_u32 (&part->main) == 0)
+	{
+	  u_int32_t j, count = get_u32 (&part->nsub);
+	  u_int32_t tot_len = get_u32 (&part->length);
+	  for (j = 0; j < count; ++j)
+	    tot_len += get_u32 (&part->subs[j].length);
+	  fprintf (stdout, "0x%04x %06lx00%c%c %2lu %5luMB %-*s\n",
+		   get_u16 (&part->type),
+		   (unsigned long) get_u32 (&part->start) >> 8,
+		   slice->parts[i].existing ? '.' : '*',
+		   slice->parts[i].modified ? '*' : ':',
+		   (unsigned long) count + 1, /* main partition counts, too */
+		   (unsigned long) tot_len / 2048,
+		   PS2_PART_IDMAX, part->id);
+	}
+    }
+
+  fprintf (stdout, "Total slice size: %uMB, used: %uMB, available: %uMB\n",
+	   (unsigned int) slice->size_in_mb,
+	   (unsigned int) (slice->allocated_chunks * 128),
+	   (unsigned int) (slice->free_chunks * 128));
+}
+
+
+/**************************************************************/
+static void
+show_apa_toc (const apa_toc_t *toc,
+	      int view)
+{
+  if (toc->got_2nd_slice)
+    fprintf (stdout, "Slice 1\n");
+  if (view == 0)
+    show_apa_slice (toc->slice + 0);
+  else
+    show_apa_slice2 (toc->slice + 0);
+  if (toc->got_2nd_slice)
+    {
+      fprintf (stdout, "Slice 2 (starting sectors relative to 0x10000000)\n");
+      if (view == 0)
+	show_apa_slice (toc->slice + 1);
+      else
+	show_apa_slice2 (toc->slice + 1);
+    }
 }
 
 
 /**************************************************************/
 #if defined (INCLUDE_MAP_CMD)
 static void
-show_apa_map (const apa_partition_table_t *table)
+show_slice_map (const apa_slice_t *slice)
 {
   /* show device map */
-  const char *map = table->chunks_map;
+  const char *map = slice->chunks_map;
   const u_int32_t GIGS_PER_ROW = 8;
   u_int32_t i, count = 0;
 
-  for (i=0; i<table->total_chunks; ++i)
+  for (i=0; i<slice->total_chunks; ++i)
     {
       if (count == 0)
 	fprintf (stdout, "%3uGB: ",
@@ -154,10 +220,23 @@ show_apa_map (const apa_partition_table_t *table)
 	}
     }
 
-  fprintf (stdout, "\nTotal device size: %uMB, used: %uMB, available: %uMB\n",
-	   (unsigned int) table->device_size_in_mb,
-	   (unsigned int) (table->allocated_chunks * 128),
-	   (unsigned int) (table->free_chunks * 128));
+  fprintf (stdout, "\nTotal slice size: %uMB, used: %uMB, available: %uMB\n",
+	   (unsigned int) slice->size_in_mb,
+	   (unsigned int) (slice->allocated_chunks * 128),
+	   (unsigned int) (slice->free_chunks * 128));
+}
+
+static void
+show_apa_map (const apa_toc_t *toc)
+{
+  if (toc->got_2nd_slice)
+    fprintf (stdout, "Slice 1\n");
+  show_slice_map (toc->slice + 0);
+  if (toc->got_2nd_slice)
+    {
+      fprintf (stdout, "Slice 2 (starting sectors relative to 0x10000000)\n");
+      show_slice_map (toc->slice + 1);
+    }
 }
 #endif /* INCLUDE_MAP_CMD defined? */
 
@@ -167,12 +246,12 @@ static int
 show_toc (const dict_t *config,
 	  const char *device_name)
 {
-  apa_partition_table_t *table;
-  int result = apa_ptable_read (config, device_name, &table);
+  apa_toc_t *toc;
+  int result = apa_toc_read (config, device_name, &toc);
   if (result == RET_OK)
     {
-      show_apa_toc (table);
-      apa_ptable_free (table);
+      show_apa_toc (toc, 1);
+      apa_toc_free (toc);
     }
   return (result);
 }
@@ -188,7 +267,7 @@ show_hdl_toc (const dict_t *config,
   if (result == RET_OK)
     {
       hdl_games_list_t *glist;
-      result = hdl_glist_read (config, hio, &glist);
+      result = hdl_glist_read (hio, &glist);
       if (result == RET_OK)
 	{
 	  u_int32_t i, j;
@@ -208,7 +287,7 @@ show_hdl_toc (const dict_t *config,
 		  }
 	      printf ("%3s %7luKB %*s %-12s %s\n",
 		      game->is_dvd ? "DVD" : "CD ",
-		      game->total_size_in_kb,
+		      (unsigned long) game->raw_size_in_kb,
 		      MAX_FLAGS * 2 - 1, compat_flags + 1, /* trim leading + */
 		      game->startup,
 		      game->name);
@@ -228,14 +307,15 @@ show_hdl_toc (const dict_t *config,
 /**************************************************************/
 #if defined (INCLUDE_MAP_CMD)
 static int
-show_map (const char *device_name)
+show_map (const dict_t *config,
+	  const char *device_name)
 {
-  apa_partition_table_t *table;
-  int result = apa_ptable_read (device_name, &table);
+  apa_toc_t *toc;
+  int result = apa_toc_read (config, device_name, &toc);
   if (result == RET_OK)
     {
-      show_apa_map (table);
-      apa_ptable_free (table);
+      show_apa_map (toc);
+      apa_toc_free (toc);
     }
   return (result);
 }
@@ -245,97 +325,102 @@ show_map (const char *device_name)
 /**************************************************************/
 #if defined (INCLUDE_INFO_CMD)
 static int
-show_hdl_game_info (const char *device_name,
+show_hdl_game_info (const dict_t *config,
+		    const char *device_name,
 		    const char *game_name)
 {
   hio_t *hio;
-  int result = hio_probe (device_name, &hio);
+  int result = hio_probe (config, device_name, &hio);
   if (result == RET_OK)
     {
-      apa_partition_table_t *table;
-      result = apa_ptable_read_ex (hio, &table);
+      apa_toc_t *toc;
+      result = apa_toc_read_ex (hio, &toc);
       if (result == RET_OK)
 	{
+	  int slice_index;
 	  u_int32_t partition_index;
-	  result = apa_find_partition (table, game_name, &partition_index);
+	  result = apa_find_partition (toc, game_name,
+				       &slice_index, &partition_index);
 	  if (result == RET_NOT_FOUND)
-	    { /* use heuristics - look among the HD Loader partitions */
-	      char tmp[100];
-	      strcpy (tmp, "PP.HDL.");
-	      strcat (tmp, game_name);
-	      result = apa_find_partition (table, tmp, &partition_index);
+	    { /* assume `name' is game name, instead of partition name */
+	      char partition_id[PS2_PART_IDMAX + 1];
+	      result = hdl_lookup_partition_ex (hio, game_name, partition_id);
+	      if (result == RET_OK)
+		result = apa_find_partition (toc, partition_id,
+					     &slice_index, &partition_index);
 	    }
 
 	  if (result == RET_OK)
 	    { /* partition found */
-	      const u_int32_t PART_SYSDATA_SIZE = 4 * 1024 * 1024;
-	      unsigned char *buffer = osal_alloc (PART_SYSDATA_SIZE);
-	      if (buffer != NULL)
+	      const u_int32_t SLICE_2_OFFS = 0x10000000; /* sectors */
+	      unsigned char buffer[1024];
+	      u_int32_t len;
+	      u_int32_t sect =
+		get_u32 (&toc->slice[slice_index].parts[partition_index].header.start) + 0x00101000 / 512 + slice_index * SLICE_2_OFFS;
+	      result = hio->read (hio, sect, 1024 / HDD_SECTOR_SIZE,
+				  buffer, &len);
+	      if (result == OSAL_OK)
 		{
-		  u_int32_t len;
-		  result = hio->read (hio,
-				      get_u32 (&table->parts[partition_index].header.start),
-				      (4 _MB) / HDD_SECTOR_SIZE, buffer, &len);
-		  if (result == OSAL_OK)
-		    {
-		      const char *signature = (char*) buffer + 0x001010ac;
-		      const char *hdl_name = (char*) buffer + 0x00101008;
-		      u_int32_t type = buffer[0x001010ec];
-		      u_int32_t num_parts = buffer[0x001010f0];
-		      const u_int32_t *data = (u_int32_t*) (buffer + 0x001010f5);
-		      u_int32_t i;
+		  const char *signature = (char*) buffer + 0x00ac;
+		  const char *hdl_name = (char*) buffer + 0x0008;
+		  u_int32_t type = buffer[0x00ec];
+		  u_int32_t num_parts = buffer[0x00f0];
+		  const u_int32_t *data = (u_int32_t*) (buffer + 0x00f5);
+		  u_int32_t i;
 
-		      if (buffer[0x00101000] == 0xed &&
-			  buffer[0x00101001] == 0xfe &&
-			  buffer[0x00101002] == 0xad &&
-			  buffer[0x00101003] == 0xde)
-			{ /* 0xdeadfeed magic found */
-			  u_int64_t total_size = 0;
+		  if (buffer[0x0000] == 0xed &&
+		      buffer[0x0001] == 0xfe &&
+		      buffer[0x0002] == 0xad &&
+		      buffer[0x0003] == 0xde)
+		    { /* 0xdeadfeed magic found */
+		      u_int64_t total_size = 0;
 
 #if 0
-			  /* save main partition incomplete header or debug purposes */
-			  write_file (signature, buffer, 0x00101200);
+		      /* save main partition header for debug purposes */
+		      write_file (signature, buffer, 0x0200);
 #endif
 
-			  fprintf (stdout, "%s: [%s], %s\n",
-				   signature, hdl_name, (type == 0x14 ? "DVD" : "CD"));
-			  if (buffer[0x1010a8] != 0)
-			    {
-			      char compat_flags[6 + 1] = { "" };
-			      if (buffer[0x1010a8] & 0x01)
-				strcat (compat_flags, "+1");
-			      if (buffer[0x1010a8] & 0x02)
-				strcat (compat_flags, "+2");
-			      if (buffer[0x1010a8] & 0x04)
-				strcat (compat_flags, "+3");
-			      fprintf (stdout, "compatibility flags: %s\n",
-				       compat_flags + 1);
-			    }
-			  for (i=0; i<num_parts; ++i)
-			    {
-			      u_int32_t start = get_u32 (data + (i * 3 + 1));
-			      u_int32_t length = get_u32 (data + (i * 3 + 2));
-			      total_size += ((u_int64_t) length) << 8;
-			      fprintf (stdout,
-				       "\tpart %2u is from sector 0x%06lx00, "
-				       "%7luKB long\n",
-				       (unsigned int) (i + 1),
-				       start, length / 4);
-			    }
-			  fprintf (stdout,
-				   "Total size: %luKB (%luMB approx.)\n",
-				   (unsigned long) (total_size / 1024),
-				   (unsigned long) (total_size / (1024 * 1024)));
+		      fprintf (stdout, "%s: [%s], %s\n",
+			       signature, hdl_name, (type == 0x14 ? "DVD" : "CD"));
+		      if (buffer[0x00a8] != 0)
+			{
+			  u_int32_t flags = get_u32 (buffer + 0x00a8);
+			  char compat_flags[MAX_FLAGS * 2 + 1] = { 0 };
+			  for (i = 0; i < MAX_FLAGS; ++i)
+			    if (flags & (1 << i))
+			      {
+				char buffer[5];
+				sprintf (buffer, "+%u",
+					 (unsigned int) (i + 1));
+				strcat (compat_flags, buffer);
+			      }
+			  fprintf (stdout, "compatibility flags: %s\n",
+				   compat_flags + 1);
 			}
-		      else
-			result = RET_NOT_HDL_PART;
+		      for (i=0; i<num_parts; ++i)
+			{
+			  u_int32_t start = get_u32 (data + (i * 3 + 1));
+			  u_int32_t length = get_u32 (data + (i * 3 + 2));
+			  total_size += ((u_int64_t) length) << 8;
+			  fprintf (stdout,
+				   "\tpart %2u is from sector 0x%06lx00, "
+				   "%7luKB long\n",
+				   (unsigned int) (i + 1),
+				   (unsigned long) start,
+				   (unsigned long) length / 4);
+			}
+		      fprintf (stdout,
+			       "Total size: %luKB (%luMB approx.)\n",
+			       (unsigned long) (total_size / 1024),
+			       (unsigned long) (total_size / (1024 * 1024)));
 		    }
-		  osal_free (buffer);
+		  else
+		    result = RET_NOT_HDL_PART;
 		}
 	      else
 		result = RET_NO_MEM;
 	    }
-	  apa_ptable_free (table);
+	  apa_toc_free (toc);
 	}
       hio->close (hio);
     }
@@ -347,26 +432,30 @@ show_hdl_game_info (const char *device_name,
 /**************************************************************/
 #if defined (INCLUDE_CUTOUT_CMD)
 static int
-show_apa_cut_out_for_inject (const char *device_name,
+show_apa_cut_out_for_inject (const dict_t *config,
+			     const char *device_name,
+			     int slice_index,
 			     u_int32_t size_in_mb)
 {
-  apa_partition_table_t *table;
-  int result = apa_ptable_read (device_name, &table);
+  apa_toc_t *toc;
+  int result = apa_toc_read (config, device_name, &toc);
   if (result == RET_OK)
     {
       u_int32_t new_partition_index;
-      result = apa_allocate_space (table,
+
+      result = apa_allocate_space (toc,
 				   "<new partition>",
 				   size_in_mb,
+				   &slice_index,
 				   &new_partition_index,
 				   0);
       if (result == RET_OK)
 	{
-	  show_apa_toc (table);
-	  show_apa_map (table);
+	  show_apa_toc (toc, 0);
+	  show_apa_map (toc);
 	}
 
-      apa_ptable_free (table);
+      apa_toc_free (toc);
     }
   return (result);
 }
@@ -374,87 +463,34 @@ show_apa_cut_out_for_inject (const char *device_name,
 
 
 /**************************************************************/
+#if defined (INCLUDE_DELETE_CMD)
 static int
 delete_partition (const dict_t *config,
 		  const char *device_name,
 		  const char *name)
 {
-  apa_partition_table_t *table;
-  int result = apa_ptable_read (config, device_name, &table);
+  apa_toc_t *toc;
+  int result = apa_toc_read (config, device_name, &toc);
   if (result == RET_OK)
     {
-      result = apa_delete_partition (table, name);
+      result = apa_delete_partition (toc, name);
       if (result == RET_NOT_FOUND)
 	{ /* assume `name' is game name, instead of partition name */
 	  char partition_id[PS2_PART_IDMAX + 1];
-	  result = hdl_lookup_partition (config, device_name, name, partition_id);
+	  result = hdl_lookup_partition (config, device_name,
+					 name, partition_id);
 	  if (result == RET_OK)
-	    result = apa_delete_partition (table, partition_id);
+	    result = apa_delete_partition (toc, partition_id);
 	}
 
       if (result == RET_OK)
-	result = apa_commit (config, device_name, table);
+	result = apa_commit (config, device_name, toc);
 
-      apa_ptable_free (table);
+      apa_toc_free (toc);
     }
   return (result);
 }
-
-
-/**************************************************************/
-#if defined (INCLUDE_COMPARE_CMD)
-static int
-compare (const char *file_name_1,
-	 int file_name_1_is_device,
-	 const char *file_name_2,
-	 int file_name_2_is_device)
-{
-  osal_handle_t file1 = OSAL_HANDLE_INIT, file2 = OSAL_HANDLE_INIT;
-  int different = 0;
-  int result = osal_open (file_name_1, &file1, 1);
-  if (result == OSAL_OK)
-    {
-      result = osal_open (file_name_2, &file2, 1);
-      if (result == OSAL_OK)
-	{
-	  const u_int32_t BUFF_SIZE = 4 * 1024 * 1024;
-	  char *buffer = osal_alloc (BUFF_SIZE);
-	  if (buffer != NULL)
-	    {
-	      u_int32_t read1 = 0, read2 = 0;
-	      do
-		{
-		  result = osal_read (file1, buffer + 0 * BUFF_SIZE / 2,
-				      BUFF_SIZE / 2, &read1);
-		  if (result == OSAL_OK)
-		    {
-		      result = osal_read (file2, buffer + 1 * BUFF_SIZE / 2,
-					  BUFF_SIZE / 2, &read2);
-		      if (result == OSAL_OK)
-			{
-			  different = read1 != read2;
-			  if (!different)
-			    {
-			      u_int32_t i;
-			      const char *p1 = buffer + 0 * BUFF_SIZE / 2;
-			      const char *p2 = buffer + 1 * BUFF_SIZE / 2;
-			      for (i=0; !different && i<read1; ++i)
-				different = *p1++ != *p2++;
-			    }
-			}
-		    }
-		}
-	      while (result == OSAL_OK && read1 > 0 && read2 > 0 && !different);
-	    }
-	  else
-	    result = RET_NO_MEM;
-	  osal_close (file2);
-	}
-      osal_close (file1);
-    }
-  return (result == RET_OK ? (!different ? RET_OK : RET_DIFFERENT) : result);
-}
-#endif /* INCLUDE_COMPARE_CMD defined? */
+#endif /* INCLUDE_DELETE_CMD defined? */
 
 
 /**************************************************************/
@@ -614,24 +650,34 @@ query_devices (const dict_t *config)
 
 /**************************************************************/
 static int
-cdvd_info (const dict_t *config,
-	   const char *path)
+cdvd_info (const char *path,
+	   int new_style)
 {
   iin_t *iin;
-  int result = iin_probe (config, path, &iin);
+  int result = iin_probe (path, &iin);
   if (result == OSAL_OK)
     {
-      char volume_id[32 + 1];
-      char signature[12 + 1];
+      ps2_cdvd_info_t info;
       u_int32_t num_sectors, sector_size;
-      u_int64_t layer_pvd;
       result = iin->stat (iin, &sector_size, &num_sectors);
       if (result == OSAL_OK)
-	result = isofs_get_ps_cdvd_details (iin, volume_id, signature, &layer_pvd);
+	result = isofs_get_ps2_cdvd_info (iin, &info);
       if (result == OSAL_OK)
-	printf ("\"%s\" \"%s\" %s %luKB\n",
-		signature, volume_id, (layer_pvd) ? ("dual layer") : (""),
-		(unsigned long) (((u_int64_t) num_sectors * sector_size) / 1024));
+	{
+	  u_int64_t tot_size = (u_int64_t) num_sectors * sector_size;
+	  if (!new_style)
+	    printf ("\"%s\" \"%s\" %s %luKB\n",
+		    info.startup_elf, info.volume_id,
+		    (info.layer_pvd ? "dual layer" : ""),
+		    (unsigned long) (tot_size / 1024));
+	  else
+	    printf ("%s%s %luKB \"%s\" \"%s\" \n",
+		    (info.layer_pvd ? "dual-layer " : ""),
+		    (info.media_type == mt_cd ? "CD" :
+		     info.media_type == mt_dvd ? "DVD" : "?"),
+		    (unsigned long) (tot_size / 1024),
+		    info.volume_id, info.startup_elf);
+	}
       iin->close (iin);
     }
   return (result);
@@ -658,9 +704,9 @@ read_test (const char *path,
 	  pgs_prepare (pgs, (u_int64_t) num_sectors * sector_size);
 	  do
 	    {
-	      const char *data; /* not used */
-	      u_int32_t sectors = (num_sectors > IIN_NUM_SECTORS ? IIN_NUM_SECTORS : num_sectors);
-	      /* TODO: would "buffer overflow" if read more than IIN_NUM_SECTORS? */
+	      const char *data; /* not really used */
+	      u_int32_t sectors = (num_sectors > IIN_NUM_SECTORS ?
+				   IIN_NUM_SECTORS : num_sectors);
 	      result = iin->read (iin, sector, sectors, &data, &len);
 	      if (result == RET_OK)
 		{
@@ -692,10 +738,10 @@ compare_iin (const dict_t *config,
   int different = 0;
   int longer_file = 0;
 
-  int result = iin_probe (config, path1, &iin1);
+  int result = iin_probe (path1, &iin1);
   if (result == OSAL_OK)
     {
-      result = iin_probe (config, path2, &iin2);
+      result = iin_probe (path2, &iin2);
       if (result == OSAL_OK)
 	{
 	  u_int32_t len1, len2;
@@ -792,7 +838,112 @@ compare_iin (const dict_t *config,
 
 
 /**************************************************************/
-int
+#if defined (INCLUDE_BACKUP_TOC_CMD)
+static int
+backup_toc (const dict_t *config,
+	    const char *source_device,
+	    const char *file)
+{
+  hio_t *in;
+  int result = hio_probe (config, source_device, &in);
+  if (result == RET_OK)
+    {
+      u_int32_t size_in_kb;
+      result = in->stat (in, &size_in_kb);
+      if (result == RET_OK)
+	{
+	  u_int32_t sectors = size_in_kb * 2;
+	  FILE *out = fopen (file, "wb");
+	  if (out != NULL)
+	    {
+	      unsigned char buf[1024];
+	      u_int32_t sector = 0, bytes;
+	      while (sector < sectors)
+		{
+		  result = in->read (in, sector, 2, buf, &bytes);
+		  if (result == RET_OK && bytes == 1024)
+		    result = (fwrite (buf, 1, 1024, out) == 1024 ?
+			      RET_OK : RET_ERR);
+		  if (result == RET_OK)
+		    {
+		      result = in->read (in, sector + 2056, 2,
+					 buf, &bytes);
+		      if (result == RET_OK && bytes == 1024)
+			result = (fwrite (buf, 1, 1024, out) == 1024 ?
+				  RET_OK : RET_ERR);
+		    }
+		  sector += 128 * 1024 * 2;
+		}
+	      fclose (out);
+	    }
+	  else
+	    result = RET_ERR;
+	}
+      in->close (in);
+    }
+  return (result);
+}
+#endif /* INCLUDE_BACKUP_TOC_CMD defined? */
+
+
+/**************************************************************/
+#if defined (INCLUDE_RESTORE_TOC_CMD)
+static int
+restore_toc (const dict_t *config,
+	     const char *dest_device,
+	     const char *file)
+{
+  int result = RET_OK;
+  FILE *in = fopen (file, "rb");
+  if (in != NULL)
+    {
+      hio_t *out;
+      result = hio_probe (config, dest_device, &out);
+      if (result == RET_OK)
+	{
+	  unsigned char buf[1024];
+	  u_int32_t sector = 0;
+	  size_t bytes;
+	  do
+	    {
+	      u_int32_t len;
+	      bytes = fread (buf, 1, 1024, in);
+	      if (bytes == 1024)
+		{
+		  result = out->write (out, sector, 2, buf, &len);
+		  if (result == RET_OK)
+		    result = (len == 1024 ? RET_OK : RET_ERR);
+		}
+	      else
+		result = (bytes == 0 ? RET_OK : RET_ERR);
+	      if (result == RET_OK)
+		{
+		  bytes = fread (buf, 1, 1024, in);
+		  if (bytes == 1024)
+		    {
+		      result = out->write (out, sector + 2056, 2, buf, &len);
+		      if (result == RET_OK)
+			result = (len == 1024 ? RET_OK : RET_ERR);
+		    }
+		  else
+		    result = (bytes == 0 ? RET_OK : RET_ERR);
+		}
+	      sector += 128 * 1024 * 2;
+	    }
+	  while (result == RET_OK && bytes == 1024);
+	  out->close (out);
+	}
+      fclose (in);
+    }
+  else
+    result = RET_ERR;
+  return (result);
+}
+#endif /* INCLUDE_RESTORE_TOC_CMD defined? */
+
+
+/**************************************************************/
+static int
 inject (const dict_t *config,
 	const char *output,
 	const char *name,
@@ -800,6 +951,7 @@ inject (const dict_t *config,
 	const char *startup, /* or NULL */
 	unsigned char compat_flags,
 	int is_dvd,
+	int slice_index,
 	progress_t *pgs)
 {
   hdl_game_t game;
@@ -807,21 +959,20 @@ inject (const dict_t *config,
   iin_t *iin = NULL;
   hio_t *hio = NULL;
 
-  result = iin_probe (config, input, &iin);
+  result = iin_probe (input, &iin);
   if (result == RET_OK)
     result = hio_probe (config, output, &hio);
   if (result == RET_OK)
     {
-      char volume_id[32 + 1], signature[12 + 1];
-      u_int64_t layer_pvd;
+      ps2_cdvd_info_t info;
       memset (&game, 0, sizeof (hdl_game_t));
       memcpy (game.name, name, sizeof (game.name) - 1);
       game.name[sizeof (game.name) - 1] = '\0';
-      result = isofs_get_ps_cdvd_details (iin, volume_id, signature, &layer_pvd);
+      result = isofs_get_ps2_cdvd_info (iin, &info);
       if (result == RET_OK)
 	{
-	  if (layer_pvd != 0)
-	    game.layer_break = (u_int32_t) layer_pvd - 16;
+	  if (info.layer_pvd != 0)
+	    game.layer_break = (u_int32_t) info.layer_pvd - 16;
 	  else
 	    game.layer_break = 0;
 	}
@@ -836,7 +987,7 @@ inject (const dict_t *config,
       else
 	{ /* we got startup file from above; fail if not PS2 CD/DVD */
 	  if (result == RET_OK)
-	    strcpy (game.startup, signature);
+	    strcpy (game.startup, info.startup_elf);
 	}
       game.compat_flags = compat_flags;
       game.is_dvd = is_dvd;
@@ -846,7 +997,7 @@ inject (const dict_t *config,
 	ddb_update (config, game.startup, game.name, game.compat_flags);
 
       if (result == RET_OK)
-	result = hdl_inject (config, hio, iin, &game, pgs);
+	result = hdl_inject (hio, iin, &game, slice_index, pgs);
     }
 
   if (hio != NULL)
@@ -863,6 +1014,7 @@ static int
 install (const dict_t *config,
 	 const char *output,
 	 const char *input,
+	 int slice_index,
 	 progress_t *pgs)
 {
   hdl_game_t game;
@@ -871,22 +1023,21 @@ install (const dict_t *config,
   int result;
   u_int32_t sector_size, num_sectors;
 
-  result = iin_probe (config, input, &iin);
+  result = iin_probe (input, &iin);
   if (result == RET_OK)
     result = iin->stat (iin, &sector_size, &num_sectors);
   if (result == RET_OK)
     result = hio_probe (config, output, &hio);
   if (result == RET_OK)
     {
-      char volume_id[32 + 1], signature[12 + 1];
-      u_int64_t layer_pvd;
+      ps2_cdvd_info_t info;
       char name[HDL_GAME_NAME_MAX + 1];
       compat_flags_t flags;
       int incompatible;
 
-      result = isofs_get_ps_cdvd_details (iin, volume_id, signature, &layer_pvd);
+      result = isofs_get_ps2_cdvd_info (iin, &info);
       if (result == RET_OK)
-	result = ddb_lookup (config, signature, name, &flags);
+	result = ddb_lookup (config, info.startup_elf, name, &flags);
 
       incompatible = result == RET_DDB_INCOMPATIBLE;
       if (incompatible)
@@ -896,16 +1047,22 @@ install (const dict_t *config,
 	{
 	  memset (&game, 0, sizeof (hdl_game_t));
 	  strcpy (game.name, name);
-	  if (layer_pvd != 0)
-	    game.layer_break = (u_int32_t) layer_pvd - 16;
+	  if (info.layer_pvd != 0)
+	    game.layer_break = (u_int32_t) info.layer_pvd - 16;
 	  else
 	    game.layer_break = 0;
-	  strcpy (game.startup, signature);
+	  strcpy (game.startup, info.startup_elf);
 	  game.compat_flags = flags;
-	  /* TODO: the following math (assumption) might be incorrect */
-	  game.is_dvd = ((u_int64_t) sector_size * num_sectors) > (750 _MB);
 
-	  result = hdl_inject (config, hio, iin, &game, pgs);
+	  /* TODO: the following math (assumption) might be incorrect */
+	  switch (info.media_type)
+	    {
+	    case mt_cd:      game.is_dvd = 0; break;
+	    case mt_dvd:     game.is_dvd = 1; break;
+	    case mt_unknown: game.is_dvd = ((u_int64_t) sector_size * num_sectors) > (750 _MB); break;
+	    }
+
+	  result = hdl_inject (hio, iin, &game, slice_index, pgs);
 	}
       result = (result == RET_OK && incompatible ? RET_DDB_INCOMPATIBLE : result);
     }
@@ -917,6 +1074,20 @@ install (const dict_t *config,
 
   return (result);
 }
+
+
+/**************************************************************/
+static int
+diag (const dict_t *config,
+      const char *device)
+{
+  char buf[1024 * 10] = { "" };
+  int result = apa_diag (config, device, buf, sizeof (buf));
+  if (result == RET_OK)
+    printf (buf);
+  return (result);
+}
+
 
 /**************************************************************/
 static int
@@ -940,6 +1111,7 @@ static volatile int sigint_catched = 0;
 void
 handle_sigint (int signo)
 {
+  fprintf (stderr, "Ctrl+C\n");
   sigint_catched = 1;
 #if defined (_BUILD_WIN32)
   while (1)
@@ -1027,19 +1199,23 @@ show_usage_and_exit (const char *app_path,
 	"Displays PlayStation 2 HDD usage map.",
 	"hdd1:", NULL, 0 },
 #endif
+#if defined (INCLUDE_DELETE_CMD)
       { CMD_DELETE, "device partition/game",
 	"Deletes PlayStation 2 HDD partition. First attempts to locate partition\n"
 	"by name, then by game name.",
 	"hdd1: \"PP.HDL.Tekken Tag Tournament\"", "hdd1: \"Tekken Tag Tournament\"", 1 },
+#endif
 #if defined (INCLUDE_ZERO_CMD)
       { CMD_ZERO, "device",
 	"Fills HDD with zeroes. All information on the HDD will be lost.",
 	"hdd1:", NULL, 1 },
 #endif
 #if defined (INCLUDE_CUTOUT_CMD)
-      { CMD_CUTOUT, "device size_in_MB",
-	"Displays partition table as if a new partition has been created.",
-	"hdd1: 2560", NULL, 0 },
+      { CMD_CUTOUT, "device size_in_MB [@slice_index]",
+	"Displays partition table as if a new partition has been created.\n"
+	"slice_index is the index of the slice to attempt to allocate in first\n"
+	"-- 1 or 2.",
+	"hdd1: 2560", "192.168.0.10 640", 0 },
 #endif
 #if defined (INCLUDE_INFO_CMD)
       { CMD_HDL_INFO, "device partition",
@@ -1049,7 +1225,7 @@ show_usage_and_exit (const char *app_path,
       { CMD_HDL_EXTRACT, "device name output_file",
 	"Extracts application image from HD Loader partition.",
 	"hdd1: \"tekken tag tournament\" c:\\tekken.iso", NULL, 0 },
-      { CMD_HDL_INJECT_CD, "target name source [startup] [flags]",
+      { CMD_HDL_INJECT_CD, "target name source [startup] [flags] [@slice_index]",
 	"Creates a new HD Loader partition from a CD.\n"
 	"Supported inputs: plain ISO files, CDRWIN cuesheets, Nero images and tracks,\n"
 	"RecordNow! Global images, HD Loader partitions (hdd1:PP.HDL.Xenosaga) and\n"
@@ -1058,7 +1234,7 @@ show_usage_and_exit (const char *app_path,
 	"`+#[+#[+#]]' or `0xNN', for example `+1', `+2+3', `0x01', `0x03', etc.",
 	"192.168.0.10 \"Tekken Tag Tournament\" cd0: SCES_xxx.xx",
 	"hdd1: \"Tekken\" c:\\tekken.iso SCES_xxx.xx +1+2", 1 },
-      { CMD_HDL_INJECT_DVD, "target name source [startup] [flags]",
+      { CMD_HDL_INJECT_DVD, "target name source [startup] [flags] [@slice_index]",
 	"Creates a new HD Loader partition from a DVD.\n"
 	"DVD9 cannot be directly installed from the DVD-ROM drive -\n"
 	"use ISO image or IML file instead.\n"
@@ -1069,12 +1245,16 @@ show_usage_and_exit (const char *app_path,
 	"`+#[+#[+#]]' or `0xNN', for example `+1', `+2+3', `0x01', `0x03', etc.",
 	"192.168.0.10 \"Gran Turismo 3\" cd0:",
 	"hdd1: \"Gran Turismo 3\" c:\\gt3.iso SCES_xxx.xx +2+3", 1 },
-      { CMD_HDL_INSTALL, "target source",
+      { CMD_HDL_INSTALL, "target source [@slice_index]",
 	"Creates a new HD Loader partition from a source, that has an entry\n"
 	"in compatibility list.",
 	"192.168.0.10 cd0:", "hdd1: c:\\gt3.iso", 1 },
       { CMD_CDVD_INFO, "iin_input",
 	"Displays signature (startup file), volume label and data size\n"
+	"for a CD-/DVD-drive or image file.",
+	"c:\\gt3.gi", "\"hdd2:Gran Turismo 3\"", 0 },
+      { CMD_CDVD_INFO2, "iin_input",
+	"Displays media type, startup ELF, volume label and data size\n"
 	"for a CD-/DVD-drive or image file.",
 	"c:\\gt3.gi", "\"hdd2:Gran Turismo 3\"", 0 },
       { CMD_POWER_OFF, "ip",
@@ -1095,6 +1275,21 @@ show_usage_and_exit (const char *app_path,
 	"Prepares a HDD for HD Loader usage. All information on the HDD will be lost.\n",
 	"hdd1:", NULL, 1 },
 #endif /* INCLUDE_INITIALIZE_CMD defined? */
+#if defined (INCLUDE_BACKUP_TOC_CMD)
+      { CMD_BACKUP_TOC, "device file",
+	"Dumps TOC into a binary file.\n",
+	"hdd1: toc.bak", NULL, 0 },
+#endif /* INCLUDE_BACKUP_TOC_CMD defined? */
+#if defined (INCLUDE_RESTORE_TOC_CMD)
+      { CMD_RESTORE_TOC, "device file",
+	"Restores TOC from a binary file.\n",
+	"hdd1: toc.bak", NULL, 0 },
+#endif /* INCLUDE_RESTORE_TOC_CMD defined? */
+#if defined (INCLUDE_DIAG_CMD)
+      { CMD_DIAG, "device",
+	"Scans PS2 HDD for partition errors.\n",
+	"hdd1:", "192.168.0.10", 0 },
+#endif /* INCLUDE_DIAG_CMD defined? */
       { NULL, NULL,
 	NULL,
 	NULL, NULL, 0 }
@@ -1387,11 +1582,6 @@ main (int argc, char *argv[])
   /* handle Ctrl+C gracefully */
   signal (SIGINT, &handle_sigint);
 
-#if 0
-  test2 (config);
-  return (0);
-#endif
-
   if (argc > 1)
     {
       const char *command_name = argv[1];
@@ -1416,25 +1606,6 @@ main (int argc, char *argv[])
 	}
 #endif /* INCLUDE_DUMP_CMD defined? */
 
-#if defined (INCLUDE_COMPARE_CMD)
-      else if (caseless_compare (command_name, CMD_COMPARE))
-	{ /* compare two files or devices or etc. */
-	  char device_name_1[MAX_PATH];
-	  char device_name_2[MAX_PATH];
-	  int is_device_1 = 0, is_device_2 = 0;
-
-	  if (argc != 4)
-	    show_usage_and_exit (argv[0], CMD_COMPARE);
-
-	  is_device_1 = osal_map_device_name (argv[2], device_name_1) == RET_OK ? 1 : 0;
-	  is_device_2 = osal_map_device_name (argv[3], device_name_2) == RET_OK ? 1 : 0;
-
-	  handle_result_and_exit (compare (is_device_1 ? device_name_1 : argv[2], is_device_1,
-					   is_device_2 ? device_name_2 : argv[3], is_device_2),
-				  NULL, NULL);
-	}
-#endif /* INCLUDE_COMPARE_CMD defined? */
-
 #if defined (INCLUDE_COMPARE_IIN_CMD)
       else if (caseless_compare (command_name, CMD_COMPARE_IIN))
 	{ /* compare two iso inputs */
@@ -1457,7 +1628,8 @@ main (int argc, char *argv[])
 	{ /* show a TOC of HD Loader games only */
 	  if (argc != 3)
 	    show_usage_and_exit (argv[0], CMD_HDL_TOC);
-	  handle_result_and_exit (show_hdl_toc (config, argv[2]), argv[2], NULL);
+	  handle_result_and_exit (show_hdl_toc (config, argv[2]),
+				  argv[2], NULL);
 	}
 
 #if defined (INCLUDE_MAP_CMD)
@@ -1466,10 +1638,11 @@ main (int argc, char *argv[])
 	  if (argc != 3)
 	    show_usage_and_exit (argv[0], CMD_MAP);
 
-	  handle_result_and_exit (show_map (argv[2]), argv[2], NULL);
+	  handle_result_and_exit (show_map (config, argv[2]), argv[2], NULL);
 	}
 #endif /* INCLUDE_MAP_CMD defined? */
 
+#if defined (INCLUDE_DELETE_CMD)
       else if (caseless_compare (command_name, CMD_DELETE))
 	{ /* delete partition */
 	  if (argc != 4)
@@ -1478,6 +1651,7 @@ main (int argc, char *argv[])
 	  handle_result_and_exit (delete_partition (config, argv[2], argv[3]),
 				  argv[2], argv[3]);
 	}
+#endif /* INCLUDE_DELETE_CMD defined? */
 
 #if defined (INCLUDE_ZERO_CMD)
       else if (caseless_compare (command_name, CMD_ZERO))
@@ -1500,7 +1674,8 @@ main (int argc, char *argv[])
 	  if (argc != 4)
 	    show_usage_and_exit (argv[0], CMD_HDL_INFO);
 
-	  handle_result_and_exit (show_hdl_game_info (argv[2], argv[3]),
+	  handle_result_and_exit (show_hdl_game_info (config, argv[2],
+						      argv[3]),
 				  argv[2], argv[3]);
 	}
 #endif /* INCLUDE_INFO_CMD defined? */
@@ -1518,56 +1693,68 @@ main (int argc, char *argv[])
       else if (caseless_compare (command_name, CMD_HDL_INJECT_CD) ||
 	       caseless_compare (command_name, CMD_HDL_INJECT_DVD))
 	{ /* inject game image into a new HD Loader partition */
-	  unsigned char compat_flags = 0, have_startup = 1;
-	  unsigned char media =
+	  int slice_index = -1;
+	  unsigned char compat_flags = 0;
+	  const char *startup = NULL;
+	  unsigned char is_dvd =
 	    caseless_compare (command_name, CMD_HDL_INJECT_CD) ? 0 : 1;
+	  int i;
 
-	  if (!(argc >= 5 && argc <= 7))
+	  if (!(argc >= 5 && argc <= 8))
 	    show_usage_and_exit (argv[0], command_name);
 
-	  /* parse compatibility flags */
-	  if (argc == 7)
-	    /* startup + compatibility flags */
-	    compat_flags = parse_compat_flags (argv[6]);
-	  else if (argc == 6 &&
-		   (argv[5][0] == '+' ||
-		    (argv[5][0] == '0' && argv[5][1] == 'x')))
-	    { /* compatibility flags only */
-	      compat_flags = parse_compat_flags (argv[5]);
-	      have_startup = 0;
+	  for (i = 5; i < argc; ++i)
+	    {
+	      if (argv[i][0] == '@')
+		/* slice index */
+		slice_index = strtoul (argv[i] + 1, NULL, 10) - 1;
+	      else if (argv[i][0] == '+' ||
+		       (argv[i][0] == '0' && argv[i][1] == 'x'))
+		/* compatibility flags */
+		compat_flags = parse_compat_flags (argv[i]);
+	      else
+		/* startup file */
+		startup = argv[i];
 	    }
-	  else if (argc == 5)
-	    /* neither */
-	    have_startup = 0;
-	  if (compat_flags == COMPAT_FLAGS_INVALID)
+
+	  if (compat_flags == COMPAT_FLAGS_INVALID ||
+	      !(slice_index >= -1 && slice_index <= 1))
 	    show_usage_and_exit (argv[0], command_name);
 
 	  handle_result_and_exit (inject (config, argv[2], argv[3], argv[4],
-					  have_startup ? argv[5] : NULL,
-					  compat_flags, media, get_progress ()),
+					  startup, compat_flags, is_dvd,
+					  slice_index, get_progress ()),
 				  argv[2], argv[3]);
 	}
 
       else if (caseless_compare (command_name, CMD_HDL_INSTALL))
 	{
-	  if (argc != 4)
+	  int slice_index = -1;
+	  if ((argc != 4 && argc != 5) || (argc == 5 && argv[4][0] != '@'))
 	    show_usage_and_exit (argv[0], CMD_HDL_INSTALL);
 
-	  handle_result_and_exit (install (config, argv[2], argv[3], get_progress ()),
+	  if (argc == 5)
+	    slice_index = strtoul (argv[4] + 1, NULL, 10) - 1;
+	  handle_result_and_exit (install (config, argv[2], argv[3],
+					   slice_index, get_progress ()),
 				  argv[2], argv[3]);
 	}
 
 #if defined (INCLUDE_CUTOUT_CMD)
       else if (caseless_compare (command_name, CMD_CUTOUT))
 	{ /* calculate and display how to arrange a new HD Loader partition */
-	  char device_name[MAX_PATH];
-
-	  if (argc != 4)
+	  int slice_index = -1;
+	  if ((argc != 4 && argc != 5) || (argc == 5 && argv[4][0] != '@'))
 	    show_usage_and_exit (argv[0], CMD_CUTOUT);
 
-	  map_device_name_or_exit (argv[2], device_name);
+	  if (argc == 5)
+	    slice_index = strtoul (argv[4] + 1, NULL, 10) - 1;
+	  if (!(slice_index >= -1 && slice_index <= 1))
+	    show_usage_and_exit (argv[0], CMD_CUTOUT);
 
-	  handle_result_and_exit (show_apa_cut_out_for_inject (device_name, atoi (argv[3])),
+	  handle_result_and_exit (show_apa_cut_out_for_inject (config, argv[2],
+							       slice_index,
+							       atoi (argv[3])),
 				  argv[2], NULL);
 	}
 #endif /* INCLUDE_CUTOUT_CMD defined? */
@@ -1577,7 +1764,15 @@ main (int argc, char *argv[])
 	  if (argc != 3)
 	    show_usage_and_exit (argv[0], CMD_CDVD_INFO);
 
-	  handle_result_and_exit (cdvd_info (config, argv[2]), argv[2], NULL);
+	  handle_result_and_exit (cdvd_info (argv[2], 0), argv[2], NULL);
+	}
+
+      else if (caseless_compare (command_name, CMD_CDVD_INFO2))
+	{ /* try to display startup file and volume label for an iin */
+	  if (argc != 3)
+	    show_usage_and_exit (argv[0], CMD_CDVD_INFO);
+
+	  handle_result_and_exit (cdvd_info (argv[2], 1), argv[2], NULL);
 	}
 
 #if defined (INCLUDE_READ_TEST_CMD)
@@ -1595,18 +1790,9 @@ main (int argc, char *argv[])
 	  if (argc != 3)
 	    show_usage_and_exit (argv[0], CMD_POWER_OFF);
 	  
-	  handle_result_and_exit (remote_poweroff (config, argv[2]), argv[2], NULL);
+	  handle_result_and_exit (remote_poweroff (config, argv[2]),
+				  argv[2], NULL);
 	}
-
-#if defined (INCLUDE_CHECK_CMD)
-      else if (caseless_compare (command_name, CMD_CHECK))
-	{ /* attempt to locate and display partition errors */
-	  if (argc != 3)
-	    show_usage_and_exit (argv[0], CMD_CHECK);
-
-	  handle_result_and_exit (check (argv[2]), argv[2], NULL);
-	}
-#endif /* INCLUDE_CHECK_CMD defined? */
 
 #if defined (INCLUDE_INITIALIZE_CMD)
       else if (caseless_compare (command_name, CMD_INITIALIZE))
@@ -1614,9 +1800,39 @@ main (int argc, char *argv[])
 	  if (argc != 3)
 	    show_usage_and_exit (argv[0], CMD_INITIALIZE);
 
-	  handle_result_and_exit (apa_initialize (config, argv[2]), argv[2], NULL);
+	  handle_result_and_exit (apa_initialize (config, argv[2]),
+				  argv[2], NULL);
 	}
 #endif /* INCLUDE_INITIALIZE_CMD defined? */
+
+#if defined (INCLUDE_BACKUP_TOC_CMD)
+      else if (caseless_compare (command_name, CMD_BACKUP_TOC))
+	{
+	  if (argc != 4)
+	    show_usage_and_exit (argv[0], CMD_BACKUP_TOC);
+	  handle_result_and_exit (backup_toc (config, argv[2], argv[3]),
+				  argv[2], NULL);
+	}
+#endif /* INCLUDE_BACKUP_TOC_CMD defined? */
+
+#if defined (INCLUDE_RESTORE_TOC_CMD)
+      else if (caseless_compare (command_name, CMD_RESTORE_TOC))
+	{
+	  if (argc != 4)
+	    show_usage_and_exit (argv[0], CMD_RESTORE_TOC);
+	  handle_result_and_exit (restore_toc (config, argv[2], argv[3]),
+				  argv[2], NULL);
+	}
+#endif /* INCLUDE_RESTORE_TOC_CMD defined? */
+
+#if defined (INCLUDE_DIAG_CMD)
+      else if (caseless_compare (command_name, CMD_DIAG))
+	{
+	  if (argc != 3)
+	    show_usage_and_exit (argv[0], CMD_DIAG);
+	  handle_result_and_exit (diag (config, argv[2]), argv[2], NULL);
+	}
+#endif /* INCLUDE_DIAG_CMD defined? */
 
       else
 	{ /* something else... -h perhaps? */

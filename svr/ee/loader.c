@@ -1,6 +1,6 @@
 /*
  * svr/ee/loader.c
- * $Id: loader.c,v 1.10 2006/05/21 21:44:09 bobi Exp $
+ * $Id: loader.c,v 1.11 2006/06/18 13:13:13 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -45,25 +45,8 @@
 #include "graph.h"
 
 
-/*
- * this program were supposed to produce the following output:
- * hdld_svr-x.y.z
- * MR Brown patches
- * SIO2MAN: 25
- * MCMAN: 26
- * MCSERV: 27
- * IOMANX.IRX: 0
- * PS2DEV9.IRX: 0
- * PS2ATAD.IRX: 0
- * PS2IP.IRX: 0
- * message for config file
- * Playstation 2 IP address: a.b.c.d
- * PS2SMAP.IRX: 0
- * HDLD_SVR.IRX: 0
- */
-
 #define APP_NAME "hdld_svr"
-#define VERSION "0.8.4"
+#define VERSION "0.8.5"
 
 
 #if 1 /* debugging */
@@ -97,20 +80,22 @@ extern int size_ps2atad_irx;
 
 #define IPCONF_MAX_LEN (3 * 16)
 char __attribute__((aligned(16))) if_conf [IPCONF_MAX_LEN];
-int if_conf_len;
+size_t if_conf_len;
 
 const char *default_ip = "192.168.0.10";
 const char *default_mask = "255.255.255.0";
 const char *default_gateway = "192.168.0.1";
 
+
 /**************************************************************/
-size_t /* "192.168.0.10 255.255.255.0 192.168.0.1" */
-setup_ip (char outp [IPCONF_MAX_LEN], int *retval)
+int /* "192.168.0.10 255.255.255.0 192.168.0.1" */
+setup_ip (const char *ipconfig_dat_path,
+	  char outp [IPCONF_MAX_LEN], size_t *length)
 {
-  size_t result = 0;
+  int result = 0;
   int conf_ok = 0;
 #if defined (LOAD_SIOMAN_AND_MC)
-  int fd = fioOpen ("mc0:/SYS-CONF/IPCONFIG.DAT", O_RDONLY);
+  int fd = fioOpen (ipconfig_dat_path, O_RDONLY);
   if (!(fd < 0))
     { /* configuration file found */
       char tmp [IPCONF_MAX_LEN];
@@ -134,20 +119,16 @@ setup_ip (char outp [IPCONF_MAX_LEN], int *retval)
 	    {
 	      memcpy (outp, tmp, IPCONF_MAX_LEN);
 	      conf_ok = 1;
-	      result = len;
+	      *length = len;
 	    }
 	  else
-	    {
-	      *retval = -2; /* bad format */
-	    }
+	    /* bad format */
+	    result = -2;
 	}
     }
   else
-    {
-      *retval = -1;
-    }
-#else
-  *retval = 0;
+    /* not found */
+    result = -1;
 #endif /* LOAD_SIOMAN_AND_MC? */
 
   if (!conf_ok)
@@ -165,7 +146,7 @@ setup_ip (char outp [IPCONF_MAX_LEN], int *retval)
       len = strlen (default_gateway);
       memcpy (outp + pos, default_gateway, len); pos += len;
       *(outp + pos++) = '\0';
-      result = pos;
+      *length = pos;
     }
 
   return (result);
@@ -179,6 +160,16 @@ load_modules ()
   const char *STEP_OK = "*";
   const char *FAILED = "failed to load with";
   int ret, ipcfg_ret = 0;
+
+  size_t i;
+  const char *IPCONFIG_DAT_PATHS[] =
+    {
+      "mc0:/BIDATA-SYSTEM/IPCONFIG.DAT", /* japan */
+      "mc0:/BADATA-SYSTEM/IPCONFIG.DAT", /* us */
+      "mc0:/BEDATA-SYSTEM/IPCONFIG.DAT", /* europe */
+      "mc0:/SYS-CONF/IPCONFIG.DAT", /* old location */
+      NULL
+    };
 
 #if defined (LOAD_MRBROWN_PATCHES)
   sbv_patch_enable_lmb ();
@@ -251,7 +242,11 @@ load_modules ()
       return (-1);
     }
 
-  if_conf_len = setup_ip (if_conf, &ipcfg_ret);
+  ipcfg_ret = -1;
+  for (i = 0; ipcfg_ret != 0 && IPCONFIG_DAT_PATHS[i] != NULL; ++i)
+    {
+      ipcfg_ret = setup_ip (IPCONFIG_DAT_PATHS[i], if_conf, &if_conf_len);
+    }
 
   SifExecModuleBuffer (&ps2smap_irx, size_ps2smap_irx,
 		       if_conf_len, if_conf, &ret);
@@ -265,16 +260,27 @@ load_modules ()
 
   scr_printf ("\n");
 
-  if (ipcfg_ret == -1)
-    scr_printf ("\nuse mc0:/SYS-CONF/IPCONFIG.DAT to configure IP address\n\n");
+  switch (ipcfg_ret)
+    {
+    case 0:
+      scr_printf ("\nusing %s\n", IPCONFIG_DAT_PATHS[i - 1]);
+      break;
 
-  if (ipcfg_ret == -2)
-    scr_printf ("\nIPCONFIG.DAT format is:\n"
-		"ip_address network_mask gateway_ip\n"
-		"(use a single space as separator)\n\n");
+    case -1:
+      scr_printf ("\nuse one of the following locations to set IP address:\n");
+      for (i = 0; IPCONFIG_DAT_PATHS[i] != NULL; ++i)
+	scr_printf ("   %s\n", IPCONFIG_DAT_PATHS[i]);
+      break;
 
-  if (ipcfg_ret != 0)
-    scr_printf ("Playstation 2 IP address: %s\n", if_conf);
+    case -2:
+      scr_printf ("\nusing %s\n", IPCONFIG_DAT_PATHS[i - 1]);
+      scr_printf ("\ninvalid configuration file format; use:\n"
+		  "ip_address network_mask gateway_ip\n"
+		  "separated by a single space; for example:"
+		  "192.168.0.10 255.255.255.0 192.168.0.1\n\n");
+      break;
+    }
+  scr_printf ("Playstation 2 IP address: %s\n", if_conf);
 
   return (0);
 }

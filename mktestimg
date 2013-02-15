@@ -1,0 +1,15 @@
+#!/bin/sh
+# $Id$
+
+# well, maybe fs will need to support sparse files
+
+IMG_NAME=hdd.img
+BACKUP=lordbogami.toc
+
+[ -n "$1" ] && BACKUP="$1"
+
+rm -f $IMG_NAME
+dd if=/dev/zero of=$IMG_NAME bs=1048576 seek=239360 count=0 2> /dev/null
+./hdl_dump restore_toc $IMG_NAME $BACKUP
+ls -lh $IMG_NAME
+du -sh $IMG_NAME

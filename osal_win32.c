@@ -1,6 +1,6 @@
 /*
  * osal_win32.c
- * $Id: osal_win32.c,v 1.12 2006/05/21 21:41:28 bobi Exp $
+ * $Id: osal_win32.c,v 1.13 2006/06/18 13:12:33 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -436,9 +436,11 @@ osal_query_hard_drives (osal_dlist_t **hard_drives)
 	  sprintf (device_name, "hdd%u:", (unsigned int) i);
 	  if (osal_get_estimated_device_size (device, &size_in_bytes) == OSAL_OK)
 	    result = osal_dlist_add (*hard_drives, device_name, size_in_bytes,
-				     is_apa_partition (device), ERROR_SUCCESS);
+				     is_apa_partitioned (device),
+				     ERROR_SUCCESS);
 	  else
-	    result = osal_dlist_add (*hard_drives, device_name, (u_int64_t) 0, 0, GetLastError ());
+	    result = osal_dlist_add (*hard_drives, device_name,
+				     (u_int64_t) 0, 0, GetLastError ());
 	  
 	  CloseHandle (device);
 	}

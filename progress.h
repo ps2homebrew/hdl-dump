@@ -1,6 +1,6 @@
 /*
  * progress.h
- * $Id: progress.h,v 1.9 2006/05/21 21:41:50 bobi Exp $
+ * $Id: progress.h,v 1.10 2006/06/18 13:12:47 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -31,9 +31,11 @@ C_START
 
 /*
  * the shorter that is, the faster it will respond to the changes,
- * however it will be more inacurate
+ * however it will be more inacurate;
+ * heavily depends on the distance between and height of measurements;
+ * # measures of 1MB each => track last # megabytes
  */
-#define PG_HIST_SIZE 128
+#define PG_HIST_SIZE 10
 
 
 /* high-resolution timers support */

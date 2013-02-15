@@ -1,6 +1,6 @@
 /*
  * isofs.c
- * $Id: isofs.c,v 1.9 2006/05/21 21:40:08 bobi Exp $
+ * $Id: isofs.c,v 1.10 2006/06/18 13:12:04 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -31,6 +31,7 @@
 #define CDVD_SECT_SIZE 2048
 
 
+/**************************************************************/
 /*
  * pvd == "Primary Volume Descriptor"
  * ptr == "Path Table Record"
@@ -62,7 +63,11 @@ isofs_find_pvd_addr (iin_t *iin,
       if (len != 2048)
 	result = RET_BAD_ISOFS;
       if (result == OSAL_OK)
-        result = memcmp (buffer + 1, "CD001", 5) == 0 ? OSAL_OK : RET_BAD_ISOFS;
+	{
+	  buffer = (const unsigned char*) data;
+	  result = (memcmp (buffer + 1, "CD001", 5) == 0 ?
+		    OSAL_OK : RET_BAD_ISOFS);
+	}
     }
 
   if (result == OSAL_OK)
@@ -94,6 +99,7 @@ isofs_find_pvd_addr (iin_t *iin,
 }
 
 
+/**************************************************************/
 static int
 isofs_get_root_addr (iin_t *iin,
 		     u_int64_t ptr_start_addr,
@@ -141,6 +147,7 @@ isofs_get_root_addr (iin_t *iin,
 }
 
 
+/**************************************************************/
 static int
 isofs_get_file_addr (iin_t *iin,
 		     u_int64_t dir_start_addr,
@@ -196,6 +203,7 @@ isofs_get_file_addr (iin_t *iin,
 }
 
 
+/**************************************************************/
 static int
 parse_config_cnf (const char *contents,
 		  u_int32_t length,
@@ -243,6 +251,7 @@ parse_config_cnf (const char *contents,
 }
 
 
+/**************************************************************/
 static int
 isofs_parse_config_cnf (iin_t *iin,
 			u_int64_t file_start_addr,
@@ -259,18 +268,41 @@ isofs_parse_config_cnf (iin_t *iin,
 }
 
 
+/**************************************************************/
+static int
+isofs_detect_media_type (iin_t *iin,
+			 ps2_cdvd_info_t *info)
+{
+  const char *buf = NULL;
+  u_int32_t len = 0;
+  int result = iin->read (iin, 16, 1, &buf, &len);
+  if (result == OSAL_OK && len == CDVD_SECT_SIZE)
+    {
+      if (memcmp (buf + 1024, "CD-XA001", 8) == 0)
+	info->media_type = mt_cd;
+      else if (memcmp (buf + 1024, "\0\0\0\0\0\0\0\0", 8) == 0)
+	info->media_type = mt_dvd;
+      else
+	info->media_type = mt_unknown;
+    }
+  return (result);
+}
+
+
+/**************************************************************/
 int
-isofs_get_ps_cdvd_details (iin_t *iin,
-			   char volume_id[32 + 1],
-			   char signature[12 + 1],
-			   u_int64_t *layer_pvd)
+isofs_get_ps2_cdvd_info (iin_t *iin,
+			 ps2_cdvd_info_t *info)
 {
   u_int64_t pvd_start_addr, ptr_start_addr, root_start_addr;
   u_int64_t system_cnf_start_addr, system_cnf_length;
   char system_id[32 + 1];
-  int result = isofs_find_pvd_addr (iin, &pvd_start_addr, &ptr_start_addr,
-				    system_id, volume_id, 0);
-  *layer_pvd = 0;
+  int result;
+
+  result = isofs_detect_media_type (iin, info);
+  if (result == OSAL_OK)
+    result = isofs_find_pvd_addr (iin, &pvd_start_addr, &ptr_start_addr,
+				  system_id, info->volume_id, 0);
 
   if (result == OSAL_OK)
     if (strcmp (system_id, "PLAYSTATION") != 0)
@@ -285,13 +317,16 @@ isofs_get_ps_cdvd_details (iin_t *iin,
 
   if (result == OSAL_OK)
     result = isofs_parse_config_cnf (iin, system_cnf_start_addr,
-				     system_cnf_length, signature);
+				     system_cnf_length, info->startup_elf);
 
-  *layer_pvd = 0;
   if (result == OSAL_OK)
-    if (isofs_find_pvd_addr (iin, &pvd_start_addr, &ptr_start_addr,
-			     system_id, volume_id, 1) == OSAL_OK)
-      *layer_pvd = pvd_start_addr / CDVD_SECT_SIZE;
+    {
+      if (isofs_find_pvd_addr (iin, &pvd_start_addr, &ptr_start_addr,
+			       system_id, info->volume_id, 1) == OSAL_OK)
+	info->layer_pvd = pvd_start_addr / CDVD_SECT_SIZE;
+      else
+	info->layer_pvd = 0;
+    }
 	
   return (result);
 }

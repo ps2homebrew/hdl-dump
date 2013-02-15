@@ -28,6 +28,9 @@ compatible with server version 0.8.3a, too. Server version 0.8.3
 should NOT be used as it is buggy and almost certainly will corrupt
 data during installation.
 
+Server 0.8.5 would look for IPCONFIG.DAT file in B?DATA-SYSTEM
+directory first.
+
 
 Compilation
 -----------
@@ -74,14 +77,11 @@ Configuration
 * disc_database_file -- full path to your disc compatibility database
 file;
 
-* limit_to_28bit -- whether to "imagine" that HDD is not bigger than
-128GB; necessary if you use ToxicOS with APA-EXT partitioning;
-
-* partition_naming -- put signature (toxicos) or game label (standard)
-to partition name;
-
 * target_kbps -- target speed to follow when installing games via
 networking; look below.
+
+* auto_throttle -- attempt to tune network transfer speeds; as it
+doesn't seems to make things always better, it is disabled by default;
 
 
 Network speed notes
@@ -110,4 +110,4 @@ Run a few tries and pick a number for yourself.
 
 Happy gaming.
 
-$Id: README,v 1.5 2006/05/21 21:47:28 bobi Exp $
+$Id: README,v 1.6 2006/06/18 13:07:41 bobi Exp $

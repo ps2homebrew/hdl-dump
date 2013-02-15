@@ -1,6 +1,6 @@
 /*
  * common.h
- * $Id: common.h,v 1.13 2006/05/21 21:36:11 bobi Exp $
+ * $Id: common.h,v 1.14 2006/06/18 13:08:26 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -25,6 +25,7 @@
 #define _COMMON_H
 
 #include "config.h"
+#include "dict.h"
 #include "osal.h"
 #include "progress.h"
 #include "iin.h"

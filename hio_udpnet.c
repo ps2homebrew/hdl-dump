@@ -1,6 +1,6 @@
 /*
  * hio_net.c - TCP/IP networking access to PS2 HDD
- * $Id: hio_udpnet.c,v 1.2 2006/05/21 21:37:58 bobi Exp $
+ * $Id: hio_udpnet.c,v 1.3 2006/06/18 13:10:56 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -57,6 +57,7 @@ typedef struct hio_net_type
   SOCKET udp;
   unsigned long error_code;
   size_t target_kbps;
+  int auto_throttle;
 } hio_net_t;
 
 #define SETBIT(mask, bit) (mask)[(bit) / 32] |= 1 << ((bit) % 32)
@@ -134,7 +135,7 @@ send_for_write (hio_net_t *net,
 		u_int32_t *response,
 		const char data [HDD_SECTOR_SIZE * NET_NUM_SECTORS])
 {
-  static size_t retries = 0;
+  static size_t retries = 0, sequence = 0;
   time_t delay_time = 1; /* <= tune here */
 
   u_int32_t bitmask[(NET_NUM_SECTORS + 31) / 32] = { 0 };
@@ -144,10 +145,18 @@ send_for_write (hio_net_t *net,
     u_int32_t command, start;
   } udp_packet_t;
   udp_packet_t packet;
+  int result;
+
+#if (FEEDBACK == 3)
+  printf ("\t\t\t\t\t\t\t%uKBps,r%u,q%u\r",
+	  (unsigned int) net->target_kbps,
+	  (unsigned int) retries,
+	  (unsigned int) sequence);
+#endif
 
   /* ask to start writing operation */
-  int result = query (net->sock, CMD_HIO_WRITE,
-		      sector, num_sectors, response, NULL);
+  result = query (net->sock, CMD_HIO_WRITE,
+		  sector, num_sectors, response, NULL);
   if (result == RET_OK &&
       *response == 0)
     {
@@ -227,15 +236,18 @@ send_for_write (hio_net_t *net,
 	  if (result == RET_OK)
 	    {
 	      if (*response == num_sectors)
-		{
-#if 0 /* raise packets? */
-		  if (quick_packets <= net->quick_packets)
-		    ++quick_packets;
-#endif
-		  return (RET_OK); /* write operation has completed */
+		{ /* might increase transfer speed */
+		  ++sequence;
+		  if (net->auto_throttle && (retries < 3 || sequence > 30))
+		    {
+		      net->target_kbps += 10;
+		      sequence = 0;
+		    }
+		  result = RET_OK;
+		  break; /* successfully completed */
 		}
 	      else if (*response == (u_int32_t) -1)
-		return (RET_SVR_ERR); /* write operation has failed */
+		result = RET_SVR_ERR; /* write operation has failed */
 	      else if (*response == 0)
 		{ /* more data needed; bitmask has been sent */
 		  /* 64-bit fix: replaced unsigned long with u_int32_t */
@@ -246,7 +258,12 @@ send_for_write (hio_net_t *net,
 		    { /* refresh bitmask */
 		      for (i = 0; i < (NET_NUM_SECTORS + 31) / 32; ++i)
 			bitmask[i] = get_u32 (tmp + i);
+
+		      /* retries necessary => decrease transfer speed */
+		      if (net->auto_throttle && net->target_kbps > 10)
+			net->target_kbps -= 10;
 		      ++retries;
+		      sequence = 0;
 		      result = RET_OK;
 		    }
 		  else
@@ -314,8 +331,13 @@ net_read (hio_t *hio,
 
   *bytes = 0;
   do
-    {
-      u_int32_t at_once_s = num_sectors > NET_NUM_SECTORS ? NET_NUM_SECTORS : num_sectors;
+    { /* TODO: test the maximum read size? */
+#if 0
+      u_int32_t at_once_s = (num_sectors > NET_NUM_SECTORS ?
+			     NET_NUM_SECTORS : num_sectors);
+#else
+      u_int32_t at_once_s = (num_sectors > 32 ? 32 : num_sectors);
+#endif
       result = query (net->sock, CMD_HIO_READ, start_sector, at_once_s,
 		      &response, outp);
       if (result == OSAL_OK)
@@ -473,7 +495,9 @@ net_alloc (const dict_t *config,
       net->sock = tcp;
       net->udp = udp;
 
-      net->target_kbps = dict_get_numeric (config, CONFIG_TARGET_KBPS, 2500);
+      /* initial one here; the rest is done by the auto-tuning code */
+      net->target_kbps = dict_get_numeric (config, CONFIG_TARGET_KBPS, 2400);
+      net->auto_throttle = dict_get_numeric (config, CONFIG_AUTO_THROTTLE, 0);
 
 #if defined (_BUILD_WIN32)
       timeBeginPeriod (1);

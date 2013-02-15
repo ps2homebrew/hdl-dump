@@ -1,6 +1,6 @@
 /*
  * config.h
- * $Id: config.h,v 1.12 2006/05/21 21:36:33 bobi Exp $
+ * $Id: config.h,v 1.13 2006/06/18 13:08:31 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -84,25 +84,24 @@ static const compat_flags_t COMPAT_FLAGS_INVALID = (compat_flags_t) -1;
 
 /* control whether infrequently-used commands to be built */
 #define INCLUDE_DUMP_CMD
-#undef INCLUDE_COMPARE_CMD
-#define INCLUDE_COMPARE_IIN_CMD
+#undef INCLUDE_COMPARE_IIN_CMD
 #undef INCLUDE_MAP_CMD
-#undef INCLUDE_INFO_CMD
+#define INCLUDE_INFO_CMD
 #undef INCLUDE_ZERO_CMD
 #undef INCLUDE_CUTOUT_CMD
 #undef INCLUDE_READ_TEST_CMD
-#undef INCLUDE_CHECK_CMD
 #define INCLUDE_INITIALIZE_CMD
+#define INCLUDE_DELETE_CMD
+#define INCLUDE_BACKUP_TOC_CMD
+#undef INCLUDE_RESTORE_TOC_CMD
+#define INCLUDE_DIAG_CMD
 
 /* option names and values for the config file */
-#define CONFIG_LIMIT_TO_28BIT_FLAG        "limit_to_28bit"
 #define CONFIG_ENABLE_ASPI_FLAG           "enable_aspi"
-#define CONFIG_PARTITION_NAMING           "partition_naming"
-#define CONFIG_PARTITION_NAMING_STANDARD  "standard"
-#define CONFIG_PARTITION_NAMING_TOXICOS   "toxicos"
 #define CONFIG_DISC_DATABASE_FILE         "disc_database_file"
 #define CONFIG_LAST_IP                    "last_ip"
 #define CONFIG_TARGET_KBPS                "target_kbps"
+#define CONFIG_AUTO_THROTTLE              "auto_throttle"
 
 
 #if defined (__cplusplus)

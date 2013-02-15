@@ -1,6 +1,6 @@
 /*
  * iin_nero.c
- * $Id: iin_nero.c,v 1.8 2005/07/10 21:06:48 bobi Exp $
+ * $Id: iin_nero.c,v 1.9 2006/06/18 13:11:42 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -158,8 +158,7 @@ probe_nero_track (osal_handle_t in,
 
 /**************************************************************/
 int
-iin_nero_probe_path (const dict_t *config,
-		     const char *path,
+iin_nero_probe_path (const char *path,
 		     iin_t **iin)
 {
   u_int32_t device_sector_size;

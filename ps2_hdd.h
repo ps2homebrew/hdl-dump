@@ -1,6 +1,6 @@
 /*
  * ps2_hdd.h
- * $Id: ps2_hdd.h,v 1.5 2005/07/10 21:06:48 bobi Exp $
+ * $Id: ps2_hdd.h,v 1.6 2006/06/18 13:12:57 bobi Exp $
  *
  * borrowed from ps2fdisk
  */
@@ -66,7 +66,20 @@ typedef struct ps2_partition_header_type
     ps2fs_datetime_t created; /* Same as for the partition, it seems*/
     u_int32_t data_start;	/* Some sort of MBR data; position in sectors*/
     u_int32_t data_len;	/* Length also in sectors */
-    char unknown2 [200];
+
+    char unknown2 [72];
+
+    /* DMS-/ToxicOS-specific */
+    char dms_boot_magic[32];
+    u_int32_t boot_elf_installed;
+    u_int32_t boot_elf_lba;
+    u_int32_t boot_elf_byte_size;
+    u_int32_t boot_elf_checksum;
+    u_int32_t boot_elf_virtual_addr;
+    u_int32_t boot_elf_start_addr;
+    char unknown3[72 - 12];
+    char toxic_magic[8];
+    u_int32_t toxic_flags;
   } mbr;
   struct
   {		/* Sub-partition data */

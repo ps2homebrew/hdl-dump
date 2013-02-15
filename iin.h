@@ -1,6 +1,6 @@
 /*
  * iin.h
- * $Id: iin.h,v 1.8 2005/12/08 20:41:27 bobi Exp $
+ * $Id: iin.h,v 1.9 2006/06/18 13:11:15 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -25,7 +25,6 @@
 #define _IIN_H
 
 #include "config.h"
-#include "dict.h"
 #include <stddef.h>
 
 C_START
@@ -43,8 +42,7 @@ typedef struct iin_type iin_t;
 
 /* if RET_OK is returned source can be handled with that implementation;
    if so, iin is ready to process the input */
-typedef int (*iin_probe_path_t) (const dict_t *config,
-				 const char *path,
+typedef int (*iin_probe_path_t) (const char *path,
 				 iin_t **iin);
 
 typedef int (*iin_stat_t) (iin_t *iin,
@@ -78,8 +76,7 @@ struct iin_type
 };
 
 
-int iin_probe (const dict_t *config,
-	       const char *path,
+int iin_probe (const char *path,
 	       iin_t **iin);
 
 C_END

@@ -1,6 +1,6 @@
 /*
- * iin_cdrwin.h
- * $Id: iin_cdrwin.h,v 1.6 2006/06/18 13:11:33 bobi Exp $
+ * hio_dbg.h - debug dumps access
+ * $Id: hio_dbg.h,v 1.1 2006/06/18 13:19:48 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -21,19 +21,21 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#if !defined (_IIN_CDRWIN_H)
-#define _IIN_CDRWIN_H
+#if !defined (_HIO_DBG_H)
+#define _HIO_DBG_H
 
 #include "config.h"
-#include "iin.h"
+#include "hio.h"
+#include "dict.h"
 
 C_START
 
-/* would accept CDRWIN cuesheet file (.CUE) with a single track
-   and a single binary data file */
-int iin_cdrwin_probe_path (const char *path,
-			   iin_t **iin);
+/* accepts paths of the following form:
+   "dbg:path-to-debug-dump-file" */
+int hio_dbg_probe (const dict_t *config,
+		   const char *path,
+		   hio_t **hio);
 
 C_END
 
-#endif /* _IIN_CDRWIN_H defined? */
+#endif /* _HIO_DBG_H defined? */

@@ -1,6 +1,6 @@
 /*
  * gui_main.c
- * $Id: gui_main.c,v 1.8 2006/05/21 21:42:34 bobi Exp $
+ * $Id: gui_main.c,v 1.9 2006/06/18 13:13:04 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -70,6 +70,8 @@ static const DWORD MODE_IDC[] =
     IDC_MODE1, IDC_MODE2, IDC_MODE3, IDC_MODE4,
     IDC_MODE5, IDC_MODE6, IDC_MODE7, IDC_MODE8
   };
+
+static const char *device_name = NULL;
 
 
 /**************************************************************/
@@ -308,27 +310,37 @@ fill_ps2hdd_combo (HWND dlg)
   HWND cbo = GetDlgItem (dlg, IDC_PS2HDD);
   int result;
   osal_dlist_free (hard_drives_);
-  result = osal_query_hard_drives (&hard_drives_);
-  if (result == RET_OK)
+
+  if (device_name == NULL)
     {
-      int count = 0;
-      size_t i;
-      SendMessage (cbo, CB_RESETCONTENT, 0, 0);
-      for (i=0; i<hard_drives_->used; ++i)
+      result = osal_query_hard_drives (&hard_drives_);
+      if (result == RET_OK)
 	{
-	  const osal_dev_t *dev = hard_drives_->device + i;
-	  if (dev->is_ps2 == RET_OK)
+	  int count = 0;
+	  size_t i;
+	  SendMessage (cbo, CB_RESETCONTENT, 0, 0);
+	  for (i = 0; i < hard_drives_->used; ++i)
 	    {
-	      SendMessage (cbo, CB_ADDSTRING, 0, (LPARAM) dev->name);
-	      ++count;
+	      const osal_dev_t *dev = hard_drives_->device + i;
+	      if (dev->is_ps2 == RET_OK)
+		{
+		  SendMessage (cbo, CB_ADDSTRING, 0, (LPARAM) dev->name);
+		  ++count;
+		}
 	    }
+	  if (count > 0) /* select the first one by default */
+	    SendMessage (cbo, CB_SETCURSEL, 0, 0);
+	  return (count > 0 ? RET_OK : RET_NOT_FOUND);
 	}
-      if (count > 0) /* select the first one by default */
-	SendMessage (cbo, CB_SETCURSEL, 0, 0);
-      return (count > 0 ? RET_OK : RET_NOT_FOUND);
+      else
+	return (result);
     }
   else
-    return (result);
+    { /* get device name from the command-line (dbg:xxx maybe) */
+      SendMessage (cbo, CB_ADDSTRING, 0, (LPARAM) device_name);
+      SendMessage (cbo, CB_SETCURSEL, 0, 0);
+      return (RET_OK);
+    }
 }
 
 
@@ -385,7 +397,7 @@ dlg_refresh_hdd_info (HWND dlg)
       result = hio_probe (config_, hdd, &hio_);
       if (result == RET_OK)
 	{
-	  result = hdl_glist_read (config_, hio_, &games_);
+	  result = hdl_glist_read (hio_, &games_);
 	  if (result == RET_OK)
 	    { /* show free space info */
 	      char details [100];
@@ -411,7 +423,7 @@ dlg_refresh_hdd_info (HWND dlg)
 		  lv.iSubItem = 0;
 		  lv.pszText = (char*) game->name;
 		  lv.iImage = (!game->is_dvd ? 0 :
-			       game->total_size_in_kb / 1024 <= 4608 ? 1 : 2);
+			       game->raw_size_in_kb / 1024 <= 4608 ? 1 : 2);
 		  index = ListView_InsertItem (lvw, &lv);
 
 		  details [0] = details [1] = '\0';
@@ -426,7 +438,7 @@ dlg_refresh_hdd_info (HWND dlg)
 		    }
 		  ListView_SetItemText (lvw, index, 1, details + 1);
 
-		  sprintf (details, "%ld MB", game->total_size_in_kb / 1024);
+		  sprintf (details, "%ld MB", game->raw_size_in_kb / 1024);
 		  ListView_SetItemText (lvw, index, 2, details);
 
 		  ++count;
@@ -457,20 +469,19 @@ dlg_refresh_hdd_info (HWND dlg)
 
 
 /**************************************************************/
-void
+int /* returns 1 if DVD, 0 if CD, -1 if fails */
 fill_name_and_signature (HWND dlg,
 			 iin_t *iin)
 {
-  char volume_id [HDL_GAME_NAME_MAX + 1], signature [12 + 1];
-  u_int64_t layer_break;
-  int result = isofs_get_ps_cdvd_details (iin, volume_id,
-					  signature, &layer_break);
+  ps2_cdvd_info_t info;
+  int result = isofs_get_ps2_cdvd_info (iin, &info);
   if (result == OSAL_OK)
     { /* automatically fill game name and startup file */
-      if (strlen (signature) > 0)
+      if (strlen (info.startup_elf) > 0)
 	{
 	  compat_flags_t flags;
-	  result = ddb_lookup (config_, signature, volume_id, &flags);
+	  result = ddb_lookup (config_, info.startup_elf,
+			       info.volume_id, &flags);
 	  if (result == RET_OK)
 	    {
 	      size_t i;
@@ -486,11 +497,13 @@ fill_name_and_signature (HWND dlg,
 	    }
 	}
 
-      if (strlen (volume_id) > 0)
-	SetWindowText (GetDlgItem (dlg, IDC_GAMENAME), volume_id);
-      if (strlen (signature) > 0)
-	SetWindowText (GetDlgItem (dlg, IDC_SIGNATURE), signature);
+      if (strlen (info.volume_id) > 0)
+	SetWindowText (GetDlgItem (dlg, IDC_GAMENAME), info.volume_id);
+      if (strlen (info.startup_elf) > 0)
+	SetWindowText (GetDlgItem (dlg, IDC_SIGNATURE), info.startup_elf);
+      return (info.media_type == mt_dvd ? 1 : 0);
     }
+  return (-1);
 }
 
 
@@ -501,7 +514,7 @@ show_source_info (HWND dlg)
   HWND source_info = GetDlgItem (dlg, IDC_SOURCE_INFO);
   u_int64_t file_size;
   int result;
-  int skip = 1;
+  int skip = 1, is_dvd = -1;
   char source [MAX_PATH] = { "\0" };
   HCURSOR old_cursor = SetCursor (LoadCursor (NULL, IDC_WAIT));
 
@@ -509,7 +522,7 @@ show_source_info (HWND dlg)
   if (strlen (source) > 0)
     {
       iin_t *iin;
-      result = iin_probe (config_, source, &iin);
+      result = iin_probe (source, &iin);
       if (result == OSAL_OK)
 	{
 	  u_int32_t sector_size, num_sectors;
@@ -518,7 +531,7 @@ show_source_info (HWND dlg)
 	    {
 	      skip = 0;
 	      file_size = (u_int64_t) num_sectors * (u_int64_t) sector_size;
-	      fill_name_and_signature (dlg, iin);
+	      is_dvd = fill_name_and_signature (dlg, iin);
 	    }
 	  iin->close (iin);
 	}
@@ -536,7 +549,7 @@ show_source_info (HWND dlg)
 	  SetWindowText (source_info, temp);
 
 	  /* automagically select CD-/DVD-ROM source */
-	  if (file_size / (1024 * 1024) > 800)
+	  if (is_dvd == 1 || (is_dvd == -1 && file_size / (1024 * 1024) > 800))
 	    SendMessage (cbo, CB_SETCURSEL, 0 /* DVD is first */, 0);
 	  else
 	    SendMessage (cbo, CB_SETCURSEL, 1 /* CD is second */, 0);
@@ -742,7 +755,7 @@ install (HWND dlg)
       strlen (source) > 0)
     {
       iin_t *iin;
-      int result = iin_probe (config_, source, &iin);
+      int result = iin_probe (source, &iin);
       if (result == RET_OK)
 	{
 	  progress_t *pgs;
@@ -763,7 +776,7 @@ install (HWND dlg)
 	    ddb_update (config_, game.startup, game.name, game.compat_flags);
 
 	  pgs = get_progress (dlg);
-	  result = hdl_inject (config_, hio_, iin, &game, pgs);
+	  result = hdl_inject (hio_, iin, &game, -1, pgs);
 	  dispose_progress (pgs);
 
 	  iin->close (iin);
@@ -787,8 +800,8 @@ delete (HWND dlg)
   dlg_get_target (dlg, device);
   if (device [0] != '\0')
     {
-      apa_partition_table_t *ptable;
-      int result = apa_ptable_read_ex (config_, hio_, &ptable);
+      apa_toc_t *toc;
+      int result = apa_toc_read_ex (hio_, &toc);
       if (result == RET_OK)
 	{
 	  /* TODO: re-read games_ */
@@ -810,16 +823,16 @@ delete (HWND dlg)
 		      for (j=0; j<games_->count; ++j)
 			if (strcmp (buffer, games_->games [j].name) == 0)
 			  {
-			    result = apa_delete_partition (ptable,
+			    result = apa_delete_partition (toc,
 							   games_->games [j].partition_name);
 			    break;
 			  }
 		    }
 		}
 	      if (result == RET_OK)
-		result = apa_commit_ex (config_, hio_, ptable);
+		result = apa_commit_ex (hio_, toc);
 	    } /* confirmation */
-	  apa_ptable_free (ptable);
+	  apa_toc_free (toc);
 	} /* ptable_read */
 
       if (result != RET_OK)
@@ -1045,6 +1058,9 @@ WinMain (HINSTANCE curr_inst,
   iccx.dwSize = sizeof (iccx);
   iccx.dwICC = ICC_WIN95_CLASSES | ICC_INTERNET_CLASSES;
   InitCommonControlsEx (&iccx);
+
+  if (cmd_line != NULL && *cmd_line != '\0')
+    device_name = cmd_line;
 
   inst = curr_inst;
   result = DialogBox (curr_inst, (LPCTSTR) MAKEINTRESOURCE (IDD_MAIN_DLG),

@@ -1,6 +1,6 @@
 /*
  * hio_iop.c
- * $Id: hio_iop.c,v 1.1 2006/05/21 21:48:27 bobi Exp $
+ * $Id: hio_iop.c,v 1.2 2006/06/18 13:14:32 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -59,7 +59,8 @@ iop_read (hio_t *hio,
 {
   hio_iop_t *iop = (hio_iop_t*) hio;
   int result = ata_device_dma_transfer (iop->unit, output,
-					start_sector, num_sectors, ATA_DIR_READ);
+					start_sector, num_sectors,
+					ATA_DIR_READ);
   if (result == 0)
     {
       *bytes = num_sectors * HDD_SECTOR_SIZE;
@@ -80,7 +81,8 @@ iop_write (hio_t *hio,
 {
   hio_iop_t *iop = (hio_iop_t*) hio;
   int result = ata_device_dma_transfer (iop->unit, (char*) input,
-					start_sector, num_sectors, ATA_DIR_WRITE);
+					start_sector, num_sectors,
+					ATA_DIR_WRITE);
   if (result == 0)
     {
       *bytes = num_sectors * HDD_SECTOR_SIZE;
