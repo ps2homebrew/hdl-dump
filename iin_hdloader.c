@@ -1,6 +1,6 @@
 /*
  * iin_hdloader.c
- * $Id: iin_hdloader.c,v 1.10 2004/12/04 10:20:52 b081 Exp $
+ * $Id: iin_hdloader.c,v 1.11 2005/07/10 21:06:48 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -30,6 +30,7 @@
 #include "osal.h"
 #include "retcodes.h"
 #include "aligned.h"
+#include "hdl.h"
 #include "apa.h"
 #include "net_io.h"
 
@@ -39,7 +40,8 @@
 
 /**************************************************************/
 int
-iin_hdloader_probe_path (const char *path,
+iin_hdloader_probe_path (const dict_t *config,
+			 const char *path,
 			 iin_t **iin)
 {
   if (tolower (path [0]) == 'h' &&
@@ -79,17 +81,17 @@ iin_hdloader_probe_path (const char *path,
 
       /* get APA */
       if (result == OSAL_OK)
-	result = apa_ptable_read_ex (hio, &table);
+	result = apa_ptable_read_ex (config, hio, &table);
       if (result == OSAL_OK)
 	{
 	  result = apa_find_partition (table, partition_name,
 				       &partition_index);
 	  if (result == RET_NOT_FOUND)
-	    { /* attempt to locate partition name by prepending "PP.HDL." */
-	      char alt_part_name [100];
-	      sprintf (alt_part_name, "PP.HDL.%s", partition_name);
-	      result = apa_find_partition (table, alt_part_name,
-					   &partition_index);
+	    { /* assume it is `game_name' and not a partition name */
+	      char partition_id [PS2_PART_IDMAX + 8];
+	      result = hdl_lookup_partition_ex (config, hio, partition_name, partition_id);
+	      if (result == RET_OK)
+		result = apa_find_partition (table, partition_id, &partition_index);
 	    }
 	}
       if (result == OSAL_OK)

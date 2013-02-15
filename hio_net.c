@@ -1,6 +1,6 @@
 /*
  * hio_net.c - TCP/IP networking access to PS2 HDD
- * $Id: hio_net.c,v 1.8 2005/05/06 14:50:35 b081 Exp $
+ * $Id: hio_net.c,v 1.9 2005/07/10 21:06:48 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -55,6 +55,7 @@ typedef struct hio_net_type
   unsigned char *compressed;
   u_int32_t compr_alloc, compr_used;
   unsigned long error_code;
+  int do_compress;
 } hio_net_t;
 
 
@@ -74,6 +75,27 @@ recv_exact (SOCKET s,
   while (bytes > 0 && result > 0)
     {
       result = recv (s, outp + total, bytes, flags);
+      if (result > 0)
+	{
+	  total += result;
+	  bytes -= result;
+	}
+    }
+  return (result >= 0 ? total : result);
+}
+
+
+/**************************************************************/
+static int
+send_exact (SOCKET s,
+	    const char *inp,
+	    u_int32_t bytes,
+	    int flags)
+{
+  int total = 0, result = 1;
+  while (bytes > 0 && result > 0)
+    {
+      result = send (s, inp + total, bytes, flags);
       if (result > 0)
 	{
 	  total += result;
@@ -110,7 +132,7 @@ query (SOCKET s,
       cmd_length += bytes;
     }
 
-  result = send (s, (const char*) cmd, cmd_length, 0);
+  result = send_exact (s, (const char*) cmd, cmd_length, 0);
   if (result == cmd_length)
     { /* command successfully sent */
       result = recv_exact (s, (char*) cmd, NET_IO_CMD_LEN, 0);
@@ -151,7 +173,7 @@ execute (SOCKET s,
   set_u32 (cmd +  0, command);
   set_u32 (cmd +  4, sector);
   set_u32 (cmd +  8, num_sectors);
-  set_u32 (cmd + 12, 0x7d3a2d29);
+  set_u32 (cmd + 12, 0x7d3a2d29); /* }:-) */
   if (input != NULL)
     { /* probably a write operation */
       int compressed_data = (num_sectors & 0xffffff00) != 0;
@@ -160,7 +182,7 @@ execute (SOCKET s,
       cmd_length += bytes;
     }
 
-  result = send (s, (const char*) cmd, cmd_length, 0);
+  result = send_exact (s, (const char*) cmd, cmd_length, 0);
   return (result == cmd_length ? RET_OK : RET_ERR);
 }
 
@@ -258,21 +280,24 @@ net_write (hio_t *hio,
 	  u_int32_t at_once_s = num_sectors > NET_NUM_SECTORS ? NET_NUM_SECTORS : num_sectors;
 	  const void *data_to_send;
 	  u_int32_t sectors_to_send;
-#if defined (COMPRESS_DATA)
 	  u_int32_t compr_len;
 	  const double SMALLEST_PC_FOR_COMPRESSION = 0.5;
 
 	  /* compress input data */
-	  rle_compress ((const unsigned char*) inp, at_once_s * HDD_SECTOR_SIZE,
-			net->compressed, &compr_len);
-	  assert (compr_len < net-> compr_alloc);
-	  if (compr_len < (u_int32_t) ((at_once_s * HDD_SECTOR_SIZE) * SMALLEST_PC_FOR_COMPRESSION))
+	  if (net->do_compress)
+	    {
+	      rle_compress ((const unsigned char*) inp, at_once_s * HDD_SECTOR_SIZE,
+			    net->compressed, &compr_len);
+	      assert (compr_len < net->compr_alloc);
+	    }
+	  if (net->do_compress &&
+	      compr_len < (u_int32_t) ((at_once_s * HDD_SECTOR_SIZE) *
+				       SMALLEST_PC_FOR_COMPRESSION))
 	    { /* < 100% remaining => send compressed */
 	      data_to_send = net->compressed;
 	      sectors_to_send = compr_len << 8 | at_once_s;
 	    }
 	  else
-#endif /* COMPRESS_DATA defined? */
 	    { /* unable to compress => send RAW */
 	      data_to_send = inp;
 	      sectors_to_send = at_once_s;
@@ -377,7 +402,8 @@ net_dispose_error (hio_t *hio,
 
 /**************************************************************/
 static hio_t*
-net_alloc (SOCKET s)
+net_alloc (const dict_t *config,
+	   SOCKET s)
 {
   hio_net_t *net = (hio_net_t*) osal_alloc (sizeof (hio_net_t));
   if (net != NULL)
@@ -391,6 +417,7 @@ net_alloc (SOCKET s)
       net->hio.poweroff = &net_poweroff;
       net->hio.last_error = &net_last_error;
       net->hio.dispose_error = &net_dispose_error;
+      net->do_compress = dict_get_flag (config, CONFIG_USE_COMPRESSION_FLAG, 0);
       net->sock = s;
     }
   return ((hio_t*) net);
@@ -399,7 +426,8 @@ net_alloc (SOCKET s)
 
 /**************************************************************/
 int
-hio_net_probe (const char *path,
+hio_net_probe (const dict_t *config,
+	       const char *path,
 	       hio_t **hio)
 {
   int result = RET_NOT_COMPAT;
@@ -460,7 +488,7 @@ hio_net_probe (const char *path,
 			  /* void */ setsockopt (s, IPPROTO_TCP, TCP_NODELAY,
 						 (void*) &value, sizeof (value));
 #endif
-			  *hio = net_alloc (s);
+			  *hio = net_alloc (config, s);
 			  if (*hio != NULL)
 			    ; /* success */
 			  else

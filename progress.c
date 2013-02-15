@@ -1,6 +1,6 @@
 /*
  * progress.c
- * $Id: progress.c,v 1.8 2004/12/04 10:20:52 b081 Exp $
+ * $Id: progress.c,v 1.9 2005/07/10 21:06:48 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -28,7 +28,7 @@
 
 
 /* high-resolution time support */
-#if defined (_BUILD_WIN32)
+#if defined (_BUILD_WIN32) && !defined (_BUILD_WINE)
 static void
 highres_time (highres_time_t *cl)
 {
@@ -42,7 +42,7 @@ highres_time_val (const highres_time_t *cl)
 }
 #endif
 
-#if defined (_BUILD_UNIX)
+#if defined (_BUILD_UNIX) || defined (_BUILD_WINE)
 static void
 highres_time (highres_time_t *cl)
 {
@@ -59,13 +59,15 @@ highres_time_val (const highres_time_t *cl)
 
 /**************************************************************/
 progress_t*
-pgs_alloc (progress_cb_t progress_cb)
+pgs_alloc (progress_cb_t progress_cb,
+	   void *data)
 {
   progress_t *pgs = osal_alloc (sizeof (progress_t));
   if (pgs != NULL)
     {
       memset (pgs, 0, sizeof (progress_t));
       pgs->progress_cb_ = progress_cb;
+      pgs->progress_data_ = data;
     }
   return (pgs);
 }
@@ -101,7 +103,7 @@ pgs_prepare (progress_t *pgs,
       pgs->progress_cb_ = progress_cb;
 
       if (pgs->progress_cb_ != NULL)
-	pgs->progress_cb_ (pgs);
+	pgs->progress_cb_ (pgs, pgs->progress_data_);
     }
 }
 
@@ -200,7 +202,8 @@ pgs_update (progress_t *pgs,
 	      pgs->call_elapsed_ = pgs->elapsed;
 	      pgs->call_estimated_ = pgs->estimated;
 	      pgs->call_remaining_ = pgs->remaining;
-	      return (pgs->progress_cb_ (pgs)); /* let callback decide whether to continue */
+	      /* let callback decide whether to continue */
+	      return (pgs->progress_cb_ (pgs, pgs->progress_data_));
 	    }
 	  else
 	    return (0); /* continue */

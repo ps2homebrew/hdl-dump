@@ -1,6 +1,6 @@
 /*
  * osal.h
- * $Id: osal.h,v 1.10 2004/12/04 10:20:52 b081 Exp $
+ * $Id: osal.h,v 1.11 2005/07/10 21:06:48 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -25,6 +25,8 @@
 #define _OSAL_H
 
 #include "config.h"
+
+C_START
 
 #if defined (_BUILD_WIN32)
 #  include <windows.h>
@@ -147,5 +149,6 @@ int /* RET_OK, RET_BAD_FORMAT, RET_BAD_DEVICE */
 osal_map_device_name (const char *input,
 		      char output [MAX_PATH]);
 
+C_END
 
 #endif /* _OSAL_H defined? */

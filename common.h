@@ -1,6 +1,6 @@
 /*
  * common.h
- * $Id: common.h,v 1.11 2004/12/04 10:20:53 b081 Exp $
+ * $Id: common.h,v 1.12 2005/07/10 21:06:48 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -24,10 +24,14 @@
 #if !defined (_COMMON_H)
 #define _COMMON_H
 
+#include "config.h"
 #include "osal.h"
 #include "progress.h"
 #include "iin.h"
 #include "hio.h"
+#include "hdl.h"
+
+C_START
 
 #if !defined (MAX_PATH)
 #  define MAX_PATH 128
@@ -84,5 +88,14 @@ int iin_copy_ex (iin_t *iin,
 		 u_int32_t output_start_sector,
 		 u_int32_t num_sectors,
 		 progress_t *pgs);
+
+compat_flags_t parse_compat_flags (const char *flags);
+
+int ddb_lookup (const dict_t *config,
+		const char *startup,
+		char name[HDL_GAME_NAME_MAX + 1],
+		compat_flags_t *flags);
+
+C_END
 
 #endif /* _COMMON_H defined? */

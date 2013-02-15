@@ -1,6 +1,6 @@
 /*
  * hio_probe.c
- * $Id: hio_probe.c,v 1.3 2004/12/04 10:20:52 b081 Exp $
+ * $Id: hio_probe.c,v 1.4 2005/07/10 21:06:48 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -28,13 +28,14 @@
 
 /**************************************************************/
 int
-hio_probe (const char *path,
+hio_probe (const dict_t *config,
+	   const char *path,
 	   hio_t **hio)
 {
   int result = RET_NOT_COMPAT;
   if (result == RET_NOT_COMPAT)
     result = hio_win32_probe (path, hio);
   if (result == RET_NOT_COMPAT)
-    result = hio_net_probe (path, hio);
+    result = hio_net_probe (config, path, hio);
   return (result);
 }

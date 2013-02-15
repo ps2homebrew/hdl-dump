@@ -1,6 +1,6 @@
 /*
  * iin_net.c, based on iin_hdloader.c, v 1.1
- * $Id: iin_net.c,v 1.4 2004/12/04 10:20:52 b081 Exp $
+ * $Id: iin_net.c,v 1.5 2005/07/10 21:06:48 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -30,6 +30,7 @@
 #include "retcodes.h"
 #include "aligned.h"
 #include "apa.h"
+#include "hdl.h"
 #include "hio_net.h"
 #include "net_io.h"
 
@@ -205,7 +206,8 @@ net_alloc (hio_t *hio,
 
 /**************************************************************/
 int
-iin_net_probe_path (const char *path,
+iin_net_probe_path (const dict_t *config,
+		    const char *path,
 		    iin_t **iin)
 {
   int result = RET_NOT_COMPAT;
@@ -236,22 +238,24 @@ iin_net_probe_path (const char *path,
       memcpy (ip_addr_only, path, endp - path);
       ip_addr_only [endp - path] = '\0';
 
-      result = hio_net_probe (ip_addr_only, &hio);
+      result = hio_net_probe (config, ip_addr_only, &hio);
       if (result == OSAL_OK)
 	{
 	  const char *partition_name = strchr (path, ':') + 1;
 	  apa_partition_table_t *table = NULL;
 	  u_int32_t partition_index;
 
-	  result = apa_ptable_read_ex (hio, &table);
+	  result = apa_ptable_read_ex (config, hio, &table);
 	  if (result == OSAL_OK)
 	    {
 	      result = apa_find_partition (table, partition_name, &partition_index);
 	      if (result == RET_NOT_FOUND)
-		{ /* attempt to locate partition name by prepending "PP.HDL." */
-		  char alt_part_name [100];
-		  sprintf (alt_part_name, "PP.HDL.%s", partition_name);
-		  result = apa_find_partition (table, alt_part_name, &partition_index);
+		{ /* assume it is `game_name' and not a partition name */
+		  char partition_id [PS2_PART_IDMAX + 8];
+		  result = hdl_lookup_partition_ex (config, hio,
+						    partition_name, partition_id);
+		  if (result == RET_OK)
+		    result = apa_find_partition (table, partition_id, &partition_index);
 		}
 	    }
 	  if (result == OSAL_OK)

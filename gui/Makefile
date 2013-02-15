@@ -1,6 +1,6 @@
 ##
 ## Makefile
-## $Id: Makefile,v 1.5 2005/02/17 17:53:04 b081 Exp $
+## $Id: Makefile,v 1.6 2005/07/10 21:06:48 bobi Exp $
 ##
 ## Copyright 2004 Bobi B., w1zard0f07@yahoo.com
 ##
@@ -25,14 +25,6 @@
 # configuration start
 # NOTE: don't forget, that changing some options REQUIRES `make clean' next!
 
-# ASPI is supported on Windows platform, only
-# however, running `hdl_dump query' while burning a CD/DVD would make a coaster
-# and it kills/freezes some CD/DVD drives (like `Yamaha-8424S')
-INCLUDE_ASPI ?= no
-
-# limit HDD size to 128GB to preserve compatibility with updated PS2 browser
-LIMIT_HDD_TO_128GB ?= yes
-
 # include icon in the executable (`yes') or look for an extenal icon (other)
 BUILTIN_ICON ?= yes
 
@@ -51,20 +43,16 @@ SEND_NOACK ?= no
 QUICK_ACK ?= yes
 DUMMY_ACK ?= yes
 
-# `yes' - compress data being sent during network transfers
-# sends less data, but makes additional load on the IOP
-COMPRESS_DATA ?= yes
-
 # hdl_dump current version/release
 VER_MAJOR = 0
-VER_MINOR = 7
-VER_PATCH = 3
+VER_MINOR = 8
+VER_PATCH = 2
 
 # configuration end
 ###############################################################################
 
 
-CFLAGS = -Wall -ansi -pedantic -Wno-long-long
+CFLAGS = -Wall -Wno-long-long
 
 LDFLAGS =
 
@@ -74,10 +62,12 @@ SOURCES = gui_main.c osal_win32.c apa.c common.c progress.c \
 	hdl.c isofs.c aligned.c \
 	iin_probe.c iin_img_base.c iin_iso.c iin_optical.c iin_cdrwin.c \
 	iin_hdloader.c iin_iml.c iin_nero.c iin_gi.c iin_net.c net_io.c \
-	hio_probe.c hio_win32.c hio_net.c byteseq.c
+	hio_probe.c hio_win32.c hio_net.c byteseq.c dict.c
 
 
 # "autodetect" Windows builds
+# since this is a _Windows_ GUI, there are two cases here:
+# either it is build with CYGWIN gcc or against winelib
 ifdef SYSTEMROOT
   WINDOWS = yes
 else
@@ -85,15 +75,27 @@ else
 endif
 
 
-OBJECTS += rsrc.o
-CFLAGS += -mwindows -mno-cygwin -D_BUILD_WIN32
+CFLAGS += -mwindows -D_BUILD_WIN32
 LDFLAGS += -lwsock32 -lcomctl32
-EXESUF = .exe
 
 # whether to include ASPI support or not
-ifeq ($(INCLUDE_ASPI), yes)
-  CFLAGS += -D_WITH_ASPI
+ifeq ($(WINDOWS), yes)
+  CFLAGS += -D_WITH_ASPI -mno-cygwin
+  CFLAGS += -ansi -pedantic
+
   OBJECTS += iin_aspi.o aspi_hlio.o
+  OBJECTS += rsrc.o
+  EXESUF = .exe
+else
+  # assume it is winelib/wine build
+  CFLAGS += -D_BUILD_WINE
+
+  OBJECTS += rsrc.res
+  EXESUF = 
+
+  CC = winegcc
+  RC = wrc
+  WINEBUILD = winebuild
 endif
 
 # make it compile with latest cygwin/mingw
@@ -120,12 +122,6 @@ VERSION += -DVERSION=\"$(VER_MAJOR).$(VER_MINOR).$(VER_PATCH)\"
 CFLAGS += $(VERSION)
 
 
-# 128GB HDD limit support
-ifeq ($(LIMIT_HDD_TO_128GB), yes)
-  CFLAGS += -DLIMIT_HDD_TO_128GB
-endif
-
-
 # built-in icon support
 ifeq ($(BUILTIN_ICON), yes)
   CFLAGS += -DBUILTIN_ICON
@@ -141,12 +137,6 @@ ifeq ($(DUMMY_ACK), yes)
 endif
 ifeq ($(QUICK_ACK), yes)
   CFLAGS += -DNET_QUICK_ACK
-endif
-
-
-# compressed/uncompressed data transfer support
-ifeq ($(COMPRESS_DATA), yes)
-  CFLAGS += -DCOMPRESS_DATA
 endif
 
 
@@ -191,6 +181,14 @@ $(BINARY): $(OBJECTS)
 %.d : %.c
 	@echo -e "\tDEP $<"
 	@$(CC) -MM $(CFLAGS) $< > $@
+
+
+# for wine
+%.res : %.rc
+	@echo -e "\tRC  $<"
+	@echo '#include "winres.h"' > afxres.h
+	@$(RC) $(RCFLAGS) $(RCEXTRA) $(DEFINCL) -fo$@ $<
+	@rm -f afxres.h
 
 
 ifneq ($(MAKECMDGOAL),rmdeps)

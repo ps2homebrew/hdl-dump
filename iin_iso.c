@@ -1,6 +1,6 @@
 /*
  * iin_iso.c
- * $Id: iin_iso.c,v 1.8 2004/12/04 10:20:52 b081 Exp $
+ * $Id: iin_iso.c,v 1.9 2005/07/10 21:06:48 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -31,7 +31,8 @@
 
 /**************************************************************/
 int
-iin_iso_probe_path (const char *path,
+iin_iso_probe_path (const dict_t *config,
+		    const char *path,
 		    iin_t **iin)
 {
   osal_handle_t file;

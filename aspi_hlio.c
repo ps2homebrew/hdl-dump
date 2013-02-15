@@ -1,6 +1,6 @@
 /*
  * aspi_hlio.c - ASPI high-level I/O
- * $Id: aspi_hlio.c,v 1.4 2004/12/04 10:20:53 b081 Exp $
+ * $Id: aspi_hlio.c,v 1.5 2005/07/10 21:06:48 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -342,7 +342,8 @@ aspi_dlist_add (scsi_devices_list_t *list,
 		u_int32_t align,
 		const char *name,
 		u_int32_t sector_size,
-		u_int32_t size_in_sectors)
+		u_int32_t size_in_sectors,
+		unsigned long status)
 {
   scsi_device_t *dev;
   if (list->used == list->alloc)
@@ -372,6 +373,7 @@ aspi_dlist_add (scsi_devices_list_t *list,
   strcpy (dev->name, name);
   dev->sector_size = sector_size;
   dev->size_in_sectors = size_in_sectors;
+  dev->status = status;
   ++list->used;
   return (RET_OK);
 }
@@ -494,7 +496,8 @@ aspi_scan_scsi_bus (scsi_devices_list_t **list)
 #endif
 			  result = aspi_dlist_add (*list, host_adapter, scsi_id, lun,
 						   dtype.SRB_DeviceType, alignment_mask,
-						   device_name, sector_size, size_in_sectors);
+						   device_name, sector_size, size_in_sectors,
+						   aspi_get_last_error_code ());
 
 #if 0 /* left to see how it is done */
 			  const char *type;
@@ -828,17 +831,24 @@ aspi_get_last_error_msg (void)
 const char*
 aspi_get_error_msg (unsigned long aspi_error_code)
 {
+  /* NOTICE: using a static buffer is not a thread-safe */
+  static char message[256];
+
   int srb_status = (aspi_error_code >> 24) & 0xff;
   int sense_key = (aspi_error_code >> 16) & 0xff;
   int asc = (aspi_error_code >> 8) & 0xff;
   int ascq = aspi_error_code & 0xff;
 
-  /**/ if (asc != 0x00 && ascq != 0x00)
-    return (aspi_sense_asc_ascq_meaning (asc, ascq));
-  else if (srb_status != SS_COMP)
+  if (srb_status == SS_COMP || srb_status == SS_PENDING)
     return (aspi_srb_status_meaning (srb_status));
+  strcpy (message, aspi_srb_status_meaning (srb_status));
+  strcat (message, "; ");
+
+  if (asc != 0x00 && ascq != 0x00)
+    strcat (message, aspi_sense_asc_ascq_meaning (asc, ascq));
   else
-    return (aspi_sense_key_meaning (sense_key));
+    strcat (message, aspi_sense_key_meaning (sense_key));
+  return (message);
 }
 
 

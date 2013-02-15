@@ -1,6 +1,6 @@
 /*
  * common.c
- * $Id: common.c,v 1.13 2004/12/04 10:20:53 b081 Exp $
+ * $Id: common.c,v 1.14 2005/07/10 21:06:48 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -23,10 +23,12 @@
 
 #include <ctype.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "common.h"
 #include "retcodes.h"
 #include "osal.h"
+#include "hdl.h"
 
 
 #define MAX_READ_FILE_SIZE (1 * 1024 * 1024) /* 1MB */
@@ -346,5 +348,112 @@ iin_copy_ex (iin_t *iin,
 	}
     }
 
+  return (result);
+}
+
+
+/**************************************************************/
+compat_flags_t
+parse_compat_flags (const char *flags)
+{
+  compat_flags_t result = 0;
+  if (flags != NULL)
+    {
+      size_t len = strlen (flags), i;
+      if (flags[0] == '0' && flags[1] == 'x')
+	{ /* hex: 0x... */
+	  unsigned long retval = strtoul (flags, NULL, 0);
+	  if (retval < (1 << MAX_FLAGS))
+	    result = (compat_flags_t) retval;
+	  else
+	    /* out-of-range */
+	    result = COMPAT_FLAGS_INVALID;
+	}
+      else if (flags[0] == '+' && (len % 2) == 0)
+	{ /* +1, +1+2, +2+3, ... */
+	  for (i=0; i<len/2; ++i)
+	    {
+	      if (flags[i * 2 + 0] == '+')
+		{
+		  int flag = flags[i * 2 + 1] - '0';
+		  if (flag >= 1 && flag <= MAX_FLAGS)
+		    { /* support up to MAX_FLAGS flags */
+		      int bit = 1 << (flag - 1);
+		      if ((result & bit) == 0)
+			result |= bit;
+		      else
+			{ /* flag used twice */
+			  result = COMPAT_FLAGS_INVALID;
+			  break;
+			}
+		    }
+		  else
+		    { /* not in [1..MAX_FLAGS] */
+		      result = COMPAT_FLAGS_INVALID;
+		      break;
+		    }
+		}
+	      else
+		{ /* pair doesn't start with a plus */
+		  result = COMPAT_FLAGS_INVALID;
+		  break;
+		}
+	    }
+	}
+      else
+	{ /* don't know how to handle those flags */
+	  result = COMPAT_FLAGS_INVALID;
+	}
+    }
+  return (result);
+}
+
+
+/**************************************************************/
+int
+ddb_lookup (const dict_t *config,
+	    const char *startup,
+	    char name[HDL_GAME_NAME_MAX + 1],
+	    compat_flags_t *flags)
+{
+  int result;
+  const char *disc_db = dict_lookup (config, CONFIG_DISC_DATABASE_FILE);
+  dict_t *list = disc_db != NULL ? dict_restore (NULL, disc_db) : NULL;
+  if (list != NULL)
+    {
+      const char *entry = dict_lookup (list, startup);
+      if (entry != NULL)
+	{ /* game info has been found */
+	  size_t entry_len = strlen (entry);
+	  char *pos = strrchr (entry, ';');
+
+	  result = RET_OK;
+	  if (pos != NULL && pos[1] != 'x')
+	    { /* scan for compatibility flags */
+	      compat_flags_t flags2 = 0;
+	      if (strcmp (pos + 1, "0") != 0)
+		flags2 = parse_compat_flags (pos + 1);
+	      if (flags2 != COMPAT_FLAGS_INVALID)
+		{ /* we have compatibility flags */
+		  *flags = flags2;
+		  entry_len = pos - entry;
+		}
+	    }
+	  else if (pos != NULL && pos[1] == 'x')
+	    { /* marked as incompatible; warn */
+	      result = RET_DDB_INCOMPATIBLE;
+	      entry_len = pos - entry;
+	    }
+	  /* entry has been found => fill game name */
+	  memcpy (name, entry, (entry_len < HDL_GAME_NAME_MAX ?
+				entry_len : HDL_GAME_NAME_MAX));
+	  name[entry_len < HDL_GAME_NAME_MAX ? entry_len : HDL_GAME_NAME_MAX] = '\0';
+	}
+      else
+	result = RET_NO_DDBENTRY;
+      dict_free (list);
+    }
+  else
+    result = RET_NO_DISC_DB;
   return (result);
 }

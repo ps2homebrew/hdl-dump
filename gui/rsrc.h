@@ -1,6 +1,6 @@
 /*
  * rsrc.h
- * $Id: rsrc.h,v 1.4 2005/02/17 17:54:18 b081 Exp $
+ * $Id: rsrc.h,v 1.5 2005/07/10 21:06:48 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -55,6 +55,8 @@
 
 #define IDS_CONFIRM_DELETE              25
 #define IDS_CONFIRM_DELETE_TITLE        26
+#define IDS_INCOMPATIBLE_GAME           27
+#define IDS_INCOMPATIBLE_GAME_TITLE     28
 
 #define IDD_MAIN_DLG                    101
 #define IDD_PROGRESS_DLG                102
@@ -82,9 +84,14 @@
 #define IDC_PS2HDD_INFO                 1022
 #define IDC_SIGNATURE_LBL               1023
 #define IDC_SOURCE_INFO                 1024
-#define IDC_MODE1                       1025
-#define IDC_MODE2                       1026
-#define IDC_MODE3                       1027
+#define IDC_MODE1                       1101
+#define IDC_MODE2                       1102
+#define IDC_MODE3                       1103
+#define IDC_MODE4                       1104
+#define IDC_MODE5                       1105
+#define IDC_MODE6                       1106
+#define IDC_MODE7                       1107
+#define IDC_MODE8                       1108
 #define IDC_PS2HDD_LOCAL                1028
 #define IDC_PS2HDD_NETWORK              1029
 #define IDC_PS2IP                       1030

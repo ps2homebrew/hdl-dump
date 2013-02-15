@@ -1,6 +1,6 @@
 /*
  * hdl.h
- * $Id: hdl.h,v 1.6 2005/05/06 14:50:34 b081 Exp $
+ * $Id: hdl.h,v 1.7 2005/07/10 21:06:48 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -24,11 +24,13 @@
 #if !defined (_HDL_H)
 #define _HDL_H
 
+#include "config.h"
 #include "progress.h"
 #include "hio.h"
 #include "iin.h"
 #include "ps2_hdd.h"
 
+C_START
 
 #define HDL_GAME_NAME_MAX  64
 
@@ -37,7 +39,7 @@ typedef struct hdl_game_type
   char name [HDL_GAME_NAME_MAX + 1];
   char partition_name [PS2_PART_IDMAX + 1];
   char startup [8 + 1 + 3 + 1];
-  unsigned char compat_flags;
+  compat_flags_t compat_flags;
   int is_dvd;
   u_int32_t layer_break;
 } hdl_game_t;
@@ -65,24 +67,35 @@ typedef struct hdl_games_list_type
 void hdl_pname (const char *name,
 		char partition_name [PS2_PART_IDMAX + 1]);
 
-int hdl_extract (const char *device,
+int hdl_extract (const dict_t *config,
+		 const char *device,
 		 const char *name,   /* of the game */
 		 const char *output, /* file */
 		 progress_t *pgs);
 
-int hdl_inject (hio_t *hio,
+int hdl_inject (const dict_t *config,
+		hio_t *hio,
 		iin_t *iin,
 		hdl_game_t *details,
 		progress_t *pgs);
 
 
-int hdl_glist_read (hio_t *hio,
+int hdl_glist_read (const dict_t *config,
+		    hio_t *hio,
 		    hdl_games_list_t **glist);
 
 void hdl_glist_free (hdl_games_list_t *glist);
 
-int hdl_lookup_partition (const char *device_name,
+int hdl_lookup_partition_ex (const dict_t *config,
+			     hio_t *hio,
+			     const char *game_name,
+			     char partition_id [PS2_PART_IDMAX + 1]);
+
+int hdl_lookup_partition (const dict_t *config,
+			  const char *device_name,
 			  const char *game_name,
 			  char partition_id [PS2_PART_IDMAX + 1]);
+
+C_END
 
 #endif /* _HDL_H defined? */

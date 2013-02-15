@@ -1,3 +1,14 @@
+0.8.2
+	+ both - hdl_dump and hdl_dumb - are now configurable in run-time
+	  (as opposed to build-time)
+	+ GUI supports file-based compatibility list
+	+ GUI has been extended to allow up to 8 compatibility flags
+	+ GUI is partially compatible with wine and winelib
+	  (networked installations from an image file works fine)
+	+ new `install' command for hdl_dump that is "fire and forget"
+ 	  if the game is in the compatibility list
+	+ few minor usability fixes
+
 0.8.1
 	+ quick-and-dirty prepare HDD for HD Loader (AKA format or initialize)
 	  works fine with HD Loader; not tested with homebrew

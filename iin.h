@@ -1,6 +1,6 @@
 /*
  * iin.h
- * $Id: iin.h,v 1.6 2004/12/04 10:20:52 b081 Exp $
+ * $Id: iin.h,v 1.7 2005/07/10 21:06:48 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -25,8 +25,10 @@
 #define _IIN_H
 
 #include "config.h"
+#include "dict.h"
 #include <stddef.h>
 
+C_START
 
 #define IIN_SECTOR_SIZE 2048 /* CD/DVD sector size */
 #define IIN_NUM_SECTORS  128 /* number of sectors to read at once */
@@ -41,7 +43,8 @@ typedef struct iin_type iin_t;
 
 /* if RET_OK is returned source can be handled with that implementation;
    if so, iin is ready to process the input */
-typedef int (*iin_probe_path_t) (const char *path,
+typedef int (*iin_probe_path_t) (const dict_t *config,
+				 const char *path,
 				 iin_t **iin);
 
 typedef int (*iin_stat_t) (iin_t *iin,
@@ -75,8 +78,10 @@ struct iin_type
 };
 
 
-int iin_probe (const char *path,
+int iin_probe (const dict_t *config,
+	       const char *path,
 	       iin_t **iin);
 
+C_END
 
 #endif /* _IIN_H defined? */

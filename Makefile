@@ -1,6 +1,6 @@
 ##
 ## Makefile
-## $Id: Makefile,v 1.16 2005/05/06 14:50:34 b081 Exp $
+## $Id: Makefile,v 1.17 2005/07/10 21:06:48 bobi Exp $
 ##
 ## Copyright 2004 Bobi B., w1zard0f07@yahoo.com
 ##
@@ -24,18 +24,6 @@
 ###############################################################################
 # configuration start
 # NOTE: don't forget, that changing some options REQUIRES `make clean' next!
-
-# ASPI is supported on Windows platform, only
-# however, running `hdl_dump query' while burning a CD/DVD would make a coaster
-# and it kills/freezes some CD/DVD drives (like `Yamaha-8424S')
-INCLUDE_ASPI ?= yes
-
-# limit HDD size to 128GB to preserve compatibility with updated PS2 browser
-LIMIT_HDD_TO_128GB ?= no # yes
-
-# select partition naming schema: `toxic_os' Toxic OS: "PP.HDL.STARTUP";
-# `standard' HD Loader: "PP.HDL.Game name"
-PARTITION_NAMING ?= toxic_os
 
 # include icon in the executable (`yes') or look for an extenal icon (other)
 BUILTIN_ICON ?= yes
@@ -62,21 +50,21 @@ COMPRESS_DATA ?= yes
 # hdl_dump current version/release
 VER_MAJOR = 0
 VER_MINOR = 8
-VER_PATCH = 1
+VER_PATCH = 2
 
 # configuration end
 ###############################################################################
 
 
 CFLAGS = -Wall -ansi -pedantic -Wno-long-long
+CXXFLAGS = -Wall -ansi -pedantic -Wno-long-long
 
 LDFLAGS =
 
 SOURCES = hdl_dump.c apa.c common.c progress.c hdl.c isofs.c \
 	iin_img_base.c iin_optical.c iin_iso.c iin_hdloader.c iin_cdrwin.c \
 	iin_nero.c iin_gi.c iin_iml.c iin_probe.c iin_net.c aligned.c \
-	hio_probe.c hio_win32.c hio_net.c net_io.c byteseq.c
-
+	hio_probe.c hio_win32.c hio_net.c net_io.c byteseq.c dict.c
 
 # "autodetect" Windows builds
 ifdef SYSTEMROOT
@@ -89,23 +77,19 @@ endif
 # Windows/Unix/Linux build
 ifeq ($(WINDOWS), yes)
   SOURCES += osal_win32.c
-  OBJECTS += rsrc.o
+  OBJECTS += iin_aspi.o aspi_hlio.o rsrc.o
   CFLAGS += -mno-cygwin -D_BUILD_WIN32
+  CXXFLAGS += -mno-cygwin -D_BUILD_WIN32
   LDFLAGS += -lwsock32
   EXESUF = .exe
 
-  # whether to include ASPI support or not
-  ifeq ($(INCLUDE_ASPI), yes)
-    CFLAGS += -D_WITH_ASPI
-    OBJECTS += iin_aspi.o aspi_hlio.o
-  endif
-
   # make it compile with latest cygwin/mingw
-  # however, that would probably not work under older versions of Windows
+  # however, that would probably not work under older versions of Windows...?
   CFLAGS += -D_WIN32_WINNT=0x0500
 else
   SOURCES += osal_unix.c
   CFLAGS += -D_GNU_SOURCE -D_BUILD_UNIX
+  CXXFLAGS += -D_GNU_SOURCE -D_BUILD_UNIX
   EXESUF = 
 endif
 
@@ -116,8 +100,10 @@ ifeq ($(RELEASE), yes)
 endif
 ifeq ($(DEBUG), yes)
   CFLAGS += -O0 -g -D_DEBUG
+  CXXFLAGS += -O0 -g -D_DEBUG
 else
   CFLAGS += -O2 -s -DNDEBUG
+  CXXFLAGS += -O2 -s -DNDEBUG
 endif
 
 
@@ -127,47 +113,42 @@ VERSION = -DVER_MAJOR=$(VER_MAJOR) \
 	-DVER_PATCH=$(VER_PATCH)
 VERSION += -DVERSION=\"$(VER_MAJOR).$(VER_MINOR).$(VER_PATCH)\"
 CFLAGS += $(VERSION)
-
-
-# 128GB HDD limit support
-ifeq ($(LIMIT_HDD_TO_128GB), yes)
-  CFLAGS += -DLIMIT_HDD_TO_128GB
-endif
-
-
-ifeq ($(PARTITION_NAMING), toxic_os)
-  CFLAGS += -DPARTITION_NAMING=\"toxic_os\"
-else
-  CFLAGS += -DPARTITION_NAMING=\"standard\"
-endif
+CXXFLAGS += $(VERSION)
 
 
 # built-in icon support
 ifeq ($(BUILTIN_ICON), yes)
   CFLAGS += -DBUILTIN_ICON
+  CXXFLAGS += -DBUILTIN_ICON
 endif
 
 
 # ACK/NOACK support
 ifeq ($(SEND_NOACK), yes)
   CFLAGS += -DNET_SEND_NOACK
+  CXXFLAGS += -DNET_SEND_NOACK
 endif
 ifeq ($(DUMMY_ACK), yes)
   CFLAGS += -DNET_DUMMY_ACK
+  CXXFLAGS += -DNET_DUMMY_ACK
 endif
 ifeq ($(QUICK_ACK), yes)
   CFLAGS += -DNET_QUICK_ACK
+  CXXFLAGS += -DNET_QUICK_ACK
 endif
 
 
 # compressed/uncompressed data transfer support
 ifeq ($(COMPRESS_DATA), yes)
   CFLAGS += -DCOMPRESS_DATA
+  CXXFLAGS += -DCOMPRESS_DATA
 endif
 
 
 OBJECTS += $(SOURCES:.c=.o)
 DEPENDS += $(SOURCES:.c=.d)
+OBJECTS := $(OBJECTS:.cpp=.o)
+DEPENDS := $(DEPENDS:.cpp=.d)
 
 BINARY = hdl_dump$(EXESUF)
 
@@ -210,6 +191,16 @@ endif
 %.d : %.c
 	@echo -e "\tDEP $<"
 	@$(CC) -MM $(CFLAGS) $< > $@
+
+
+%.o : %.cpp
+	@echo -e "\tC++ $<"
+	@$(CXX) -c $(CXXFLAGS) -o $@ $<
+
+
+%.d : %.cpp
+	@echo -e "\tDEP $<"
+	@$(CXX) -MM $(CXXFLAGS) $< > $@
 
 
 ifneq ($(MAKECMDGOAL),rmdeps)

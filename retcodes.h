@@ -1,6 +1,6 @@
 /*
  * retcodes.h
- * $Id: retcodes.h,v 1.10 2005/05/06 14:50:35 b081 Exp $
+ * $Id: retcodes.h,v 1.11 2005/07/10 21:06:48 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -53,6 +53,9 @@
 #define RET_BROKEN_LINK 21 /* missing linked file (to an IML or CUE for example) */
 #define RET_CROSS_128GB 22 /* data behind 128GB mark */
 #define RET_ASPI_ERROR  23 /* ASPI error; they are far too many to list here */
+#define RET_NO_DISC_DB  24 /* disc database file could not be found */
+#define RET_NO_DDBENTRY 25 /* there is no entry for that game in the disc database */
+#define RET_DDB_INCOMPATIBLE 26 /* game is incompatible according to disc database */
 
 
 #endif /* _RETCODES_H defined? */

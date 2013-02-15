@@ -1,6 +1,6 @@
 /*
  * apa.h
- * $Id: apa.h,v 1.8 2005/05/06 14:50:34 b081 Exp $
+ * $Id: apa.h,v 1.9 2005/07/10 21:06:48 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -24,10 +24,13 @@
 #if !defined (_APA_H)
 #define _APA_H
 
+#include "config.h"
 #include "ps2_hdd.h"
 #include "osal.h"
 #include "hio.h"
+#include "dict.h"
 
+C_START
 
 /* chunks_map */
 static const char MAP_AVAIL = '.';
@@ -68,10 +71,12 @@ int is_apa_partition (osal_handle_t handle);
 
 void apa_ptable_free (apa_partition_table_t *table);
 
-int apa_ptable_read (const char *device,
+int apa_ptable_read (const dict_t *config,
+		     const char *device,
 		     apa_partition_table_t **table);
 
-int apa_ptable_read_ex (hio_t *hio,
+int apa_ptable_read_ex (const dict_t *config,
+			hio_t *hio,
 			apa_partition_table_t **table);
 
 int apa_find_partition (const apa_partition_table_t *table,
@@ -87,14 +92,19 @@ int apa_allocate_space (apa_partition_table_t *table,
 int apa_delete_partition (apa_partition_table_t *table,
 			  const char *partition_name);
 
-int apa_commit (const char *device_name,
+int apa_commit (const dict_t *config,
+		const char *device_name,
 		const apa_partition_table_t *table);
 
-int apa_commit_ex (hio_t *hio,
+int apa_commit_ex (const dict_t *config,
+		   hio_t *hio,
 		   const apa_partition_table_t *table);
 
-int apa_initialize (const char *device);
+int apa_initialize (const dict_t *config,
+		    const char *device);
 
 int apa_initialize_ex (hio_t *hio);
+
+C_END
 
 #endif /* _APA_H defined? */

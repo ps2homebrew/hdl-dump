@@ -1,6 +1,6 @@
 /*
  * hio.h - PS2 HDD I/O
- * $Id: hio.h,v 1.6 2005/02/17 17:50:10 b081 Exp $
+ * $Id: hio.h,v 1.7 2005/07/10 21:06:48 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -25,8 +25,10 @@
 #define _HIO_H
 
 #include "config.h"
+#include "dict.h"
 #include <stddef.h>
 
+C_START
 
 /*
  * HD Loader I/O interface below
@@ -77,9 +79,6 @@ struct hio_type
   hio_dispose_error_t dispose_error;
 };
 
-
-int hio_probe (const char *path,
-	       hio_t **hio);
-
+C_END
 
 #endif /* _HIO_H defined? */

@@ -1,6 +1,6 @@
 /*
  * apa.c
- * $Id: apa.c,v 1.12 2005/05/06 14:50:34 b081 Exp $
+ * $Id: apa.c,v 1.13 2005/07/10 21:06:48 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -47,7 +47,8 @@ typedef struct ps2_partition_run_type
 } ps2_partition_run_t;
 
 
-static int apa_check (const apa_partition_table_t *table);
+static int apa_check (const dict_t *config,
+		      const apa_partition_table_t *table);
 
 
 /**************************************************************/
@@ -194,14 +195,15 @@ apa_setup_statistics (apa_partition_table_t *table)
 
 /**************************************************************/
 int
-apa_ptable_read (const char *path,
+apa_ptable_read (const dict_t *config,
+		 const char *path,
 		 apa_partition_table_t **table)
 {
   hio_t *hio;
-  int result = hio_probe (path, &hio); /* do not disable caching */
+  int result = hio_probe (config, path, &hio); /* do not disable caching */
   if (result == OSAL_OK)
     {
-      result = apa_ptable_read_ex (hio, table);
+      result = apa_ptable_read_ex (config, hio, table);
       hio->close (hio);
     }
   return (result);
@@ -210,7 +212,8 @@ apa_ptable_read (const char *path,
 
 /**************************************************************/
 int
-apa_ptable_read_ex (hio_t *hio,
+apa_ptable_read_ex (const dict_t *config,
+		    hio_t *hio,
 		    apa_partition_table_t **table)
 {
   u_int32_t size_in_kb;
@@ -218,11 +221,11 @@ apa_ptable_read_ex (hio_t *hio,
   if (result == OSAL_OK)
     {
       u_int32_t total_sectors;
-#if defined (LIMIT_HDD_TO_128GB)
-      /* limit HDD size to 128GB - 1KB; that is: exclude the last 128MB chunk */
-      if (size_in_kb > 128 * 1024 * 1024 - 1)
-	size_in_kb = 128 * 1024 * 1024 - 1;
-#endif
+      if (dict_get_flag (config, CONFIG_LIMIT_TO_28BIT_FLAG, 0))
+	{ /* limit HDD size to 128GB - 1KB; that is: exclude the last 128MB chunk */
+	  if (size_in_kb > 128 * 1024 * 1024 - 1)
+	    size_in_kb = 128 * 1024 * 1024 - 1;
+	}
       total_sectors = size_in_kb * 2; /* 1KB = 2 sectors of 512 bytes, each */
 
       *table = apa_ptable_alloc ();
@@ -249,11 +252,10 @@ apa_ptable_read_ex (hio_t *hio,
 			}
 		      else
 			{ /* partition behind end-of-HDD */
-#if defined (LIMIT_HDD_TO_128GB)
-			  result = RET_CROSS_128GB; /* data behind 128GB mark */
-#else
-			  result = RET_BAD_APA; /* data behind end-of-HDD */
-#endif
+			  if (dict_get_flag (config, CONFIG_LIMIT_TO_28BIT_FLAG, 0))
+			    result = RET_CROSS_128GB; /* data behind 128GB mark */
+			  else
+			    result = RET_BAD_APA; /* data behind end-of-HDD */
 			  break;
 			}
 		    }
@@ -268,7 +270,7 @@ apa_ptable_read_ex (hio_t *hio,
 	      (*table)->device_size_in_mb = size_in_kb / 1024;
 	      result = apa_setup_statistics (*table);
 	      if (result == RET_OK)
-		result = apa_check (*table);
+		result = apa_check (config, *table);
 	    }
 
 #if defined (AUTO_DELETE_EMPTY)
@@ -280,7 +282,7 @@ apa_ptable_read_ex (hio_t *hio,
 		}
 	      while (result == RET_OK);
 	      if (result == RET_NOT_FOUND)
-		result = apa_check (*table);
+		result = apa_check (config, *table);
 	    }
 #endif
 
@@ -687,17 +689,18 @@ apa_delete_partition (apa_partition_table_t *table,
 
 /**************************************************************/
 int
-apa_commit (const char *path,
+apa_commit (const dict_t *config,
+	    const char *path,
 	    const apa_partition_table_t *table)
 {
-  int result = apa_check (table);
+  int result = apa_check (config, table);
   if (result == RET_OK)
     {
       hio_t *hio;
-      result = hio_probe (path, &hio);
+      result = hio_probe (config, path, &hio);
       if (result == OSAL_OK)
 	{
-	  result = apa_commit_ex (hio, table);
+	  result = apa_commit_ex (config, hio, table);
 	  result = hio->close (hio) == OSAL_OK ? result : OSAL_ERR;
 	}
     }
@@ -707,10 +710,11 @@ apa_commit (const char *path,
 
 /**************************************************************/
 int
-apa_commit_ex (hio_t *hio,
+apa_commit_ex (const dict_t *config,
+	       hio_t *hio,
 	       const apa_partition_table_t *table)
 {
-  int result = apa_check (table);
+  int result = apa_check (config, table);
   if (result == RET_OK)
     {
       u_int32_t i;
@@ -742,7 +746,8 @@ apa_commit_ex (hio_t *hio,
     }
 
 static int
-apa_list_problems (const apa_partition_table_t *table,
+apa_list_problems (const dict_t *config,
+		   const apa_partition_table_t *table,
 		   char *buffer,
 		   size_t buffer_size)
 { /* NOTE: keep in sync with apa_check */
@@ -771,17 +776,20 @@ apa_list_problems (const apa_partition_table_t *table,
 	;
       else
 	{
-#if defined (LIMIT_HDD_TO_128GB)
-	  len = sprintf (tmp, "%06lx00 +%06lx00: across 128GB mark;\n",
-			 (unsigned long) (get_u32 (&part->start) >> 8),
-			 (unsigned long) (get_u32 (&part->length) >> 8));
-	  ADD_PROBLEM (buffer, buffer_size, tmp, len);
-#else
-	  len = sprintf (tmp, "%06lx00 +%06lx00: outside HDD data area;\n",
-			 (unsigned long) (get_u32 (&part->start) >> 8),
-			 (unsigned long) (get_u32 (&part->length) >> 8));
-	  ADD_PROBLEM (buffer, buffer_size, tmp, len);
-#endif
+	  if (dict_get_flag (config, CONFIG_LIMIT_TO_28BIT_FLAG, 0))
+	    {
+	      len = sprintf (tmp, "%06lx00 +%06lx00: across 128GB mark;\n",
+			     (unsigned long) (get_u32 (&part->start) >> 8),
+			     (unsigned long) (get_u32 (&part->length) >> 8));
+	      ADD_PROBLEM (buffer, buffer_size, tmp, len);
+	    }
+	  else
+	    {
+	      len = sprintf (tmp, "%06lx00 +%06lx00: outside HDD data area;\n",
+			     (unsigned long) (get_u32 (&part->start) >> 8),
+			     (unsigned long) (get_u32 (&part->length) >> 8));
+	      ADD_PROBLEM (buffer, buffer_size, tmp, len);
+	    }
 	}
 
       if ((get_u32 (&part->length) % ((128 _MB) / 512)) != 0)
@@ -885,7 +893,8 @@ apa_list_problems (const apa_partition_table_t *table,
 
 /**************************************************************/
 static int
-apa_check (const apa_partition_table_t *table)
+apa_check (const dict_t *config,
+	   const apa_partition_table_t *table)
 { /* NOTE: keep in sync with apa_list_problems */
   u_int32_t i, j, k;
 
@@ -902,11 +911,10 @@ apa_check (const apa_partition_table_t *table)
 	;
       else
 	{
-#if defined (LIMIT_HDD_TO_128GB)
-	  return (RET_CROSS_128GB); /* data behind 128GB mark */
-#else
-	  return (RET_BAD_APA); /* data behind end-of-HDD */
-#endif
+	  if (dict_get_flag (config, CONFIG_LIMIT_TO_28BIT_FLAG, 0))
+	    return (RET_CROSS_128GB); /* data behind 128GB mark */
+	  else
+	    return (RET_BAD_APA); /* data behind end-of-HDD */
 	}
 
       if ((get_u32 (&part->length) % ((128 _MB) / 512)) != 0)
@@ -966,10 +974,11 @@ apa_check (const apa_partition_table_t *table)
 
 /**************************************************************/
 int
-apa_initialize (const char *device)
+apa_initialize (const dict_t *config,
+		const char *device)
 {
   hio_t *hio;
-  int result = hio_probe (device, &hio);
+  int result = hio_probe (config, device, &hio);
   if (result == RET_OK)
     {
       result = apa_initialize_ex (hio);

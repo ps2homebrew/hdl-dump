@@ -1,6 +1,6 @@
 /*
  * iin_optical.c
- * $Id: iin_optical.c,v 1.8 2004/12/04 10:20:52 b081 Exp $
+ * $Id: iin_optical.c,v 1.9 2005/07/10 21:06:48 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -148,7 +148,8 @@ opt_alloc (osal_handle_t device,
 
 /**************************************************************/
 int
-iin_optical_probe_path (const char *path,
+iin_optical_probe_path (const dict_t *config,
+			const char *path,
 			iin_t **iin)
 {
   if (tolower (path [0]) == 'c' &&

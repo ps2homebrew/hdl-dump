@@ -1,6 +1,6 @@
 /*
  * hio_probe.h
- * $Id: hio_probe.h,v 1.3 2004/12/04 10:20:52 b081 Exp $
+ * $Id: hio_probe.h,v 1.4 2005/07/10 21:06:48 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -24,11 +24,15 @@
 #if !defined (_HIO_PROBE_H)
 #define _HIO_PROBE_H
 
+#include "config.h"
 #include "hio.h"
 
+C_START
 
-int hio_probe (const char *path,
+int hio_probe (const dict_t *config,
+	       const char *path,
 	       hio_t **hio);
 
+C_END
 
 #endif /* _HIO_PROBE_H defined? */

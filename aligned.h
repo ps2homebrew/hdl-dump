@@ -1,6 +1,6 @@
 /*
  * aligned.h
- * $Id: aligned.h,v 1.3 2004/12/04 10:20:53 b081 Exp $
+ * $Id: aligned.h,v 1.4 2005/07/10 21:06:48 bobi Exp $
  *
  * Copyright 2004 Bobi B., w1zard0f07@yahoo.com
  *
@@ -24,8 +24,10 @@
 #if !defined (_ALIGNED_H)
 #define _ALIGNED_H
 
+#include "config.h"
 #include "osal.h"
 
+C_START
 
 /*
  * Windowz: when caching is turned off, all file I/O should start on a multiple of sector size
@@ -50,5 +52,7 @@ al_read (aligned_t *al,
 
 void
 al_free (aligned_t *al);
+
+C_END
 
 #endif /* _ALIGNED_H defined? */
