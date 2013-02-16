@@ -1440,7 +1440,7 @@ show_usage_and_exit (const char *app_path,
 
   fprintf (stdout,
 	   "hdl_dump-" VERSION " by The W1zard 0f 0z (AKA b...)\n"
-	   "http://hdldump.ps2-scene.org/ w1zard0f07@yahoo.com\n"
+	   "https://bitbucket.org/AKuHAK/hdl-dump w1zard0f07@yahoo.com\n"
 	   "\n");
 
   command_found = 0;
@@ -1519,7 +1519,7 @@ show_usage_and_exit (const char *app_path,
 	       "Warning: Commands, marked with * (asterisk) does write on the HDD\n"
 	       "         and could cause corruption. Use with care.\n"
 	       "\n"
-	       "Warning: for this version you need PATINFO.KELF in the working folder\n"
+	       "Warning: for this version you need PATINFO.ELF < 417kb in the working folder\n"
 	       "\n"
 	       "License: You are only allowed to use this program with a software\n"
 	       "         you legally own. Use at your own risk.\n",

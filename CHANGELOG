@@ -1,3 +1,9 @@
+0.9.1
+	+ Now it is possible to inject ELF's into partition
+	~ elf size must be less than 417kb (427 456bytes)
+	~ elf name is PATINFO.ELF and elf must be placed into folder
+	  with working HDL executable
+
 0.9.0a
 	+ KELF injection into source code
 	~ KELF can be 2.5Mb or less it will be injected at partition

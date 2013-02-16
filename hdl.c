@@ -36,6 +36,7 @@
 #if defined (BUILTIN_ICON)
 #  include "icon.h"
 #endif
+#  include "kelf.h"
 
 
 /*
@@ -85,8 +86,13 @@ prepare_main (const hdl_game_t *details,
   int result;
   u_int32_t i;
   
+  const char *patinfo_header = (const char*) hdloader_kelf_header;
+  u_int32_t patinfo_header_length = HDLOADER_KELF_HEADER_LEN;
   char *patinfo = NULL;
   u_int32_t patinfo_length;
+  const char *patinfo_footer = (const char*) hdloader_kelf_footer;
+  u_int32_t patinfo_footer_length = HDLOADER_KELF_FOOTER_LEN;
+  u_int32_t patinfo_kelf_length = KELF_LENGTH;
   
 #if defined (BUILTIN_ICON)
   const char *icon = (const char*) hdloader_icon;
@@ -110,7 +116,7 @@ prepare_main (const hdl_game_t *details,
 #endif
   if (result == OSAL_OK)
   {
-    result = read_file ("./PATINFO.KELF", &patinfo, &patinfo_length);
+    result = read_file ("./PATINFO.ELF", &patinfo, &patinfo_length);
 	if (result == OSAL_OK)
 	  for (i = 0; i < slice->part_count; ++i)
 		if (get_u32 (&slice->parts[i].header.start) == starting_partition_sector)
@@ -172,7 +178,7 @@ prepare_main (const hdl_game_t *details,
        *         +--+--+--+- PATINFO.KELF offset relative to 0x1000
        */
       set_u32 (tmp++, 0x110000);
-      set_u32 (tmp++, patinfo_length);
+      set_u32 (tmp++, patinfo_kelf_length);
 
       /*
        *  1200: 42 4f 4f 54 32 20 3d 20 50 41 54 49 4e 46 4f 0a  BOOT2 = PATINFO.
@@ -239,9 +245,11 @@ prepare_main (const hdl_game_t *details,
       /*
        *111000: 01 00 00 01 00 03 00 4a  00 01 02 19 00 00 00 56 
        *        ... PATINFO.KELF ...
-       *120CA0: 9f ef d1 b3 69 0d 75 bd  4c 26 82 20 13 c3 71 1c 
+       *179640: 7e bd 13 b2 4e 1f 26 08  29 53 97 37 13 c3 71 1c 
        */
-      memcpy (buffer_4m + 0x111000, patinfo, patinfo_length);
+      memcpy (buffer_4m + 0x111000, patinfo_header, patinfo_header_length);
+      memcpy (buffer_4m + 0x111080, patinfo, patinfo_length);
+      memcpy (buffer_4m + 0x179640, patinfo_footer, patinfo_footer_length);
 
       partition_usable_size_in_kb = (get_u32 (&part->length) - 0x2000) / 2; /* 2 sectors == 1K */
       partition_data_len_in_kb =
@@ -286,6 +294,9 @@ prepare_main (const hdl_game_t *details,
   if (icon != NULL)
     osal_free (icon);
 #endif
+
+  if (patinfo != NULL)
+    osal_free (patinfo);
 
   return (result);
 }
