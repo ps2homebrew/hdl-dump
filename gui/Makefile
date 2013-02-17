@@ -44,7 +44,7 @@ USE_THREADED_IIN ?= yes
 # hdl_dump current version/release
 VER_MAJOR = 0
 VER_MINOR = 8
-VER_PATCH = 6
+VER_PATCH = 7
 
 # configuration end
 ###############################################################################

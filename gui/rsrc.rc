@@ -58,7 +58,7 @@ END
 IDD_MAIN_DLG DIALOG DISCARDABLE  0, 0, 249, 268
 STYLE DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_VISIBLE | WS_CAPTION | 
     WS_SYSMENU
-CAPTION "hdl_dumb-0.8.6"
+CAPTION "hdl_dumb-0.8.7"
 FONT 8, "Verdana"
 BEGIN
     GROUPBOX        "Target",IDC_STATIC,5,5,240,70
@@ -173,8 +173,8 @@ IDR_MANIFEST            24      DISCARDABLE     "rsrc/manifest.bin"
 #ifndef _MAC
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 0,8,6,0
- PRODUCTVERSION 0,8,6,0
+ FILEVERSION 0,8,7,0
+ PRODUCTVERSION 0,8,7,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -192,14 +192,14 @@ BEGIN
             VALUE "Comments", "hdl_dumb - Windows-based game installer for HD Loader\r\nWizard of 0z (AKA b...)\r\nhttp://hdldump.ps2-scene.org/\r\nw1zard0f07@yahoo.com\0"
             VALUE "CompanyName", "Wizard of 0z (AKA b...)\r\nhttp://hdldump.ps2-scene.org/\r\nw1zard0f07@yahoo.com\0"
             VALUE "FileDescription", "hdl_dumb - Windows-based game installer for HD Loader\0"
-            VALUE "FileVersion", "0, 8, 6, 0\0"
+            VALUE "FileVersion", "0, 8, 7, 0\0"
             VALUE "InternalName", "hdl_dumb\0"
             VALUE "LegalCopyright", "© 2004, 2005, 2006 Wizard of 0z\0"
             VALUE "LegalTrademarks", "Credits goes for Sony and the creators of HD Loader. Remember guys, you're the one, that opened Pandora's box.\0"
             VALUE "OriginalFilename", "hdl_dumb.exe\0"
             VALUE "PrivateBuild", "\0"
             VALUE "ProductName", "hdl_dumb\0"
-            VALUE "ProductVersion", "0, 8, 6, 0\0"
+            VALUE "ProductVersion", "0, 8, 7, 0\0"
             VALUE "SpecialBuild", "GUI\0"
         END
     END

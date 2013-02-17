@@ -1,3 +1,10 @@
+0.8.7
+	+ Now it is possible to inject ELF's into partition
+	~ elf size must be less than 417kb (427 456bytes)
+	~ elf name is PATINFO.ELF and elf must be placed into folder
+	  with working HDL executable
+	~ KELF is placed at offset 0x111000
+
 0.8.6
 	+ SPTI: dual-layer DVDs can finally be installed from the DVD-ROM drive
 	~ thanks to SPTI hdl_dumb works pretty well with both, wine and winelib

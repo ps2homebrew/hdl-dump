@@ -46,7 +46,7 @@
 
 
 #define APP_NAME "hdld_svr"
-#define VERSION "0.8.5"
+#define VERSION "0.8.7"
 
 
 #if 1 /* debugging */
