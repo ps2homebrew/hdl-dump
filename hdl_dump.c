@@ -1393,7 +1393,8 @@ show_usage_and_exit (const char *app_path,
 	"192.168.0.10", NULL, 0 },
 #if defined (INCLUDE_INITIALIZE_CMD)
       { CMD_INITIALIZE, "device",
-	"Prepares a HDD for HD Loader usage. All information on the HDD will be lost.\n",
+	"Prepares a HDD for HD Loader usage. All information on the HDD will be lost.\n\n"
+	"This version requires MBR.KELF in the same folder",
 	"hdd1:", NULL, 1 },
 #endif /* INCLUDE_INITIALIZE_CMD defined? */
 #if defined (INCLUDE_BACKUP_TOC_CMD)

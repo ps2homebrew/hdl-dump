@@ -29,18 +29,18 @@ BEGIN
       VALUE "Comments",
             "hdl_dump - Windows-based game installer for HD Loader\r\n"
             "Wizard of 0z (AKA b...)\r\n"
-            "http://hdldump.ps2-scene.org/\r\n"
+            "https://bitbucket.org/AKuHAK/hdl-dump\r\n"
             "w1zard0f07@yahoo.com\0"
 
       VALUE "CompanyName",
-            "Wizard of 0z (AKA b...)\r\n"
-            "http://hdldump.ps2-scene.org/\r\n"
+            "AKuHAK\r\n"
+            "https://bitbucket.org/AKuHAK/hdl-dump\r\n"
             "w1zard0f07@yahoo.com\0"
 
       VALUE "FileDescription", "hdl_dump - Windows-based game installer for HD Loader\0"
-      VALUE "FileVersion", "0, 9, 0, 0\0"
+      VALUE "FileVersion", "0, 9, 1, 0\0"
       VALUE "InternalName", "hdl_dump\0"
-      VALUE "LegalCopyright", "© 2004, 2005, 2006, 2007 Wizard of 0z\0"
+      VALUE "LegalCopyright", "© 2004, 2005, 2006, 2007 Wizard of 0z, 2012, 2013 AKuHAK\0"
       VALUE "LegalTrademarks",
             "Credits goes for Sony and the creators of HD Loader. "
             "Remember guys, you're the one, that opened Pandora's box.\0"
@@ -48,7 +48,7 @@ BEGIN
       VALUE "OriginalFilename", "hdl_dump.exe\0"
       VALUE "PrivateBuild", "\0"
       VALUE "ProductName", "hdl_dump\0"
-      VALUE "ProductVersion", "0, 9, 0, 0\0"
+      VALUE "ProductVersion", "0, 9, 1, 0\0"
       VALUE "SpecialBuild", "command-line\0"
     END
   END
