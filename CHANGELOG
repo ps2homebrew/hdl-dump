@@ -1,6 +1,14 @@
+0.9.1a
+	+ "initialize" function now injects OSD into __mbr partition.
+	  It needs MBR.KELF in the folder with working HDL Dumb.
+	  OSD size must be less or equal than 715kb (732 160bytes)
+	- removed playstation side server source code as it is
+	  separate project supported by SP193
+	+ cleared sources from old and obsolete files
+
 0.9.1
 	+ Now it is possible to inject ELF's into partition
-	~ elf size must be less than 417kb (427 456bytes)
+	~ elf size must be less or equal than 417kb (427 456bytes)
 	~ elf name is PATINFO.ELF and elf must be placed into folder
 	  with working HDL executable
 

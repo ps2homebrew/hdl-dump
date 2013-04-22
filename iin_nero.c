@@ -164,7 +164,7 @@ iin_nero_probe_path (const char *path,
   u_int32_t device_sector_size;
   osal_handle_t in;
   u_int64_t file_size;
-  u_int32_t header_size, footer_size;
+  u_int32_t header_size = 0, footer_size = 0;
   nero_data_mode_t mode;
   int result = osal_get_volume_sect_size (path, &device_sector_size);
   if (result == OSAL_OK)

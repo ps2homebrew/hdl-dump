@@ -45,7 +45,7 @@ Compilation
 * Windows: You need to have CYGWIN (http://www.cygwin.com/) installed;
 then use
 	make RELEASE=yes
-	make -c gui RELEASE=yes
+	make -C gui RELEASE=yes
 to compile command-line or GUI version.
 
 NOTICE: with current compilation flags hdl_dump would not handle
@@ -57,8 +57,8 @@ handling when ran from a Command Prompt.
 	make RELEASE=yes
 Advanced Linux build commands:
 	make XC=win          # for Windows cross-compilation using mingw32
-	make -c gui          # for WineLib compilation
-	make -c gui XC=win   # for GUI cross-compilation using mingw32
+	make -C gui          # for WineLib compilation
+	make -C gui XC=win   # for GUI cross-compilation using mingw32
 
 * FreeBSD and MacOS X: You'll need to have GNU make installed, then
 	gmake RELEASE=yes IIN_OPTICAL_MMAP=no
