@@ -1239,7 +1239,10 @@ apa_initialize (const dict_t *config,
     {
       result = apa_initialize_ex (hio);
       if (result == RET_OK)
+    {
+	fprintf (stdout, "MBR data sucessfully injected\n");
 	result = hio->close (hio);
+    }
       else
 	(void) hio->close (hio); /* ignore close error in this case */
       hio = NULL;
@@ -1258,8 +1261,15 @@ apa_initialize_ex (hio_t *hio)
   u_int32_t mbrelf_length;
   int result;
   int osd_start = 0x03FA6A;
+  u_int32_t prev;
+  u_int32_t next;
   
   u_int8_t *zero = malloc (1 _MB);
+  char buffer[1024];
+  result = hio->read (hio, 0, 2, buffer, &dummy);
+  next = (u_int32_t) get_u32 (buffer + 8);
+  prev = (u_int32_t) get_u32 (buffer + 12);
+
   result = read_file ("./MBR.KELF", &mbrelf, &mbrelf_length);
   if (result == OSAL_OK)
   {
@@ -1271,7 +1281,8 @@ apa_initialize_ex (hio_t *hio)
 	  return (result);
 	  }
 		
-	/* prepare MBR */
+	/* prepare MBR */	
+	
 	memset (&header, 0, sizeof (ps2_partition_header_t));
 	strcpy ((void*) header.magic, PS2_PARTITION_MAGIC);
 	strcpy (header.id, "__mbr");
@@ -1281,13 +1292,17 @@ apa_initialize_ex (hio_t *hio)
 	strcpy (header.mbr.magic, "Sony Computer Entertainment Inc.");
 	header.mbr.unknown_0x02 = 0x02;
 	set_ps2fs_datetime (&header.mbr.created, time (NULL));
-	set_u32 (&header.checksum, apa_partition_checksum (&header));
 	header.unknown2 = 0x201;
+
+	set_u32 (&header.prev, prev);
+	set_u32 (&header.next, next);
 
 	set_u32 (&header.mbr.data_start, osd_start);
 	set_u32 (&header.mbr.data_len, mbrelf_length / 512);
+
+	set_u32 (&header.checksum, apa_partition_checksum (&header));
 	if (zero != NULL)
-	  { /* fill last 1MB of the HDD */
+	  { /* fill last 1MB of the HDD MBR.KELF */
 		memcpy (zero + ((osd_start - 0x03F800)*512), mbrelf, mbrelf_length);
 		result = hio->write (hio, 0x03F800, 1 _MB / 512, zero, &dummy);
 		free (zero);

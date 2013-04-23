@@ -1,12 +1,12 @@
-hdl_dump, hdl_dumb and networking server README
-===============================================
+hdl_dump and hdl_dumb README
+=================================
 
 
 TOC
 ---
 Intro
 Networking server
-Compilation
+Compilation 
 Configuration and list file location
 Configuration
 
@@ -23,35 +23,16 @@ Networking server
 -----------------
 
 A new, purely UDP networking server is available, based on recently
-released on ps2dev forums AFL pktdrv driver
-(http://forums.ps2dev.org/viewtopic.php?t=6784). Transfer speeds vary
-and during testing phase achieved speeds were as follows:
+released on psx-scene forums smap driver
+(http://ichiba.geocities.jp/ysai187/PS2/smap.htm). 
 
- * install speed between 2,7-3MB/sec, and
- * extract speed between 3,3-3,6MB/sec.
-
-(not bad, for a 36Mhz CPU -- 11-to-13 ticks per byte). You might need
+You might need
 to punch a hole in your firewall for incoming UDP from port 12345.
-
-New server were tested with PAL editions of Shadow of the Colossus,
-God of War II and Disgaea, with both, install and extract + MD5, and
-were runing for at least 4 hours with no problems (pktdrv is pretty
-stable).
-
 
 Compilation
 -----------
-
-* Windows: You need to have CYGWIN (http://www.cygwin.com/) installed;
-then use
-	make RELEASE=yes
-	make -C gui RELEASE=yes
-to compile command-line or GUI version.
-
-NOTICE: with current compilation flags hdl_dump would not handle
-correctly Ctrl+C if ran from-within a CYGWIN shell. AFAIR, removing
-"-mno-cygwin" might correct this behaviour, but will break Ctrl+C
-handling when ran from a Command Prompt.
+You just can run shell script in the project folder: "mkrel.sh". It will
+compile both gui and normal version for windows.
 
 * Linux: Build and copy executable into a directory of your choice.
 	make RELEASE=yes
@@ -64,6 +45,18 @@ Advanced Linux build commands:
 	gmake RELEASE=yes IIN_OPTICAL_MMAP=no
 or
 	make RELEASE=yes IIN_OPTICAL_MMAP=no
+
+* Windows: You need to have CYGWIN (http://www.cygwin.com/) installed;
+then use
+	make RELEASE=yes
+	make -C gui RELEASE=yes
+to compile command-line or GUI version.
+
+NOTICE: with current compilation flags hdl_dump would not handle
+correctly Ctrl+C if ran from-within a CYGWIN shell. AFAIR, removing
+"-mno-cygwin" might correct this behaviour, but will break Ctrl+C
+handling when ran from a Command Prompt.
+
 
 
 Configuration and list file location
