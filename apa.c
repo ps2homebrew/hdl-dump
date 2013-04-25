@@ -1257,13 +1257,16 @@ apa_initialize_ex (hio_t *hio)
 {
   ps2_partition_header_t header;
   u_int32_t dummy;
-  char *mbrelf = NULL;
-  u_int32_t mbrelf_length;
-  int result;
-  int osd_start = 0x03FA6A;
+
   u_int32_t prev;
   u_int32_t next;
-  
+  int result;
+
+  int osd_start = 0x002020;
+
+  char *mbrelf = NULL;
+  u_int32_t mbrelf_length;
+
   u_int8_t *zero = malloc (1 _MB);
   char buffer[1024];
   result = hio->read (hio, 0, 2, buffer, &dummy);
@@ -1272,15 +1275,7 @@ apa_initialize_ex (hio_t *hio)
 
   result = read_file ("./MBR.KELF", &mbrelf, &mbrelf_length);
   if (result == OSAL_OK)
-  {
-	if (zero != NULL)
-	  { /* zero first 1MB of the HDD */
-		memset (zero, 0, 1 _MB);
-		result = hio->write (hio, 0, 1 _MB / 512, zero, &dummy);
-		if (result != RET_OK)
-	  return (result);
-	  }
-		
+  {		
 	/* prepare MBR */	
 	
 	memset (&header, 0, sizeof (ps2_partition_header_t));
@@ -1292,31 +1287,33 @@ apa_initialize_ex (hio_t *hio)
 	strcpy (header.mbr.magic, "Sony Computer Entertainment Inc.");
 	header.mbr.unknown_0x02 = 0x02;
 	set_ps2fs_datetime (&header.mbr.created, time (NULL));
-	header.unknown2 = 0x201;
 
+	/*fix broken - just injection*/
+	header.unknown2 = 0x201;
 	set_u32 (&header.prev, prev);
 	set_u32 (&header.next, next);
 
 	set_u32 (&header.mbr.data_start, osd_start);
-	set_u32 (&header.mbr.data_len, mbrelf_length / 512);
+	set_u32 (&header.mbr.data_len, (mbrelf_length + 511) / 512);
 
 	set_u32 (&header.checksum, apa_partition_checksum (&header));
 	if (zero != NULL)
-	  { /* fill last 1MB of the HDD MBR.KELF */
-		memcpy (zero + ((osd_start - 0x03F800)*512), mbrelf, mbrelf_length);
-		result = hio->write (hio, 0x03F800, 1 _MB / 512, zero, &dummy);
+	  { /* fill 1MB with HDD MBR at 0x2020 */
+		memset (zero, 0, 1 _MB);
+		memcpy (zero, mbrelf, mbrelf_length);
+		result = hio->write (hio, osd_start, 1 _MB / 512, zero, &dummy);
 		free (zero);
 		if (result != RET_OK)
 	  return (result);
 	  }
-	  if (mbrelf != NULL)
-		osal_free (mbrelf);
+	if (mbrelf != NULL)
+	  osal_free (mbrelf);
 	  
 	  /* save __mbr partition */
-	  return (hio->write (hio, 0, 2, &header, &dummy));
+	return (hio->write (hio, 0, 2, &header, &dummy));
   }
   else
   {
-	return (result);
+    return (result);
   }
 }
