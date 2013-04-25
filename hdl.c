@@ -90,8 +90,6 @@ prepare_main (const hdl_game_t *details,
   u_int32_t patinfo_header_length = HDLOADER_KELF_HEADER_LEN;
   char *patinfo = NULL;
   u_int32_t patinfo_length;
-  const char *patinfo_footer = (const char*) hdloader_kelf_footer;
-  u_int32_t patinfo_footer_length = HDLOADER_KELF_FOOTER_LEN;
   u_int32_t patinfo_kelf_length = KELF_LENGTH;
   
 #if defined (BUILTIN_ICON)
@@ -107,13 +105,9 @@ prepare_main (const hdl_game_t *details,
 
   part = NULL;
 
-#if !defined (BUILTIN_ICON)
   /* read icon */
-  result = read_file ("./icon.bin", &icon, &icon_length);
-#else
-  /* icon is embedded in the executable */
-  result = OSAL_OK;
-#endif
+  result = read_file ("./icon.ico", &icon, &icon_length);
+
   if (result == OSAL_OK)
   {
     result = read_file ("./PATINFO.ELF", &patinfo, &patinfo_length);
@@ -247,9 +241,8 @@ prepare_main (const hdl_game_t *details,
        *        ... PATINFO.KELF ...
        *179640: 7e bd 13 b2 4e 1f 26 08  29 53 97 37 13 c3 71 1c 
        */
+      memcpy (buffer_4m + 0x111000 + patinfo_header_length, patinfo, patinfo_length);
       memcpy (buffer_4m + 0x111000, patinfo_header, patinfo_header_length);
-      memcpy (buffer_4m + 0x111080, patinfo, patinfo_length);
-      memcpy (buffer_4m + 0x179640, patinfo_footer, patinfo_footer_length);
 
       partition_usable_size_in_kb = (get_u32 (&part->length) - 0x2000) / 2; /* 2 sectors == 1K */
       partition_data_len_in_kb =
