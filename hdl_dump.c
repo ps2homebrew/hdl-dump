@@ -106,7 +106,7 @@
 #if defined (INCLUDE_COPY_HDD_CMD)
 #  define CMD_COPY_HDD "copy_hdd"
 #endif
-
+#define CMD_MODIFY_HEADER "modify_header"
 
 /**************************************************************/
 static void
@@ -1143,6 +1143,39 @@ modify (const dict_t *config,
 
 /**************************************************************/
 static int
+modify_header (const dict_t *config,
+	const char *device,
+	const char *partname)
+{
+  /*@only@*/ hio_t *hio = NULL;
+  int result = hio_probe (config, device, &hio);
+  if (result == RET_OK && hio != NULL)
+    {
+      /*@only@*/ apa_toc_t *toc = NULL;
+      result = apa_toc_read_ex (hio, &toc);
+      if (result == RET_OK && toc != NULL)
+	{
+	  int slice_index = 0;
+	  u_int32_t partition_index = 0;
+	  result = apa_find_partition (toc, partname, &slice_index,
+				       &partition_index);
+
+	  if (result == RET_OK)
+	    {
+	      u_int32_t start_sector = get_u32 (&toc->slice[slice_index].parts[partition_index].header.start);
+	      result = hdd_inject_header (hio, toc, slice_index, start_sector);
+	    }
+
+	  apa_toc_free (toc), toc = NULL;
+	}
+      (void) hio->close (hio), hio = NULL;
+    }
+  return (result);
+}
+
+
+/**************************************************************/
+static int
 copy_hdd (const dict_t *config,
 	  const char *src_device_name,
 	  const char *dest_device_name,
@@ -2013,6 +2046,10 @@ main (int argc, char *argv[])
 					  new_flags), argv[2], argv[3]);
 	}
 #endif /* INCLUDE_MODIFY_CMD defined? */
+      else if (caseless_compare (command_name, CMD_MODIFY_HEADER))
+	{
+	  handle_result_and_exit (modify_header (config, argv[2], argv[3]), argv[2], argv[3]);
+	}
 
 #if defined (INCLUDE_COPY_HDD_CMD)
       else if (caseless_compare (command_name, CMD_COPY_HDD))

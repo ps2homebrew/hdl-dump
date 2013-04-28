@@ -92,13 +92,9 @@ prepare_main (const hdl_game_t *details,
   u_int32_t patinfo_length;
   u_int32_t patinfo_kelf_length = KELF_LENGTH;
   
-#if defined (BUILTIN_ICON)
-  const char *icon = (const char*) hdloader_icon;
-  u_int32_t icon_length = HDLOADER_ICON_LEN;
-#else
   char *icon = NULL;
   u_int32_t icon_length;
-#endif
+
   char icon_props[1024];
   const ps2_partition_header_t *part;
   const apa_slice_t *slice = toc->slice + slice_index;
@@ -106,11 +102,11 @@ prepare_main (const hdl_game_t *details,
   part = NULL;
 
   /* read icon */
-  result = read_file ("./icon.ico", &icon, &icon_length);
+  result = read_file ("./list.ico", &icon, &icon_length);
 
   if (result == OSAL_OK)
   {
-    result = read_file ("./PATINFO.ELF", &patinfo, &patinfo_length);
+    result = read_file ("./boot.elf", &patinfo, &patinfo_length);
 	if (result == OSAL_OK)
 	  for (i = 0; i < slice->part_count; ++i)
 		if (get_u32 (&slice->parts[i].header.start) == starting_partition_sector)
@@ -290,6 +286,219 @@ prepare_main (const hdl_game_t *details,
 
   if (patinfo != NULL)
     osal_free (patinfo);
+
+  return (result);
+}
+
+
+/**************************************************************/
+int
+hdd_inject_header (hio_t *hio,
+	      apa_toc_t *toc,
+	      int slice_index,
+	      u_int32_t starting_partition_sector)
+{
+  int result;
+  
+  const char *patinfo_header = (const char*) hdloader_kelf_header;
+  u_int32_t patinfo_header_length = HDLOADER_KELF_HEADER_LEN;
+  char *patinfo = NULL;
+  u_int32_t patinfo_length;
+  u_int32_t patinfo_kelf_length = KELF_LENGTH;
+  
+  char *syscnf = NULL;
+  u_int32_t syscnf_length;
+  char *iconsys = NULL;
+  u_int32_t iconsys_length;
+  char *icon = NULL;
+  u_int32_t icon_length;
+  char *del = NULL;
+  u_int32_t del_length;
+  char *kirx = NULL;
+  u_int32_t kirx_length;
+
+  apa_partition_t *part = NULL;
+  const apa_slice_t *slice = toc->slice + slice_index;
+  const u_int32_t SLICE_2_OFFS = 0x10000000; /* sectors */
+  u_int32_t sector, dummy = 0;
+
+  u_int32_t i;
+  char *buffer_4m;
+  for (i = 0; part == NULL && i < slice->part_count; ++i)
+    if (get_u32 (&slice->parts[i].header.start) == starting_partition_sector)
+      /* starting partition index located */
+      part = slice->parts + i;
+  if (part == NULL)
+    result = RET_NOT_FOUND;
+	
+  buffer_4m = osal_alloc (4 _MB);
+  if (buffer_4m == NULL)
+    result = RET_NO_MEM;
+  sector = (get_u32 (&part->header.start) + slice_index * SLICE_2_OFFS);
+  result = hio->read (hio, sector, 4 _MB / 512, buffer_4m, &dummy);
+
+  if (result == RET_OK && part != NULL && buffer_4m != NULL)
+    {
+
+      /*
+       *  1000: 50 53 32 49 43 4f 4e 33  44 00 00 00 00 00 00 00  PS2ICON3D.......
+       *
+	   *
+       *                     +--+--+--+- BE, BOOT2 = ... section length in bytes
+       *                     |  |  |  |               +--+--+--+- BE, PSX2... len in bytes
+       *                     v  v  v  v               v  v  v  v
+       *  1010: 00 02 00 00 4b 00 00 00  00 04 00 00 70 01 00 00
+       *  1020: 00 08 00 00 58 81 00 00  00 08 00 00 58 81 00 00
+       *         ^  ^  ^  ^  ^  ^  ^  ^               ^  ^  ^  ^
+       *         |  |  |  |  +--+--+--+- same as =>   +--+--+--+- BE, icon length in bytes
+       *         +--+--+--+- part offset relative to 0x1000	 
+       *  1030: 00 00 11 00 58 81 00 00  00 00 00 00 00 00 00 00
+       *         ^  ^  ^  ^  ^  ^  ^  ^
+       *         |  |  |  |  +--+--+--+- BE, PATINFO.KELF length in bytes
+       *         +--+--+--+- PATINFO.KELF offset relative to 0x1000	   
+       */
+      memcpy (buffer_4m + 0x001000, HDL_HDR0, strlen (HDL_HDR0));
+
+
+      /*
+       *  1200: 42 4f 4f 54 32 20 3d 20 50 41 54 49 4e 46 4f 0a  BOOT2 = PATINFO.
+       *  1210: 56 45 52 20 3D 20 31 2E 30 30 0A 56 4D 4F 44 45  VER = 1.00.VMODE
+       *  1220: 20 3d 20 50 41 4c 0a 48 44 44 55 4e 49 54 50 4f   = PAL.HDDUNITPO
+       *  1230: 57 45 52 20 3d 20 4e 49 43 48 44 44 0a 00 00 00  WER = NICHDD....
+       */
+	  result = read_file ("./system.cnf", &syscnf, &syscnf_length);
+	  if (result == OSAL_OK)
+	  {
+		set_u32 (buffer_4m + 0x001010, 0x0200);
+		set_u32 (buffer_4m + 0x001014, syscnf_length);
+		memcpy (buffer_4m + 0x001200, syscnf, syscnf_length);
+		fprintf (stdout, "Succesfully read system.cnf\n");
+	  }
+	  else
+	  {
+		fprintf (stdout, "Skipped system.cnf\n");
+	  }
+	  if (syscnf != NULL)
+		osal_free (syscnf); 
+
+      /*
+       *  1400: 50 53 32 58 0a 74 69 74  6c 65 30 20 3d 20 48 44  PS2X.title0 = HD
+       *  1410: 20 4c 6f 61 64 65 72 0a  74 69 74 6c 65 31 20 3d   Loader.title1 =
+       *  1420: 20 54 77 69 73 74 65 64  20 4d 65 74 61 6c 3a 20   Twisted Metal: 
+       *        ...
+       */
+	  result = read_file ("./icon.sys", &iconsys, &iconsys_length);
+	  if (result == OSAL_OK)
+	  {
+		set_u32 (buffer_4m + 0x001018, 0x0400);
+		set_u32 (buffer_4m + 0x00101C, iconsys_length);
+		memcpy (buffer_4m + 0x001400, iconsys, iconsys_length);
+		fprintf (stdout, "Succesfully read icon.sys\n");
+	  }
+	  else
+	  {
+		fprintf (stdout, "Skipped icon.sys\n");
+	  }
+	  if (iconsys != NULL)
+		osal_free (iconsys); 
+
+      /*
+       *  1800: 00 00 01 00 01 00 00 00  07 00 00 00 00 00 80 3f  ...............?
+       *        ... icon ...
+       *  9950: 00 04 00 00 00 00 00 00  00 00 00 00 00 00 00 00  ................
+       */
+	  result = read_file ("./list.ico", &icon, &icon_length);
+	  if (result == OSAL_OK)
+	  {
+		set_u32 (buffer_4m + 0x001020, 0x0800);
+		set_u32 (buffer_4m + 0x001024, icon_length);
+		set_u32 (buffer_4m + 0x001028, 0x0800);
+		set_u32 (buffer_4m + 0x00102C, icon_length);
+		memcpy (buffer_4m + 0x001800, icon, icon_length);
+		fprintf (stdout, "Succesfully read list.ico\n");
+	  }
+	  else
+	  {
+		fprintf (stdout, "Skipped list.ico\n");
+	  }
+	  if (icon != NULL)
+		osal_free (icon);
+
+	  /*  del.ico  */
+	  result = read_file ("./del.ico", &del, &del_length);
+	  if (result == OSAL_OK)
+	  {
+		set_u32 (buffer_4m + 0x001028, 0x040000);
+		set_u32 (buffer_4m + 0x00102C, del_length);
+		memcpy (buffer_4m + 0x041000, del, del_length);
+		fprintf (stdout, "Succesfully read del.ico\n");
+	  }
+	  else
+	  {
+		fprintf (stdout, "Skipped del.ico\n");
+	  }
+	  if (del != NULL)
+		osal_free (del);
+
+	  /*
+       *111000: 01 00 00 01 00 03 00 4a  00 01 02 19 00 00 00 56 
+       *        ... PATINFO.KELF ...
+       *179640: 7e bd 13 b2 4e 1f 26 08  29 53 97 37 13 c3 71 1c 
+       *
+	   * read kelf or elf 
+	   */
+	  result = read_file ("./boot.kelf", &patinfo, &patinfo_length);
+	  if (result == OSAL_OK)
+	  {
+		set_u32 (buffer_4m + 0x001030, 0x110000);
+		set_u32 (buffer_4m + 0x001034, patinfo_length);
+		memcpy (buffer_4m + 0x111000, patinfo, patinfo_length);
+		fprintf (stdout, "Succesfully read boot.kelf\n");
+	  }
+	  else
+	  {
+		fprintf (stdout, "Skipped boot.kelf. Trying to boot boot.elf\n");
+		if (patinfo != NULL)
+		  osal_free (patinfo);
+		result = read_file ("./boot.elf", &patinfo, &patinfo_length);
+		if (result == OSAL_OK)
+		  {
+			set_u32 (buffer_4m + 0x001030, 0x110000);
+			set_u32 (buffer_4m + 0x001034, patinfo_kelf_length);
+			memcpy (buffer_4m + 0x111000, patinfo_header, patinfo_header_length);
+			memcpy (buffer_4m + 0x111000 + patinfo_header_length, patinfo, patinfo_length);
+			fprintf (stdout, "Succesfully read boot.elf\n");
+		  }
+		  else
+		  {
+			fprintf (stdout, "Skipped boot.elf\n");
+		  }
+	  }
+	  if (patinfo != NULL)
+		osal_free (patinfo);
+	
+	/* kirx */
+	  result = read_file ("./boot.kirx", &kirx, &kirx_length);
+	  if (result == OSAL_OK)
+	  {
+		set_u32 (buffer_4m + 0x001018, 0x0400);
+		set_u32 (buffer_4m + 0x00101C, kirx_length);
+		memcpy (buffer_4m + 0x001400, kirx, kirx_length);
+		fprintf (stdout, "Succesfully read boot.kirx\n");
+	  }
+	  else
+	  {
+		fprintf (stdout, "Skipped boot.kirx\n");
+	  }
+	  if (kirx != NULL)
+		osal_free (kirx); 
+
+	}
+  result = hio->write (hio, sector, 4 _MB / 512, buffer_4m, &dummy);
+  if (result == RET_OK)
+	result = apa_commit_ex (hio, toc);
+  if (buffer_4m != NULL)
+    osal_free (buffer_4m);
 
   return (result);
 }
