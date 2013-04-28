@@ -126,6 +126,11 @@ int hdl_modify_game (hio_t *hio,
 		     const char *new_name, /* or NULL */
 		     compat_flags_t new_compat_flags); /* or COMPAT_FLAGS_INVALID */
 
+int hdd_inject_header (hio_t *hio,
+		     apa_toc_t *toc,
+		     int slice_index,
+		     u_int32_t starting_partition_sector);
+
 C_END
 
 #endif /* _HDL_H defined? */
