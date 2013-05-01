@@ -1391,6 +1391,7 @@ show_usage_and_exit (const char *app_path,
 	"hdd1: \"tekken tag tournament\" c:\\tekken.iso", NULL, 0 },
       { CMD_HDL_INJECT_CD, "target name source [startup] [flags] [@slice_index]",
 	"Creates a new HD Loader partition from a CD.\n"
+	"You need boot.elf and list.ico for installing the game. More info in Readme\n"
 	"Supported inputs: plain ISO files, CDRWIN cuesheets, Nero images and tracks,\n"
 	"RecordNow! Global images, HD Loader partitions (PP.HDL.Xenosaga@hdd1:) and\n"
 	"Sony CD/DVD generator IML files (if files are listed with full paths).\n"
@@ -1400,8 +1401,8 @@ show_usage_and_exit (const char *app_path,
 	"hdd1: \"Tekken\" c:\\tekken.iso SCES_xxx.xx +1+2", 1 },
       { CMD_HDL_INJECT_DVD, "target name source [startup] [flags] [@slice_index]",
 	"Creates a new HD Loader partition from a DVD.\n"
-	"DVD9 cannot be directly installed from the DVD-ROM drive -\n"
-	"use ISO image or IML file instead.\n"
+	"You need boot.elf and list.ico. More info in Readme.\n"
+	"DVD-9 can be ibstalled only from ISO or IML.\n"
 	"Supported inputs: plain ISO files, CDRWIN cuesheets, Nero images and tracks,\n"
 	"RecordNow! Global images, HD Loader partitions (PP.HDL.Xenosaga@192....) and\n"
 	"Sony CD/DVD generator IML files (if files are listed with full paths).\n"
@@ -1411,7 +1412,8 @@ show_usage_and_exit (const char *app_path,
 	"hdd1: \"Gran Turismo 3\" c:\\gt3.iso SCES_xxx.xx +2+3", 1 },
       { CMD_HDL_INSTALL, "target source [@slice_index]",
 	"Creates a new HD Loader partition from a source, that has an entry\n"
-	"in compatibility list.",
+	"in compatibility list.\n"
+	"You need boot.elf and list.ico for installing the game. More info in Readme",
 	"192.168.0.10 cd0:", "hdd1: c:\\gt3.iso", 1 },
       { CMD_CDVD_INFO, "iin_input",
 	"Displays signature (startup file), volume label and data size\n"
@@ -1426,7 +1428,8 @@ show_usage_and_exit (const char *app_path,
 	"192.168.0.10", NULL, 0 },
 #if defined (INCLUDE_INITIALIZE_CMD)
       { CMD_INITIALIZE, "device",
-	"This version requires MBR.KELF in the same folder. It will inject it into MBR",
+	"This version requires MBR.KELF in the same folder. It will inject it into MBR.\n"
+	"All your partitions remain intact!!!" CMD_INITIALIZE " is rewrited by AKuHAK.",
 	"hdd1:", NULL, 1 },
 #endif /* INCLUDE_INITIALIZE_CMD defined? */
 #if defined (INCLUDE_BACKUP_TOC_CMD)
@@ -1452,6 +1455,8 @@ show_usage_and_exit (const char *app_path,
 #endif /* INCLUDE_MODIFY_CMD defined? */
 #if defined (INCLUDE_COPY_HDD_CMD)
       { CMD_COPY_HDD, "source_device destination_device [flags]",
+	"You need boot.elf and list.ico for installing the game. More info in Readme\n"
+	"Be careful all games will use one list.ico and boot.elf.\n"
 	"Copy games from one device to another. Flags is a sequence of `y' or `n'\n"
 	"characters, one for each game on the source device, given in the same order as\n"
 	"in hdl_toc command list. If no character given for a particular game (or flags\n"
@@ -1459,6 +1464,19 @@ show_usage_and_exit (const char *app_path,
 	"hdd1: 192.168.0.100 # to copy all games",
 	"hdd1: hdd2: ynyn # to copy all games but 2nd and 4th", 1 },
 #endif /* INCLUDE_COPY_HDD_CMD defined? */
+      { CMD_MODIFY_HEADER, "device partition_name",
+	"Inject attributes into partition header for using with HDD OSD or BB Navigator.\n"
+	"system.cnf,\n"
+	"icon.sys,\n"
+	"list.ico,\n"
+	"del.ico,    if it is not present the list.ico will be used\n"
+	"boot.kelf,\n"
+	"boot.elf,   if boot.kelf not present, boot.elf will be parsed\n"
+	"boot.kirx.\n"
+	"Every file can be skipped. More info about using and restrictions in README.\n"
+	CMD_MODIFY_HEADER " is contributed by AKuHAK.",
+	"hdd2: PP.POPS-00001",
+	"192.168.0.10 PP.HDL.Battlefield", 1 },
       { NULL, NULL,
 	NULL,
 	NULL, NULL, 0 }
@@ -1472,7 +1490,7 @@ show_usage_and_exit (const char *app_path,
     app = app_path;
 
   fprintf (stdout,
-	   "hdl_dump-" VERSION " by The W1zard 0f 0z (AKA b...)\n"
+	   "hdl_dump-" VERSION " by The W1zard 0f 0z (AKA b...), revisited by AKuHAK\n"
 	   "https://bitbucket.org/AKuHAK/hdl-dump w1zard0f07@yahoo.com\n"
 	   "\n");
 
@@ -1551,8 +1569,6 @@ show_usage_and_exit (const char *app_path,
 	       "\n"
 	       "Warning: Commands, marked with * (asterisk) does write on the HDD\n"
 	       "         and could cause corruption. Use with care.\n"
-	       "\n"
-	       "Warning: for this version you need PATINFO.ELF < 417kb in the working folder\n"
 	       "\n"
 	       "License: You are only allowed to use this program with a software\n"
 	       "         you legally own. Use at your own risk.\n",
@@ -2048,6 +2064,8 @@ main (int argc, char *argv[])
 #endif /* INCLUDE_MODIFY_CMD defined? */
       else if (caseless_compare (command_name, CMD_MODIFY_HEADER))
 	{
+	  if (argc != 4)
+	    show_usage_and_exit (argv[0], CMD_MODIFY_HEADER);	  
 	  handle_result_and_exit (modify_header (config, argv[2], argv[3]), argv[2], argv[3]);
 	}
 

@@ -9,14 +9,17 @@ Networking server
 Compilation 
 Configuration and list file location
 Configuration
+New features
 
 
 Intro
 -----
 
 Latest version, as well as some? documentation (ha-ha-ha) is to be
-found on the official site -- http://www.psx-scene.com/hdldump/.
+found on the new official repository -- https://bitbucket.org/AKuHAK/hdl-dump/.
 Me reads w1zard0f07@yahoo.com and ps2-scene forums every now and then.
+Easy guide for installing games can be found here -- 
+http://openps2loader.info/hdldump/howto.html
 
 
 Networking server
@@ -62,6 +65,9 @@ handling when ran from a Command Prompt.
 Configuration and list file location
 ------------------------------------
 
+You can place this files in folder where is installed hdl_dump for
+making it portable.
+
 * Windows: (cited names are for English version of Windows)
 C:\Documents and Settings\<login name>\Application Data\hdl_dump.conf
 C:\Documents and Settings\<login name>\Application Data\hdl_dump.list
@@ -78,6 +84,92 @@ Configuration
 file;
 
 
+New features
+-----
+
+All new stuffs can be used from HDD_OSD or BB Navigator.
+
+inject_dvd, inject_cd, install or copy_hdd.
+
+The only thing you need - you have to place boot.elf (which is actually
+miniopl.elf) and list.ico (*.ico from memory card) in the folder where is
+launched from hdl_dump. This command will install game onto hard disk. Be
+careful if you choose command copy_hdd - every HDL game will loose their
+icons and will use only one for all (the same for kelf).
+boot.elf - you can use everything but I prefer miniopl. Miniopl allows you
+to launch titles from HDD OSD or BB NAV by pressing on title.
+boot.elf injection address - 0x111000
+boot.elf size limit - 732 160 bytes (restricted due to free KELF poc size)
+----------------------------------------------------------------------------------------
+initialize
+
+When you use this command and place hard drive into your playstation 2 phat
+and power it on - it will launch mbr. So it can be used as Free MC Boot
+replacement (no need for memory card or modchip for lauching homebrews).
+
+In previous version this command tried to install one __mbr partition - but
+there was a bug in the code so this command won't work correctly. I decide to
+remove it at all and replace with MBR injection. All that you need - place
+MBR.KELF in the corresponding folder. All HDD data will remain intact!!!!!
+
+MBR.KELF injection address - 0x404000 (for compatibility with BB Nav)
+MBR.KELF doesn't have any restrictions by themself.
+There is no easy way to make MBR.KELFS from common elf.
+----------------------------------------------------------------------------------------
+modify_header
+Code:
+hdl_dump.exe modify_header 192.168.0.10 PP.TEST
+
+This command will inject header attributes in any already existing partition.
+It can operate such files:
+system.cnf
+icon.sys
+list.ico
+del.ico
+boot.kelf
+boot.elf
+boot.kirx
+Any file can be skipped. Program first of all tries to inject boot.kelf. 
+If it is not found it will try to inject boot.elf.
+
+del.ico injection address: 0x041000
+If del.ico is used list.ico maximum size 260 096bytes.
+boot.elf (or boot.kelf) injection address - 0x111000
+boot.elf size limit - 732 160 bytes (restricted due to free KELF poc size)
+boot.kelf size limit - 3 076 096 bytes (if boot.kirx not used)
+boot.kelf size limit - 2 031 616 bytes (if boot.kirx is used)
+boot.kirx injection address - 0x301000
+boot.kirx size limit - 1 044 480 bytes
+----------------------------------------------------------------------------------------
+If you want to know much about these files (and their restrictions) you have to study official ps2sdk document called hdd_rule_3.0.2.pdf.
+
+There is also some undocumented features like this:
+- If you want to inject boot.kelf (or boot.elf) you have to change BOOT2 in system.cnf: 
+Code:
+|-----------------|
+| BOOT2 = PATINFO |
+|-----------------|
+This is used for HDL games for example.
+
+-If you want to launch KELF from PFS partition you have to change BOOT2 in system.cnf: 
+Code:
+|---------------------------|
+| BOOT2 = pfs:/EXECUTE.KELF |
+|---------------------------|
+where EXECUTE.KELF - is path to KELF which is placed into partition. Can be changed.
+
+-If you want to inject kirx into partition you have to add such a line into system.cnf 
+Code:
+|-----------------|
+| IOPRP = PATINFO |
+|-----------------|
+Don't ask me about kirx - I don't know where it can be used.
+
+-If you don't want to boot from HDD OSD or BB Nav you have to add such a line into system.cnf 
+|----------------|
+| BOOT2 = NOBOOT |
+|----------------|
+
 Happy gaming.
 
-$Id: README,v 1.7 2007-05-12 20:13:14 bobi Exp $
+$Id: README,v 2.0 2013-05-01 20:13:14 AKuHAK Exp $

@@ -92,10 +92,10 @@ static const compat_flags_t COMPAT_FLAGS_INVALID = (compat_flags_t) -1;
 /* control whether infrequently-used commands to be built */
 #define INCLUDE_DUMP_CMD
 #define INCLUDE_COMPARE_IIN_CMD
-#undef INCLUDE_MAP_CMD
+#define INCLUDE_MAP_CMD
 #define INCLUDE_INFO_CMD
-#undef INCLUDE_ZERO_CMD
-#undef INCLUDE_CUTOUT_CMD
+#define INCLUDE_ZERO_CMD
+#define INCLUDE_CUTOUT_CMD
 #define INCLUDE_INITIALIZE_CMD
 #define INCLUDE_DELETE_CMD
 #define INCLUDE_BACKUP_TOC_CMD
@@ -108,6 +108,8 @@ static const compat_flags_t COMPAT_FLAGS_INVALID = (compat_flags_t) -1;
 #define CONFIG_ENABLE_ASPI_FLAG           "enable_aspi"
 #define CONFIG_DISC_DATABASE_FILE         "disc_database_file"
 #define CONFIG_LAST_IP                    "last_ip"
+#define CONFIG_TARGET_KBPS                "target_kbps"
+#define CONFIG_AUTO_THROTTLE              "auto_throttle"
 
 
 #if defined (__cplusplus)
