@@ -481,9 +481,9 @@ hdd_inject_header (hio_t *hio,
 	  result = read_file ("./boot.kirx", &kirx, &kirx_length);
 	  if (result == OSAL_OK)
 	  {
-		set_u32 (buffer_4m + 0x001018, 0x0400);
-		set_u32 (buffer_4m + 0x00101C, kirx_length);
-		memcpy (buffer_4m + 0x001400, kirx, kirx_length);
+		set_u32 (buffer_4m + 0x001038, 0x300000);
+		set_u32 (buffer_4m + 0x00103C, kirx_length);
+		memcpy (buffer_4m + 0x301000, kirx, kirx_length);
 		fprintf (stdout, "Succesfully read boot.kirx\n");
 	  }
 	  else

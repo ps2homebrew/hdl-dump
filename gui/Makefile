@@ -28,7 +28,7 @@
 # NOTE: don't forget, that changing some options REQUIRES `make clean' next!
 
 # include icon in the executable (`yes') or look for an extenal icon (other)
-BUILTIN_ICON ?= yes
+BUILTIN_ICON ?= no
 
 # `yes' - debug build; something else - release build
 # `RELEASE=yes make' makes a release build no matter what DEBUG flag is
