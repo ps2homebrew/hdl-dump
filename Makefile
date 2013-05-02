@@ -27,9 +27,6 @@
 # configuration start
 # NOTE: don't forget, that changing some options REQUIRES `make clean' next!
 
-# include icon in the executable (`yes') or look for an extenal icon (other)
-BUILTIN_ICON ?= no
-
 # `yes' - debug build; something else - release build
 # `RELEASE=yes make' makes a release build no matter what DEBUG flag is
 DEBUG ?= yes
@@ -130,13 +127,6 @@ VERSION = -DVER_MAJOR=$(VER_MAJOR) \
 VERSION += -DVERSION=\"$(VER_MAJOR).$(VER_MINOR).$(VER_PATCH)\"
 CFLAGS += $(VERSION)
 CXXFLAGS += $(VERSION)
-
-
-# built-in icon support
-ifeq ($(BUILTIN_ICON), yes)
-  CFLAGS += -DBUILTIN_ICON
-  CXXFLAGS += -DBUILTIN_ICON
-endif
 
 
 ifeq ($(IIN_OPTICAL_MMAP), yes)

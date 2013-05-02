@@ -33,10 +33,8 @@
 #include "osal.h"
 #include "common.h"
 #include "hio.h"
-#if defined (BUILTIN_ICON)
-#  include "icon.h"
-#endif
-#  include "kelf.h"
+
+#include "kelf.h"
 
 
 /*
@@ -279,10 +277,8 @@ prepare_main (const hdl_game_t *details,
       buffer_4m[0x1010f0] = (u_int8_t) partitions_used;
     }
 
-#if !defined (BUILTIN_ICON)
   if (icon != NULL)
     osal_free (icon);
-#endif
 
   if (patinfo != NULL)
     osal_free (patinfo);
