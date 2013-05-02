@@ -247,7 +247,7 @@ iin_cdrwin_probe_path (const char *path,
 		       iin_t **iin)
 {
   char source [MAX_PATH];
-  cdrwin_data_mode_t mode;
+  cdrwin_data_mode_t mode = cdm_mode1_plain;
 
   int result = cue_parse (path, source, &mode);
   if (result == RET_OK)

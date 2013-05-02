@@ -48,8 +48,8 @@
 #include "retcodes.h"
 #include "progress.h"
 #include "net_io.h"
-#include "svr.h"
-#include "nettypes.h"
+#include "svr/pktdrv/svr.h"
+#include "svr/pktdrv/nettypes.h"
 
 
 typedef struct hio_net_type

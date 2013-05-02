@@ -1,4 +1,9 @@
-0.9.2
+0.9.2prerelease
+	+ Add SP193's server (as elf file)
+	+ Add DVD-9 support in gui version.
+	+ clear some warnings
+
+0.9.2prerelease
 	+ New function "modify_header", it will inject corresponding 
 	  files into partition header. More info in README.
 	+ New version, by default al functions now are enabled.

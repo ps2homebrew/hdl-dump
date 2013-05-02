@@ -796,6 +796,7 @@ install (HWND dlg)
 	  progress_t *pgs;
 	  hdl_game_t game;
 	  size_t i;
+	  ps2_cdvd_info_t info;
 
 	  memset (&game, 0, sizeof (hdl_game_t));
 	  strcpy (game.name, game_name);
@@ -805,6 +806,13 @@ install (HWND dlg)
 	    game.compat_flags |= (IsDlgButtonChecked (dlg, MODE_IDC[i]) == BST_CHECKED ? 1 << i : 0);
 	  game.is_dvd = input_is_dvd;
 	  game.layer_break = 0; /* unsupported w/o ASPI */
+
+	  result = isofs_get_ps2_cdvd_info (iin, &info);
+	  if (result == RET_OK)
+	  {
+	    if (info.layer_pvd != 0)
+		  game.layer_break = (u_int32_t) info.layer_pvd - 16;
+	  }
 
 	  if (result == RET_OK)
 	    /* update compatibility database */
