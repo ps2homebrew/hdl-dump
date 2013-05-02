@@ -4,7 +4,7 @@
 #  include "nettypes.h"
 
 /* sizes for write- and read buffers */
-#  define WR_BUF_SIZE 32768
+#  define WR_BUF_SIZE 131072
 #  define RD_BUF_SIZE 32768
 
 #  if ((WR_BUF_SIZE % 512) != 0) || ((RD_BUF_SIZE % 512) != 0)

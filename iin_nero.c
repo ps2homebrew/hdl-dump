@@ -165,7 +165,7 @@ iin_nero_probe_path (const char *path,
   osal_handle_t in;
   u_int64_t file_size;
   u_int32_t header_size = 0, footer_size = 0;
-  nero_data_mode_t mode;
+  nero_data_mode_t mode = ndm_mode1_plain;
   int result = osal_get_volume_sect_size (path, &device_sector_size);
   if (result == OSAL_OK)
     result = osal_open (path, &in, 0); /* do not disable cache yet */

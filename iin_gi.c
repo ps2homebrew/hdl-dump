@@ -140,7 +140,8 @@ iin_gi_probe_path (const char *path,
 	      u_int32_t num_files = header [0x98], i;
 	      for (i=0; i<num_files; ++i)
 		{
-		  char source [MAX_PATH];
+		/*  char source [MAX_PATH];*/
+		  char source [260];
 		  u_int32_t length_s = (header [FILE_SIZES_OFFSET [i] + 3] << 24 |
 				     header [FILE_SIZES_OFFSET [i] + 2] << 16 |
 				     header [FILE_SIZES_OFFSET [i] + 1] <<  8 |
