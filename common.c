@@ -31,7 +31,7 @@
 #include "hdl.h"
 
 
-#define MAX_READ_FILE_SIZE (1 * 1024 * 1024) /* 1MB */
+#define MAX_READ_FILE_SIZE (4 * 1024 * 1024) /* 4MB */
 
 
 /**************************************************************/
