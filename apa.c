@@ -1267,7 +1267,7 @@ apa_initialize_ex (hio_t *hio)
   char *mbrelf = NULL;
   u_int32_t mbrelf_length;
 
-  u_int8_t *zero = malloc (1 _MB);
+  u_int8_t *zero = malloc (4 _MB);
   char buffer[1024];
   result = hio->read (hio, 0, 2, buffer, &dummy);
   next = (u_int32_t) get_u32 (buffer + 8);
@@ -1298,10 +1298,10 @@ apa_initialize_ex (hio_t *hio)
 
 	set_u32 (&header.checksum, apa_partition_checksum (&header));
 	if (zero != NULL)
-	  { /* fill 1MB with HDD MBR at 0x2020 */
-		memset (zero, 0, 1 _MB);
+	  { /* fill 4MB with HDD MBR at 0x2020 */
+		memset (zero, 0, 4 _MB);
 		memcpy (zero, mbrelf, mbrelf_length);
-		result = hio->write (hio, osd_start, 1 _MB / 512, zero, &dummy);
+		result = hio->write (hio, osd_start, 4 _MB / 512, zero, &dummy);
 		free (zero);
 		if (result != RET_OK)
 	  return (result);
