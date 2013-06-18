@@ -86,7 +86,7 @@ typedef int SOCKET;
 /* maximum number of compatibility flags (in bits);
    should fit in the following type */
 #define MAX_FLAGS 8
-typedef unsigned short compat_flags_t;
+typedef unsigned char compat_flags_t;
 static const compat_flags_t COMPAT_FLAGS_INVALID = (compat_flags_t) -1;
 
 /* control whether infrequently-used commands to be built */
