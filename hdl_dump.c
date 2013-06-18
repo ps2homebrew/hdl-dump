@@ -389,9 +389,9 @@ show_hdl_game_info (const dict_t *config,
 		      fprintf (stdout, "%s: [%s], %s\n",
 			       signature, hdl_name,
 			       (type == 0x14 ? "DVD" : "CD"));
-		      if (buffer[0x00a8] != 0)
+		      if (buffer[0x00a9] != 0)
 			{
-			  u_int32_t flags = get_u32 (buffer + 0x00a8);
+			  u_int8_t flags = get_u8 (buffer + 0x00a9);
 			  char compat_flags[MAX_FLAGS * 2 + 1];
 			  compat_flags[0] = compat_flags[1] = '\0';
 			  for (i = 0; i < MAX_FLAGS; ++i)

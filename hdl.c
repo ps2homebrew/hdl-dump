@@ -205,7 +205,8 @@ prepare_main (const hdl_game_t *details,
        *1010a0: 00 00 00 00 00 00 00 00  00 00 00 00 53 43 45 53  ............SCES
        *1010b0: 5f 35 30 33 2e 36 30 00  00 00 00 00 00 00 00 00  _503.60.........
        */
-      set_u16 (buffer_4m + 0x1010a8, (u_int16_t) details->compat_flags);
+      set_u8(buffer_4m + 0x1010a9, (u_int8_t) details->compat_flags);
+      set_u8(buffer_4m + 0x1010aa, (u_int8_t) details->dma_type);
       memcpy (buffer_4m + 0x1010ac, details->startup, strlen (details->startup));
 
       /*
@@ -226,7 +227,7 @@ prepare_main (const hdl_game_t *details,
 
       /* that is aerial acrobatics :-) */
       set_u32 (buffer_4m + 0x1010e8, details->layer_break);
-      buffer_4m[0x1010ec] = (u_int8_t) (details->is_dvd ? 0x14 : 0x12);
+	  set_u32 (buffer_4m + 0x1010ec, details->is_dvd ? 0x00000014 : 0x00000012);
       buffer_4m[0x1010f0] = (u_int8_t) (get_u32 (&part->nsub) + 1);
       tmp = (u_int32_t*) (buffer_4m + 0x1010f5);
 
@@ -853,7 +854,7 @@ hdl_ginfo_read (hio_t *hio,
 	  ginfo->partition_name[PS2_PART_IDMAX] = '\0';
 	  strcpy (ginfo->name, buffer + 0x0008);
 	  strcpy (ginfo->startup, buffer + 0x00ac);
-	  ginfo->compat_flags = (compat_flags_t) get_u16 (buffer + 0x00a8);
+	  ginfo->compat_flags = (compat_flags_t) get_u8 (buffer + 0x00a9);
 	  ginfo->is_dvd = (buffer[0x00ec] == 0x14);
 	  ginfo->slice_index = slice_index;
 	  ginfo->start_sector = get_u32 (&part->start);
@@ -1110,7 +1111,7 @@ hdl_modify_game (hio_t *hio,
 	      memcpy (hdl_hdr + 0x08, new_name, strlen (new_name));
 	    }
 	  if (new_compat_flags != COMPAT_FLAGS_INVALID)
-	    set_u16 (hdl_hdr + 0xa8, new_compat_flags);
+	    set_u8 (hdl_hdr + 0xa9, new_compat_flags);
 	  result = hio->write (hio, sector, 2, hdl_hdr, &bytes);
 	}
       if (result == RET_OK)
