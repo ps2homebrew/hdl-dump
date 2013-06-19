@@ -40,9 +40,8 @@ typedef struct hdl_game_type
   char name[HDL_GAME_NAME_MAX + 1];
   char partition_name[PS2_PART_IDMAX + 1];
   char startup[8 + 1 + 3 + 1];
-  compat_flags_t compat_flags;  
-  compat_flags_t dma_type;  
-  compat_flags_t dma_mode;  
+  compat_flags_t compat_flags;
+  unsigned short dma;
   int is_dvd;
   u_int32_t layer_break;
 } hdl_game_t;
@@ -53,6 +52,7 @@ typedef struct hdl_game_info_type
   char name[HDL_GAME_NAME_MAX + 1];
   char startup[8 + 1 + 3 + 1];
   compat_flags_t compat_flags;
+  unsigned short dma;
   int is_dvd;
   int slice_index;
   u_int32_t start_sector;
@@ -126,7 +126,8 @@ int hdl_modify_game (hio_t *hio,
 		     int slice_index,
 		     u_int32_t starting_partition_sector,
 		     const char *new_name, /* or NULL */
-		     compat_flags_t new_compat_flags); /* or COMPAT_FLAGS_INVALID */
+		     compat_flags_t new_compat_flags, /* or COMPAT_FLAGS_INVALID */
+		     unsigned short new_dma); /* or 0 */
 
 int hdd_inject_header (hio_t *hio,
 		     apa_toc_t *toc,

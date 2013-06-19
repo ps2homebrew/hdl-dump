@@ -1103,7 +1103,8 @@ modify (const dict_t *config,
 	const char *device,
 	const char *game,
 	const char *new_name,
-	compat_flags_t new_flags)
+	compat_flags_t new_flags,
+	unsigned short new_dma)
 {
   /*@only@*/ hio_t *hio = NULL;
   int result = hio_probe (config, device, &hio);
@@ -1130,7 +1131,7 @@ modify (const dict_t *config,
 	    {
 	      u_int32_t start_sector = get_u32 (&toc->slice[slice_index].parts[partition_index].header.start);
 	      result = hdl_modify_game (hio, toc, slice_index, start_sector,
-					new_name, new_flags);
+					new_name, new_flags, new_dma);
 	    }
 
 	  apa_toc_free (toc), toc = NULL;
@@ -1448,7 +1449,7 @@ show_usage_and_exit (const char *app_path,
 	"hdd1:", "192.168.0.10", 0 },
 #endif /* INCLUDE_DIAG_CMD defined? */
 #if defined (INCLUDE_MODIFY_CMD)
-      { CMD_MODIFY, "device game [new_name] [new_flags]",
+      { CMD_MODIFY, "device game [new_name] [new_flags dma]",
 	"Rename a game and/or change compatibility flags.\n",
 	"hdd1: DDS \"Digital Devil Saga\"",
 	"192.168.0.100 \"FF X-2\" +3", 1 },
@@ -2037,29 +2038,58 @@ main (int argc, char *argv[])
 	{
 	  const char *new_name = NULL;
 	  compat_flags_t new_flags = COMPAT_FLAGS_INVALID;
+	  unsigned short new_dma = 0;
 
-	  if (argc != 5 && argc != 6)
+	  if (argc < 5 && argc > 7)
 	    show_usage_and_exit (argv[0], CMD_MODIFY);
 
 	  if (argc == 5)
-	    { /* test for flags only */
+	    { /* test for flags, dma one arg*/
 	      new_flags = parse_compat_flags (argv[4]);
 	      if (new_flags == COMPAT_FLAGS_INVALID)
-		new_name = argv[4];
+		  {
+			new_dma = parse_dma (argv[4]);
+			if (new_dma == 0)
+			  new_name = argv[4];
+		  }
 	    }
+	  else if (argc == 6)
+	    { /* test for flags and dma 2 args */
+		  new_flags = parse_compat_flags (argv[4]);
+		  if (new_flags == COMPAT_FLAGS_INVALID)
+		  {
+			new_name = argv[4];
+			new_flags = parse_compat_flags (argv[5]);
+			if (new_flags == COMPAT_FLAGS_INVALID)
+			{ /* name + dma*/
+			  new_dma = parse_dma (argv[5]);
+			  if (new_dma == 0)
+			    show_usage_and_exit (argv[0], CMD_MODIFY);
+			} /* name + flags */
+		  }
+		  else
+		  { /* flags + dma */
+			new_dma = parse_dma (argv[5]);
+			if (new_dma == 0)
+				show_usage_and_exit (argv[0], CMD_MODIFY);		  
+		  }
+		}
 	  else
-	    { /* both: new name and new flags should present */
+	    { /* test for flags and dma 2 args */
 	      new_name = argv[4];
 	      new_flags = parse_compat_flags (argv[5]);
 	      if (new_flags == COMPAT_FLAGS_INVALID)
-		show_usage_and_exit (argv[0], CMD_MODIFY);
+			show_usage_and_exit (argv[0], CMD_MODIFY);
+		  new_dma = parse_dma (argv[6]);
+		  if (new_dma == 0)
+			show_usage_and_exit (argv[0], CMD_MODIFY);		  
 	    }
 
 	  if (new_name != NULL && caseless_compare (argv[3], new_name))
 	    new_name = NULL; /* new name is same as the present one */
 
 	  handle_result_and_exit (modify (config, argv[2], argv[3], new_name,
-					  new_flags), argv[2], argv[3]);
+					  new_flags, new_dma), argv[2], argv[3]);
 	}
 #endif /* INCLUDE_MODIFY_CMD defined? */
       else if (caseless_compare (command_name, CMD_MODIFY_HEADER))
