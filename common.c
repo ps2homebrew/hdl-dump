@@ -543,6 +543,41 @@ parse_compat_flags (const char *flags)
 
 
 /**************************************************************/
+unsigned short
+parse_dma (const char *flags)
+{
+  unsigned short result = 0;
+  if (flags != NULL)
+    {
+      size_t len = strlen (flags), i;
+	  if (flags[0] == '*')
+	  {
+		unsigned long retval = strtoul (flags[2], NULL, 0);
+		if (retval <= 6)
+		{
+		  if (flags[1] == 'u')
+			result = retval*256 + 64; /* 0x0_40 */
+		  else if( flags[1] == 'm')
+		  {
+			if (retval <= 2)
+			  result = retval*256 + 32; /* 0x0_20 */
+			else
+			  result = 0;/* >m2 */
+		  }
+		  else
+			result = 0; /* not *u and not *m */
+		}
+		else
+		  result = 0; /* >u6 */
+	  }
+	  else
+		result = 0; /* don't know how to handle those flags */	
+    }
+  return (result);
+}
+
+
+/**************************************************************/
 int
 ddb_lookup (const dict_t *config,
 	    const char *startup,

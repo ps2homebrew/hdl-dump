@@ -206,7 +206,7 @@ prepare_main (const hdl_game_t *details,
        *1010b0: 5f 35 30 33 2e 36 30 00  00 00 00 00 00 00 00 00  _503.60.........
        */
       set_u8(buffer_4m + 0x1010a9, (u_int8_t) details->compat_flags);
-      set_u8(buffer_4m + 0x1010aa, (u_int8_t) details->dma_type);
+      set_u16(buffer_4m + 0x1010aa, (u_int16_t) details->dma);
       memcpy (buffer_4m + 0x1010ac, details->startup, strlen (details->startup));
 
       /*
@@ -855,6 +855,7 @@ hdl_ginfo_read (hio_t *hio,
 	  strcpy (ginfo->name, buffer + 0x0008);
 	  strcpy (ginfo->startup, buffer + 0x00ac);
 	  ginfo->compat_flags = (compat_flags_t) get_u8 (buffer + 0x00a9);
+	  ginfo->dma = (unsigned short) get_u16 (buffer + 0x00aa);
 	  ginfo->is_dvd = (buffer[0x00ec] == 0x14);
 	  ginfo->slice_index = slice_index;
 	  ginfo->start_sector = get_u32 (&part->start);
@@ -1059,7 +1060,8 @@ hdl_modify_game (hio_t *hio,
 		 int slice_index,
 		 u_int32_t starting_partition_sector,
 		 const char *new_name, /* or NULL */
-		 compat_flags_t new_compat_flags) /* or COMPAT_FLAGS_INVALID */
+		 compat_flags_t new_compat_flags, /* or COMPAT_FLAGS_INVALID */
+		 unsigned short new_dma) /* or 0 */
 {
   apa_slice_t *slice = toc->slice + slice_index;
   const u_int32_t SLICE_2_OFFS = 0x10000000; /* sectors */
@@ -1112,6 +1114,8 @@ hdl_modify_game (hio_t *hio,
 	    }
 	  if (new_compat_flags != COMPAT_FLAGS_INVALID)
 	    set_u8 (hdl_hdr + 0xa9, new_compat_flags);
+	  if (new_dma != 0)
+	    set_u16 (hdl_hdr + 0xaa, new_dma);
 	  result = hio->write (hio, sector, 2, hdl_hdr, &bytes);
 	}
       if (result == RET_OK)

@@ -95,6 +95,7 @@ int iin_copy_ex (iin_t *iin,
 void set_config_defaults (dict_t *config);
 
 compat_flags_t parse_compat_flags (const char *flags);
+unsigned short parse_dma (const char *flags);
 
 int ddb_lookup (const dict_t *config,
 		const char *startup,
