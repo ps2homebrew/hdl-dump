@@ -547,12 +547,14 @@ unsigned short
 parse_dma (const char *flags)
 {
   unsigned short result = 0;
+  char buffer [1];
   if (flags != NULL)
     {
-      size_t len = strlen (flags), i;
 	  if (flags[0] == '*')
 	  {
-		unsigned long retval = strtoul (flags[2], NULL, 0);
+		unsigned long retval = 0;
+		buffer[0] = flags[2];
+		retval = strtoul (buffer, NULL, 0);
 		if (retval <= 6)
 		{
 		  if (flags[1] == 'u')
