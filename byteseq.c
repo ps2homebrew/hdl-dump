@@ -68,3 +68,21 @@ set_u16 (void *buffer,
   p [1] = (u_int8_t) (val >> 8);
   p [0] = (u_int8_t) (val >> 0);
 }
+
+/**************************************************************/
+u_int8_t
+get_u8 (const void *buffer)
+{
+  const u_int8_t *p = buffer;
+  return ((u_int8_t) p [0] << 0);
+}
+
+
+/**************************************************************/
+void
+set_u8 (void *buffer,
+	 u_int8_t val)
+{
+  u_int8_t *p = buffer;
+  p [0] = (u_int8_t) (val >> 0);
+}

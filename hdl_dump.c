@@ -2040,7 +2040,7 @@ main (int argc, char *argv[])
 	  compat_flags_t new_flags = COMPAT_FLAGS_INVALID;
 	  unsigned short new_dma = 0;
 
-	  if (argc < 5 && argc > 7)
+	  if (argc != 5 && argc != 6 && argc != 7)
 	    show_usage_and_exit (argv[0], CMD_MODIFY);
 
 	  if (argc == 5)
@@ -2050,7 +2050,12 @@ main (int argc, char *argv[])
 		  {
 			new_dma = parse_dma (argv[4]);
 			if (new_dma == 0)
-			  new_name = argv[4];
+			{
+			  if (argv[4][0] != '*')
+				new_name = argv[4];
+			  else
+				show_usage_and_exit (argv[0], CMD_MODIFY);
+			}
 		  }
 	    }
 	  else if (argc == 6)
