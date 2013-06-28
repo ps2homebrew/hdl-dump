@@ -36,6 +36,16 @@
 #define IDS_ERROR_TITLE                 31
 #define IDS_INSTALL_LBL                 41
 #define IDS_DELETE_LBL                  42
+#define IDS_MDMA0                       51
+#define IDS_MDMA1                       52
+#define IDS_MDMA2                       53
+#define IDS_UDMA0                       54
+#define IDS_UDMA1                       55
+#define IDS_UDMA2                       56
+#define IDS_UDMA3                       57
+#define IDS_UDMA4                       58
+#define IDS_UDMA5                       59
+#define IDS_UDMA6                       60
 
 #define IDS_NO_PS2_HDD_ERR              101
 #define IDS_NOT_APA_ERR                 102
@@ -84,6 +94,7 @@
 #define IDC_PS2HDD_INFO                 1022
 #define IDC_SIGNATURE_LBL               1023
 #define IDC_SOURCE_INFO                 1024
+#define IDC_DMA_TYPE                 	1025
 #define IDC_MODE1                       1101
 #define IDC_MODE2                       1102
 #define IDC_MODE3                       1103
@@ -97,6 +108,7 @@
 #define IDC_PS2IP                       1030
 #define IDC_FLAGS_LBL                   1031
 #define IDC_NET_U2LINK                  1032
+#define IDC_DMA_LBL                   	1033
 
 #define IDC_PROGRESS_LBL                2001
 #define IDC_ELAPSED_LBL                 2002
