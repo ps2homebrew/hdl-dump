@@ -280,6 +280,9 @@ dlg_switch_operation (HWND dlg)
   for (i = 0; i < MAX_FLAGS; ++i)
     ShowWindow (GetDlgItem (dlg, MODE_IDC[i]), inject_show && MAX_FLAGS > i);
 
+  ShowWindow (GetDlgItem (dlg, IDC_DMA_LBL), inject_show);
+  ShowWindow (GetDlgItem (dlg, IDC_DMA_TYPE), inject_show);
+  
   SetWindowText (GetDlgItem (dlg, IDC_ACTION),
 		 get_string (inject_show ? IDS_INSTALL_LBL : IDS_DELETE_LBL, 0));
 
@@ -466,6 +469,32 @@ dlg_refresh_hdd_info (HWND dlg)
 			  strcat (details, tmp);
 			}
 		    }
+		  if (game->dma%256 == 32)
+		  {
+		    int dma_dummy = 0;
+			dma_dummy = ((unsigned short)game->dma - 32)/256;
+			if (dma_dummy < 3)
+			{
+			  char tmp[5];
+			  sprintf (tmp, "%s","  MDMA");
+			  strcat (details, tmp);
+			  sprintf(tmp, "%u",(unsigned int) dma_dummy);
+			  strcat (details, tmp);
+			}		  
+		  }
+		  if (game->dma%256 == 64)
+		  {
+		    int dma_dummy = 0;
+			dma_dummy = ((unsigned short)game->dma - 64)/256;
+			if (dma_dummy < 7)
+			{
+			  char tmp[5];
+			  sprintf (tmp, "%s","  UDMA");
+			  strcat (details, tmp);
+			  sprintf(tmp, "%u",(unsigned int) dma_dummy);
+			  strcat (details, tmp);
+			}		  
+		  }
 		  ListView_SetItemText (lvw, index, 1, details + 1);
 
 		  sprintf (details, "%lu MB",
@@ -777,6 +806,7 @@ install (HWND dlg)
   char game_name [HDL_GAME_NAME_MAX + 1] = { '\0' };
   char signature [8 + 1 + 3 + 1] = { '\0' };
   int input_is_dvd = SendMessage (GetDlgItem (dlg, IDC_SOURCE_TYPE), CB_GETCURSEL, 0, 0) == 0;
+  int input_dma = SendMessage (GetDlgItem (dlg, IDC_DMA_TYPE), CB_GETCURSEL, 0, 0);
 
   dlg_get_source (dlg, source);
   dlg_get_target (dlg, target);
@@ -806,6 +836,10 @@ install (HWND dlg)
 	    game.compat_flags |= (IsDlgButtonChecked (dlg, MODE_IDC[i]) == BST_CHECKED ? 1 << i : 0);
 	  game.is_dvd = input_is_dvd;
 	  game.layer_break = 0; /* unsupported w/o ASPI */
+	  if (input_dma < 3)
+		game.dma = input_dma*256 + 32;
+	  else
+		game.dma = (input_dma - 3)*256 + 64;
 
 	  result = isofs_get_ps2_cdvd_info (iin, &info);
 	  if (result == RET_OK)
@@ -938,6 +972,21 @@ dlg_init (HWND dlg)
     SendMessage (cbo, CB_ADDSTRING, 0, (LPARAM) get_string (IDS_DVD, 0));
     SendMessage (cbo, CB_ADDSTRING, 0, (LPARAM) get_string (IDS_CD, 0));
     SendMessage (cbo, CB_SETCURSEL, 0, 0);
+  }
+
+  { /* LIST DMA MODES */
+    HWND cbo = GetDlgItem (dlg, IDC_DMA_TYPE);
+    SendMessage (cbo, CB_ADDSTRING, 0, (LPARAM) get_string (IDS_MDMA0, 0));
+    SendMessage (cbo, CB_ADDSTRING, 0, (LPARAM) get_string (IDS_MDMA1, 0));
+    SendMessage (cbo, CB_ADDSTRING, 0, (LPARAM) get_string (IDS_MDMA2, 0));
+    SendMessage (cbo, CB_ADDSTRING, 0, (LPARAM) get_string (IDS_UDMA0, 0));
+    SendMessage (cbo, CB_ADDSTRING, 0, (LPARAM) get_string (IDS_UDMA1, 0));
+    SendMessage (cbo, CB_ADDSTRING, 0, (LPARAM) get_string (IDS_UDMA2, 0));
+    SendMessage (cbo, CB_ADDSTRING, 0, (LPARAM) get_string (IDS_UDMA3, 0));
+    SendMessage (cbo, CB_ADDSTRING, 0, (LPARAM) get_string (IDS_UDMA4, 0));
+    SendMessage (cbo, CB_ADDSTRING, 0, (LPARAM) get_string (IDS_UDMA5, 0));
+    SendMessage (cbo, CB_ADDSTRING, 0, (LPARAM) get_string (IDS_UDMA6, 0));
+    SendMessage (cbo, CB_SETCURSEL, 7, 0);
   }
 
   if (fill_opticals_combo (dlg) != RET_OK)

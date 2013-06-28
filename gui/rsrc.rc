@@ -91,7 +91,7 @@ BEGIN
     COMBOBOX        IDC_SOURCE_DRIVE,85,120,60,65,CBS_DROPDOWNLIST | 
                     WS_VSCROLL | WS_TABSTOP
 
-    GROUPBOX        "Game",IDC_GAME_LBL,5,145,240,100
+    GROUPBOX        "Game",IDC_GAME_LBL,5,145,240,115
     LTEXT           "Type",IDC_TYPE_LBL,10,157,45,8
     COMBOBOX        IDC_SOURCE_TYPE,60,155,60,63,CBS_DROPDOWNLIST | 
                     WS_VSCROLL | WS_TABSTOP
@@ -101,29 +101,32 @@ BEGIN
     LTEXT           "&Startup:",IDC_SIGNATURE_LBL,10,187,45,8
     EDITTEXT        IDC_SIGNATURE,60,185,60,12,ES_AUTOHSCROLL
     LTEXT           "Compatibility:",IDC_FLAGS_LBL,10,200,70,8
-    CONTROL         "1: Slow HDD access",IDC_MODE1,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
+    CONTROL         "1: Load alt. core",IDC_MODE1,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
                     60,200,85,10
-    CONTROL         "2: No DVD9 support",IDC_MODE2,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
+    CONTROL         "2: Alt. data read",IDC_MODE2,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
                     60,210,85,10
-    CONTROL         "3: Kill HD Loader",IDC_MODE3,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
+    CONTROL         "3: Unhook Syscalls",IDC_MODE3,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
                     60,220,85,10
-    CONTROL         "4: Date/time fix 2",IDC_MODE4,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
+    CONTROL         "4: 0 PSS mode",IDC_MODE4,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
                     60,230,85,10
-    CONTROL         "5: Date/time fix 3",IDC_MODE5,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
+    CONTROL         "5: Disable DVD-DL",IDC_MODE5,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
                     150,200,85,10
-    CONTROL         "6: No network support",IDC_MODE6,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
+    CONTROL         "6: Disable IGR",IDC_MODE6,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
                     150,210,85,10
-    CONTROL         "7: No UAB patch",IDC_MODE7,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
+    CONTROL         "7: Reduced cdvdfsv buffer",IDC_MODE7,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
                     150,220,85,10
-    CONTROL         "8: Soul Calibur 2",IDC_MODE8,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
+    CONTROL         "8: Hide dev9 module",IDC_MODE8,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
                     150,230,85,10
+    LTEXT           "Dma mode:",IDC_DMA_LBL,10,242,45,8
+    COMBOBOX        IDC_DMA_TYPE,60,240,60,63,CBS_DROPDOWNLIST | 
+                    WS_VSCROLL | WS_TABSTOP
     CONTROL         "List1",IDC_CONTENTS,"SysListView32",LVS_REPORT | 
 /*                    LVS_EDITLABELS |*/
                     LVS_SHOWSELALWAYS | LVS_NOSORTHEADER | WS_BORDER | 
                     WS_GROUP | WS_TABSTOP,5,95,240,150
 
-    PUSHBUTTON      "Ins&tall",IDC_ACTION,140,250,50,14,WS_GROUP
-    PUSHBUTTON      "Close",IDCANCEL,195,250,50,14,WS_GROUP
+    PUSHBUTTON      "Ins&tall",IDC_ACTION,135,250,50,14,WS_GROUP
+    PUSHBUTTON      "Close",IDCANCEL,190,250,50,14,WS_GROUP
 END
 
 IDD_PROGRESS_DLG DIALOG DISCARDABLE  0, 0, 187, 79
@@ -226,6 +229,16 @@ BEGIN
     IDS_FLAGS_LBL           "Flags"
     IDS_SIZE_LBL            "Size"
     IDS_CREATED_LBL         "Date Created"
+    IDS_MDMA0               "MDMA 0"
+    IDS_MDMA1               "MDMA 1"
+    IDS_MDMA2               "MDMA 2"
+    IDS_UDMA0               "UDMA 0"
+    IDS_UDMA1               "UDMA 1"
+    IDS_UDMA2               "UDMA 2"
+    IDS_UDMA3               "UDMA 3"
+    IDS_UDMA4               "UDMA 4"
+    IDS_UDMA5               "UDMA 5"
+    IDS_UDMA6               "UDMA 6"
 
     IDS_ESTIMATED_UNKNOWN   "unknown"
     IDS_DATA_RATE_UNKNOWN   "-"

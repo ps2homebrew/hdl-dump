@@ -279,14 +279,17 @@ show_hdl_toc (const dict_t *config,
       if (result == RET_OK && glist != NULL)
 	{
 	  u_int32_t i, j;
-	  printf ("%-4s%9s %-*s %-12s %s\n",
-		  "type", "size", MAX_FLAGS * 2 - 1, "flags",
+	  printf ("%-4s%9s %-*s %-3s %-12s %s\n",
+		  "type", "size", MAX_FLAGS * 2 - 1, "flags", "dma",
 		  "startup", "name");
 	  for (i=0; i<glist->count; ++i)
 	    {
 	      const hdl_game_info_t *game = glist->games + i;
 	      char compat_flags[MAX_FLAGS * 2 + 1];
+	      char dma[4];
+		  unsigned short dma_dummy = 0;
 	      compat_flags[0] = compat_flags[1] = '\0';
+	      dma[0] = dma[1] = '\0';
 	      for (j = 0; j < MAX_FLAGS; ++j)
 		if (((int) game->compat_flags & (1 << j)) != 0)
 		  {
@@ -294,10 +297,39 @@ show_hdl_toc (const dict_t *config,
 		    sprintf (buffer, "+%u", (unsigned int) (j + 1));
 		    strcat (compat_flags, buffer);
 		  }
-	      printf ("%3s %7luKB %*s %-12s %s\n",
+		  dma_dummy = game->dma;
+		  if ((unsigned short)game->dma%256 == 32)
+		  {
+		    int dma_dummy = 0;
+			dma_dummy = ((unsigned short)game->dma - 32)/256;
+			if (dma_dummy < 3)
+			{
+			  char buffer[5];
+			  sprintf (buffer, "%s","*m");
+			  strcat (dma, buffer);
+			  sprintf(buffer, "%u",(unsigned int) dma_dummy);
+			  strcat (dma, buffer);
+			}
+		  }
+		  else if ((unsigned short)game->dma%256 == 64)
+		  {
+		    int dma_dummy = 0;
+			dma_dummy = ((unsigned short)game->dma - 64)/256;
+			if (dma_dummy < 7)
+			{
+			  char buffer[5];
+			  sprintf (buffer, "%s","*u");
+			  strcat (dma, buffer);
+			  sprintf(buffer, "%u",(unsigned int) dma_dummy);
+			  strcat (dma, buffer);
+			}
+		  }
+		  
+	      printf ("%3s %7luKB %*s %-3s %-12s %s\n",
 		      game->is_dvd != 0 ? "DVD" : "CD ",
 		      (unsigned long) game->raw_size_in_kb,
 		      MAX_FLAGS * 2 - 1, compat_flags + 1, /* trim leading + */
+			  dma,
 		      game->startup,
 		      game->name);
 	    }
@@ -306,6 +338,7 @@ show_hdl_toc (const dict_t *config,
 		  (unsigned int) ((glist->total_chunks -
 				   glist->free_chunks) * 128),
 		  (unsigned int) (glist->free_chunks * 128));
+
 	  hdl_glist_free (glist);
 	}
       (void) hio->close (hio), hio = NULL;
@@ -401,9 +434,44 @@ show_hdl_game_info (const dict_t *config,
 				sprintf (tmp, "+%u", (unsigned int) (i + 1));
 				strcat (compat_flags, tmp);
 			      }
-			  fprintf (stdout, "compatibility flags: %s\n",
+			  fprintf (stdout, "opl compatibility flags: %s\n",
 				   compat_flags + 1);
 			}
+			  if (buffer[0x00aa] != 0)
+			{
+			  u_int8_t dma_type = get_u8 (buffer + 0x00aa);
+			  if ((unsigned int)dma_type == 32)
+			  {
+				u_int8_t dma_mode = get_u8 (buffer + 0x00ab);
+				if ((unsigned int)dma_mode < 3)
+				{			  
+				  char dma[4];
+				  char tmp[5];
+				  dma[0] = dma[1] = '\0';
+				  sprintf (tmp, "%s", "*m");
+				  strcat (dma, tmp);			 
+				  sprintf(tmp, "%u",(unsigned int) dma_mode);
+				  strcat (dma, tmp);
+				  fprintf (stdout, "dma mode: %s\n",dma);
+				}
+			  }
+			  else if ((unsigned int)dma_type == 64)
+			  {
+				u_int8_t dma_mode = get_u8 (buffer + 0x00ab);
+				if ((unsigned int)dma_mode < 7)
+				{
+				  char dma[4];
+				  char tmp[5];
+				  dma[0] = dma[1] = '\0';
+				  sprintf (tmp, "%s", "*u");
+				  strcat (dma, tmp);			 
+				  sprintf(tmp, "%u",(unsigned int) dma_mode);
+				  strcat (dma, tmp);
+				  fprintf (stdout, "dma mode: %s\n",dma);
+				}
+			  }
+			  
+			}			
 		      for (i=0; i<num_parts; ++i)
 			{
 			  u_int32_t start = get_u32 (data + (i * 3 + 1));
@@ -954,6 +1022,7 @@ inject (const dict_t *config,
 	const char *input,
 	const char *startup, /* or NULL */
 	compat_flags_t compat_flags,
+	unsigned short dma,
 	int is_dvd,
 	int slice_index,
 	progress_t *pgs)
@@ -995,6 +1064,7 @@ inject (const dict_t *config,
 		strcpy (game.startup, info.startup_elf);
 	    }
 	  game.compat_flags = compat_flags;
+	  game.dma = dma;
 	  game.is_dvd = is_dvd;
 
 	  if (result == RET_OK)
@@ -1230,7 +1300,7 @@ copy_hdd (const dict_t *config,
 	    const hdl_game_info_t *game = in_list->games + i;
 	    sprintf (in, "%s@%s", game->name, src_device_name);
 	    result = inject (config, dest_device_name, game->name,
-			     in, game->startup, game->compat_flags,
+			     in, game->startup, game->compat_flags, game->dma,
 			     game->is_dvd, -1, pgs);
 	    if (result == RET_OK)
 	      fprintf (stdout, "  %s copied.                               \n",
@@ -1390,7 +1460,7 @@ show_usage_and_exit (const char *app_path,
       { CMD_HDL_EXTRACT, "device name output_file",
 	"Extracts application image from HD Loader partition.",
 	"hdd1: \"tekken tag tournament\" c:\\tekken.iso", NULL, 0 },
-      { CMD_HDL_INJECT_CD, "target name source [startup] [flags] [@slice_index]",
+      { CMD_HDL_INJECT_CD, "target name source [startup] [flags] [dma] [@slice_index]",
 	"Creates a new HD Loader partition from a CD.\n"
 	"You need boot.elf and list.ico for installing the game. More info in Readme\n"
 	"Supported inputs: plain ISO files, CDRWIN cuesheets, Nero images and tracks,\n"
@@ -1400,7 +1470,7 @@ show_usage_and_exit (const char *app_path,
 	"`+#[+#[+#]]' or `0xNN', for example `+1', `+2+3', `0x01', `0x03', etc.",
 	"192.168.0.10 \"Tekken Tag Tournament\" cd0: SCES_xxx.xx",
 	"hdd1: \"Tekken\" c:\\tekken.iso SCES_xxx.xx +1+2", 1 },
-      { CMD_HDL_INJECT_DVD, "target name source [startup] [flags] [@slice_index]",
+      { CMD_HDL_INJECT_DVD, "target name source [startup] [flags] [dma] [@slice_index]",
 	"Creates a new HD Loader partition from a DVD.\n"
 	"You need boot.elf and list.ico. More info in Readme.\n"
 	"DVD-9 can be ibstalled only from ISO or IML.\n"
@@ -1449,7 +1519,7 @@ show_usage_and_exit (const char *app_path,
 	"hdd1:", "192.168.0.10", 0 },
 #endif /* INCLUDE_DIAG_CMD defined? */
 #if defined (INCLUDE_MODIFY_CMD)
-      { CMD_MODIFY, "device game [new_name] [new_flags dma]",
+      { CMD_MODIFY, "device game [new_name] [new_flags] [dma]",
 	"Rename a game and/or change compatibility flags.\n",
 	"hdd1: DDS \"Digital Devil Saga\"",
 	"192.168.0.100 \"FF X-2\" +3", 1 },
@@ -1902,34 +1972,38 @@ main (int argc, char *argv[])
 	{ /* inject game image into a new HD Loader partition */
 	  int slice_index = -1;
 	  compat_flags_t compat_flags = 0;
+	  unsigned short dma = 0;
 	  const char *startup = NULL;
 	  int is_dvd =
 	    caseless_compare (command_name, CMD_HDL_INJECT_CD) ? 0 : 1;
 	  int i;
 
-	  if (!(argc >= 5 && argc <= 8))
+	  if (!(argc >= 5 && argc <= 9))
 	    show_usage_and_exit (argv[0], command_name);
 
 	  for (i = 5; i < argc; ++i)
 	    {
 	      if (argv[i][0] == '@')
 		/* slice index */
-		slice_index = (int) strtoul (argv[i] + 1, NULL, 10) - 1;
+			slice_index = (int) strtoul (argv[i] + 1, NULL, 10) - 1;
 	      else if (argv[i][0] == '+' ||
 		       (argv[i][0] == '0' && argv[i][1] == 'x'))
 		/* compatibility flags */
-		compat_flags = parse_compat_flags (argv[i]);
+			compat_flags = parse_compat_flags (argv[i]);
+	      else if (argv[i][0] == '*' )
+		/* dma modes */
+			dma = parse_dma (argv[i]);
 	      else
 		/* startup file */
-		startup = argv[i];
+			startup = argv[i];
 	    }
 
 	  if (compat_flags == COMPAT_FLAGS_INVALID ||
-	      !(slice_index >= -1 && slice_index <= 1))
+	      !(slice_index >= -1 && slice_index <= 1) || (dma == 0))
 	    show_usage_and_exit (argv[0], command_name);
 
 	  handle_result_and_exit (inject (config, argv[2], argv[3], argv[4],
-					  startup, compat_flags, is_dvd,
+					  startup, compat_flags, dma, is_dvd,
 					  slice_index, get_progress ()),
 				  argv[2], argv[3]);
 	}
