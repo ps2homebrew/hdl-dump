@@ -1113,10 +1113,7 @@ hdl_modify_game (hio_t *hio,
 	      memcpy (hdl_hdr + 0x08, new_name, strlen (new_name));
 	    }
 	  if (new_compat_flags != COMPAT_FLAGS_INVALID)
-	    {
-	      set_u8 (hdl_hdr + 0xa8, new_compat_flags);
-	      set_u8 (hdl_hdr + 0xa9, new_compat_flags);
-	    }
+	    set_u8 (hdl_hdr + 0xa9, new_compat_flags);
 	  if (new_dma != 0)
 	    set_u16 (hdl_hdr + 0xaa, new_dma);
 	  result = hio->write (hio, sector, 2, hdl_hdr, &bytes);
