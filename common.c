@@ -509,7 +509,7 @@ parse_compat_flags (const char *flags)
 	      if (flags[i * 2 + 0] == '+')
 		{
 		  int flag = flags[i * 2 + 1] - '0';
-		  if (flag >= 1 && flag <= MAX_FLAGS)
+		  if (flag >= 0 && flag <= MAX_FLAGS)
 		    { /* support up to MAX_FLAGS flags */
 		      int bit = 1 << (flag - 1);
 		      if ((result & bit) == 0)

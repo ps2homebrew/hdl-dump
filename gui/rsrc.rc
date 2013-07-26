@@ -113,7 +113,7 @@ BEGIN
                     150,200,85,10
     CONTROL         "6: Disable IGR",IDC_MODE6,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
                     150,210,85,10
-    CONTROL         "7: Reduced cdvdfsv buffer",IDC_MODE7,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
+    CONTROL         "7: Unused",IDC_MODE7,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
                     150,220,85,10
     CONTROL         "8: Hide dev9 module",IDC_MODE8,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
                     150,230,85,10

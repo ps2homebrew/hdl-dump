@@ -25,7 +25,7 @@ make clean
 make
 mv IOP_PKTDRV.elf ../rel/
 ps2-packer ../rel/IOP_PKTDRV.elf ../rel/hdl_svr_093.elf
-rm -rf IOP_PKTDRV.elf
+rm -rf ../rel/IOP_PKTDRV.elf
 make clean
 cd ../
 
