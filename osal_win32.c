@@ -284,7 +284,7 @@ osal_get_file_size_ex (const char *path,
   if (result == OSAL_OK)
     {
       result = osal_get_file_size (in, size_in_bytes);
-      osal_close (in);
+      osal_close(&in);
     }
   return (result);
 }

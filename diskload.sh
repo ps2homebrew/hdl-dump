@@ -1,5 +1,9 @@
+#!/bin/sh
+
+rm -rf open-ps2-loader
 hg clone https://bitbucket.org/ifcaro/open-ps2-loader
-cd open-ps2-loader
+cd open-ps2-loader/
+ls
 rm -rf elfldr
 rm -rf gfx
 rm -rf labs
@@ -18,5 +22,6 @@ rm -rf modules/usb
 rm -rf modules/vmc
 rm -rf modules/wip
 rm -rf Makefile
+rm -rf .hg
 mv README README_OLD
-cp -f ../discload/* ./
+cp -f ../diskload/* ./
