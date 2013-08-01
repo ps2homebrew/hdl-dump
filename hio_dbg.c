@@ -32,7 +32,7 @@
 typedef struct hio_dbg_type
 {
   hio_t hio;
-  FILE *in; /* read-only */
+/*  FILE *in;  read-only */
   FILE *out; /* a clone, write-only */
   u_int32_t size; /* in KB */
   unsigned long error_code;
@@ -40,7 +40,7 @@ typedef struct hio_dbg_type
 
 
 /**************************************************************/
-static int
+/*static int
 clone_file (const char *fn,
 	    char *copy_name)
 {
@@ -66,7 +66,7 @@ clone_file (const char *fn,
     }
   return (result);
 }
-
+*/
 
 /**************************************************************/
 static int
@@ -128,9 +128,9 @@ dbg_read (hio_t *hio,
 
   if (remap_sector (dbg, start_sector, num_sectors, &offset, &total_bytes) &&
       total_bytes > 0 &&
-      fseek (dbg->in, offset, SEEK_SET) == 0)
+      fseek (dbg->out, offset, SEEK_SET) == 0)
     {
-      *bytes = fread (output, 1, total_bytes, dbg->in);
+      *bytes = fread (output, 1, total_bytes, dbg->out);
       result = (*bytes == total_bytes ? RET_OK : RET_ERR);
     }
 
@@ -187,7 +187,7 @@ static int
 dbg_close (/*@special@*/ /*@only@*/ hio_t *hio) /*@releases hio@*/
 {
   hio_dbg_t *dbg = (hio_dbg_t*) hio;
-  fclose (dbg->in);
+  fclose (dbg->out);
   osal_free (dbg);
   return (RET_OK);
 }
@@ -215,11 +215,11 @@ dbg_dispose_error (hio_t *hio,
 static hio_t*
 dbg_alloc (const char *dump_path)
 {
-  char copy[MAX_PATH];
+/*  char copy[MAX_PATH];*/
   hio_dbg_t *dbg;
 
-  if (clone_file (dump_path, copy) != RET_OK)
-    return (NULL);
+/*  if (clone_file (dump_path, copy) != RET_OK)
+    return (NULL);*/
 
   dbg = (hio_dbg_t*) osal_alloc (sizeof (hio_dbg_t));
   if (dbg != NULL)
@@ -236,16 +236,17 @@ dbg_alloc (const char *dump_path)
       dbg->hio.dispose_error = &dbg_dispose_error;
       dbg->error_code = 0;
 
-      dbg->in = fopen (dump_path, "rb");
-      if (dbg->in != NULL)
+      dbg->out = fopen (dump_path, "r+b");
+      if (dbg->out != NULL)
 	{
-	  dbg->out = fopen (copy, "r+b");
-	  if (fseek (dbg->in, 0, SEEK_END) == 0)
+/*	  dbg->out = fopen (dump_path, "r+b");*/
+	  if (fseek (dbg->out, 0, SEEK_END) == 0)
 	    {
-	      long size = ftell (dbg->in);
+	      long size = ftell (dbg->out);
 	      if (size != -1)
 		{ /* debug dump includes 2KB for each 128MB */
-		  dbg->size = (size / 2048) * 128 * 1024;
+		 /* dbg->size = (size / 2048) * 128 * 1024;*/
+		  dbg->size = 1 + size / 1024;
 		  bail_out = 0; /* success */
 		}
 	    }

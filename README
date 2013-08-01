@@ -15,9 +15,9 @@ New features
 Intro
 -----
 
-Latest version, as well as some? documentation (ha-ha-ha) is to be
-found on the new official repository -- https://bitbucket.org/AKuHAK/hdl-dump/.
-Me reads w1zard0f07@yahoo.com and ps2-scene forums every now and then.
+Latest version, as well as some documentation is to be found on the new official
+repository -- https://bitbucket.org/AKuHAK/hdl-dump/
+Me reads w1zard0f07@yahoo.com and psx-scene forums every now and then.
 Easy guide for installing games can be found here -- 
 http://openps2loader.info/hdldump/howto.html
 
@@ -25,23 +25,24 @@ http://openps2loader.info/hdldump/howto.html
 Networking server
 -----------------
 
-A new, purely UDP networking server is available, based on recently
-released on psx-scene forums smap driver
-(http://ichiba.geocities.jp/ysai187/PS2/smap.htm). 
+A new, purely UDP networking server is available, based on recently released on
+psx-scene forums smap driver --
+http://ichiba.geocities.jp/ysai187/PS2/smap.htm
 
-You might need
-to punch a hole in your firewall for incoming UDP from port 12345.
+You might need to punch a hole in your firewall for incoming UDP from port 12345.
 
 Compilation
 -----------
-You just can run shell script in the project folder: "mkrel.sh". It will
+Firts of all you have to update your PS2SDK.
+Next: you have to run shell script "diskload.sh" for getting latest mini-opl version.
+Finally: You just can run shell script in the project folder: "mkrel.sh". It will
 compile both gui and normal version for windows.
 
 * Linux: Build and copy executable into a directory of your choice.
 	make RELEASE=yes
 Advanced Linux build commands:
 	make XC=win          # for Windows cross-compilation using mingw32
-	make -C gui          # for WineLib compilation
+	make -C gui          # for WineLib compilation (for now doesn't work)
 	make -C gui XC=win   # for GUI cross-compilation using mingw32
 
 * FreeBSD and MacOS X: You'll need to have GNU make installed, then
@@ -55,18 +56,16 @@ then use
 	make -C gui RELEASE=yes
 to compile command-line or GUI version.
 
-NOTICE: with current compilation flags hdl_dump would not handle
-correctly Ctrl+C if ran from-within a CYGWIN shell. AFAIR, removing
-"-mno-cygwin" might correct this behaviour, but will break Ctrl+C
-handling when ran from a Command Prompt.
+NOTICE: with current compilation flags hdl_dump would not handle correctly Ctrl+C
+if ran from-within a CYGWIN shell. AFAIR, removing "-mno-cygwin" might correct
+this behaviour, but will break Ctrl+C handling when ran from a Command Prompt.
 
 
 
 Configuration and list file location
 ------------------------------------
 
-You can place this files in folder where is installed hdl_dump for
-making it portable.
+You can place this files in folder where is installed hdl_dump for making it portable.
 
 * Windows: (cited names are for English version of Windows)
 C:\Documents and Settings\<login name>\Application Data\hdl_dump.conf
@@ -80,27 +79,27 @@ C:\Documents and Settings\<login name>\Application Data\hdl_dump.list
 Configuration
 -------------
 
-* disc_database_file -- full path to your disc compatibility database
-file;
+* disc_database_file -- full path to your disc compatibility database file;
 
 
 New features
------
+------------
 
 All new stuffs can be used from HDD_OSD or BB Navigator.
 
 inject_dvd, inject_cd, install or copy_hdd.
 
 The only thing you need - you have to place boot.elf (which is actually
-miniopl.elf) and list.ico (*.ico from memory card) in the folder where is
-launched from hdl_dump. This command will install game onto hard disk. Be
-careful if you choose command copy_hdd - every HDL game will loose their
-icons and will use only one for all (the same for kelf).
+miniopl.elf) and list.ico (*.ico from memory card) in the folder where
+is launched from hdl_dump.
+This command will install game onto hard disk. Be careful if you choose
+command copy_hdd - every HDL game will loose their icons and will use only
+one for all (the same for kelf).
 boot.elf - you can use everything but I prefer miniopl. Miniopl allows you
 to launch titles from HDD OSD or BB NAV by pressing on title.
 boot.elf injection address - 0x111000
 boot.elf size limit - 732 160 bytes (restricted due to free KELF poc size)
-----------------------------------------------------------------------------------------
+--------------------------------------------------------------------------
 initialize
 
 When you use this command and place hard drive into your playstation 2 phat
@@ -115,7 +114,7 @@ MBR.KELF in the corresponding folder. All HDD data will remain intact!!!!!
 MBR.KELF injection address - 0x404000 (for compatibility with BB Nav)
 MBR.KELF doesn't have any restrictions by themself.
 There is no easy way to make MBR.KELFS from common elf.
-----------------------------------------------------------------------------------------
+------------------------------------------------------------------------------
 modify_header
 Code:
 hdl_dump.exe modify_header 192.168.0.10 PP.TEST
@@ -140,32 +139,35 @@ boot.kelf size limit - 3 076 096 bytes (if boot.kirx not used)
 boot.kelf size limit - 2 031 616 bytes (if boot.kirx is used)
 boot.kirx injection address - 0x301000
 boot.kirx size limit - 1 044 480 bytes
-----------------------------------------------------------------------------------------
-If you want to know much about these files (and their restrictions) you have to study official ps2sdk document called hdd_rule_3.0.2.pdf.
+------------------------------------------------------------------------------------
+If you want to know much about these files (and their restrictions) you have to study
+official ps2sdk document called
+
+hdd_rule_3.0.2.pdf
 
 There is also some undocumented features like this:
-- If you want to inject boot.kelf (or boot.elf) you have to change BOOT2 in system.cnf: 
+- If you want to inject boot.kelf (or *.elf) you have to change BOOT2 in system.cnf 
 Code:
 |-----------------|
 | BOOT2 = PATINFO |
 |-----------------|
 This is used for HDL games for example.
 
--If you want to launch KELF from PFS partition you have to change BOOT2 in system.cnf: 
+-If you want to launch KELF from PFS partition you have to change BOOT2 in system.cnf 
 Code:
 |---------------------------|
 | BOOT2 = pfs:/EXECUTE.KELF |
 |---------------------------|
 where EXECUTE.KELF - is path to KELF which is placed into partition. Can be changed.
 
--If you want to inject kirx into partition you have to add such a line into system.cnf 
+-If you want to inject kirx into partition you have to add a line into system.cnf 
 Code:
 |-----------------|
 | IOPRP = PATINFO |
 |-----------------|
 Don't ask me about kirx - I don't know where it can be used.
 
--If you don't want to boot from HDD OSD or BB Nav you have to add such a line into system.cnf 
+-If you don't want to boot from HDD OSD you have to add such a line into system.cnf 
 |----------------|
 | BOOT2 = NOBOOT |
 |----------------|
