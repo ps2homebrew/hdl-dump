@@ -84,19 +84,9 @@ typedef struct
 	} subs[APA_MAXSUB];
 } apa_header;
 
-#ifdef VMC
-#include "include/mcemu.h"
-typedef struct {
-	int             active;     /* Activation flag */
-	apa_subs        parts[5];   /* Vmc file Apa partitions */
-	pfs_blockinfo_t blocks[10]; /* Vmc file Pfs inode */
-	int             flags;      /* Card flag */
-	vmc_spec_t      specs;      /* Card specifications */
-} hdd_vmc_infos_t;
-#endif
-
 int hddIs48bit(void);
 int hddSetTransferMode(int type, int mode);
 int hddSetIdleTimeout(int timeout);
 
 #endif
+

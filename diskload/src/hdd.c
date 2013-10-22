@@ -94,7 +94,7 @@ int hddSetIdleTimeout(int timeout)
 int hddGetHDLGameInfo(const char *Partition, hdl_game_info_t *ginfo)
 {
 	u32 size;
-	char buf[1024] ALIGNED(64);
+	static char buf[1024] ALIGNED(64);
 	int fd, ret;
 	iox_stat_t PartStat;
 	char *PathToPart;

@@ -486,7 +486,7 @@ dlg_refresh_hdd_info (HWND dlg)
 		  {
 		    int dma_dummy = 0;
 			dma_dummy = ((unsigned short)game->dma - 64)/256;
-			if (dma_dummy < 7)
+			if (dma_dummy < 5)
 			{
 			  char tmp[5];
 			  sprintf (tmp, "%s","  UDMA");
@@ -984,8 +984,6 @@ dlg_init (HWND dlg)
     SendMessage (cbo, CB_ADDSTRING, 0, (LPARAM) get_string (IDS_UDMA2, 0));
     SendMessage (cbo, CB_ADDSTRING, 0, (LPARAM) get_string (IDS_UDMA3, 0));
     SendMessage (cbo, CB_ADDSTRING, 0, (LPARAM) get_string (IDS_UDMA4, 0));
-    SendMessage (cbo, CB_ADDSTRING, 0, (LPARAM) get_string (IDS_UDMA5, 0));
-    SendMessage (cbo, CB_ADDSTRING, 0, (LPARAM) get_string (IDS_UDMA6, 0));
     SendMessage (cbo, CB_SETCURSEL, 7, 0);
   }
 
