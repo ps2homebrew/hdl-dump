@@ -29,8 +29,8 @@ rm -rf ../rel/IOP_PKTDRV.elf
 make clean
 cd ../
 
-cd rel/
-zip -9 hdl_dumx.zip hdl_*
-cd ../
+cp open-ps2-loader/diskload.elf rel/boot.elf
 
-# $Id: mkrel.sh,v 1.1 2007-05-12 20:34:46 bobi Exp $
+cd rel/
+zip -9 hdl_dumx.zip hdl_* boot.elf
+cd ../

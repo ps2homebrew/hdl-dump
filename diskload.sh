@@ -24,4 +24,5 @@ rm -rf modules/wip
 rm -rf Makefile
 rm -rf .hg
 mv README README_OLD
-cp -f ../diskload/* ./
+cp -rf ../diskload/* ./
+make

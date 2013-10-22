@@ -555,7 +555,7 @@ parse_dma (const char *flags)
 		unsigned long retval = 0;
 		buffer[0] = flags[2];
 		retval = strtoul (buffer, NULL, 0);
-		if (retval <= 6)
+		if (retval <= 4)
 		{
 		  if (flags[1] == 'u')
 			result = retval*256 + 64; /* 0x0_40 */
@@ -570,7 +570,7 @@ parse_dma (const char *flags)
 			result = 0; /* not *u and not *m */
 		}
 		else
-		  result = 0; /* >u6 */
+		  result = 0; /* >u4 */
 	  }
 	  else
 		result = 0; /* don't know how to handle those flags */	

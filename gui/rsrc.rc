@@ -113,7 +113,7 @@ BEGIN
                     150,200,85,10
     CONTROL         "6: Disable IGR",IDC_MODE6,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
                     150,210,85,10
-    CONTROL         "7: Unused",IDC_MODE7,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
+    CONTROL         "7: Use IOP thread hack",IDC_MODE7,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
                     150,220,85,10
     CONTROL         "8: Hide dev9 module",IDC_MODE8,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
                     150,230,85,10
@@ -237,8 +237,8 @@ BEGIN
     IDS_UDMA2               "UDMA 2"
     IDS_UDMA3               "UDMA 3"
     IDS_UDMA4               "UDMA 4"
-    IDS_UDMA5               "UDMA 5"
-    IDS_UDMA6               "UDMA 6"
+//    IDS_UDMA5               "UDMA 5"
+//    IDS_UDMA6               "UDMA 6"
 
     IDS_ESTIMATED_UNKNOWN   "unknown"
     IDS_DATA_RATE_UNKNOWN   "-"

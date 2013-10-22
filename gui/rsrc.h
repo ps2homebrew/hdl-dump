@@ -44,8 +44,6 @@
 #define IDS_UDMA2                       56
 #define IDS_UDMA3                       57
 #define IDS_UDMA4                       58
-#define IDS_UDMA5                       59
-#define IDS_UDMA6                       60
 
 #define IDS_NO_PS2_HDD_ERR              101
 #define IDS_NOT_APA_ERR                 102

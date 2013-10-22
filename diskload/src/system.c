@@ -7,18 +7,6 @@
 #include "include/usbld.h"
 #include "include/system.h"
 #include "include/crc16.h"
-#ifdef VMC
-typedef struct {
-	char VMC_filename[1024];
-	int  VMC_size_mb;
-	int  VMC_blocksize;
-	int  VMC_thread_priority;
-	int  VMC_card_slot;
-} createVMCparam_t;
-
-
-
-
 
 extern unsigned char imgdrv_irx[];
 extern unsigned int size_imgdrv_irx;
@@ -136,12 +124,14 @@ static inline int IsLogoValid(u32 StartLBA){
 			case 'C':
 			case 'H':
 			case 'M':
-				result=(crc16checksum==0xD2BC)?1:0;				break;
+				result=(crc16checksum==0xD2BC)?1:0;
+				break;
 			/* PAL regions. */
 			case 'E':
 			case 'R':
 			case 'O':
-				result=(crc16checksum==0x4702)?1:0;				break;
+				result=(crc16checksum==0x4702)?1:0;
+				break;
 			default:
 				result=0;
 		}
@@ -164,16 +154,12 @@ static inline int IsLogoValid(u32 StartLBA){
 #define IRX_NUM 10
 #endif
 
-#ifdef VMC
-static void sendIrxKernelRAM(int size_cdvdman_irx, void *cdvdman_irx, int size_mcemu_irx, void **mcemu_irx) { // Send IOP modules that core must use to Kernel RAM
-#else
 static inline void sendIrxKernelRAM(int size_cdvdman_irx, void *cdvdman_irx) { // Send IOP modules that core must use to Kernel RAM
-#endif
-
 	void *irxtab = (void *)0x80033010;
 	void *irxptr = (void *)0x80033100;
 	irxptr_t irxptr_tab[IRX_NUM];
-	void *irxsrc[IRX_NUM];	int i;
+	void *irxsrc[IRX_NUM];
+	int i;
 	u32 irxsize, curIrxSize;
 
 	irxptr_tab[0].irxsize = size_imgdrv_irx;
@@ -187,7 +173,7 @@ static inline void sendIrxKernelRAM(int size_cdvdman_irx, void *cdvdman_irx) { /
 	irxptr_tab[8].irxsize = 0;	//ioptrap
 	irxptr_tab[9].irxsize = 0;	//smstcpip
 #ifdef VMC
-	irxptr_tab[10].irxsize = size_mcemu_irx;	//mcemu
+	irxptr_tab[10].irxsize = 0;	//mcemu
 #endif
 
 	irxsrc[0] = (void *)imgdrv_irx;
@@ -201,7 +187,7 @@ static inline void sendIrxKernelRAM(int size_cdvdman_irx, void *cdvdman_irx) { /
 	irxsrc[8] = NULL;
 	irxsrc[9] = NULL;
 #ifdef VMC
-	irxsrc[10] = (void *)mcemu_irx;
+	irxsrc[10] = NULL;
 #endif
 
 	irxsize = 0;
@@ -235,11 +221,7 @@ static inline void sendIrxKernelRAM(int size_cdvdman_irx, void *cdvdman_irx) { /
 	EIntr();
 }
 
-#ifdef VMC
-void sysLaunchLoaderElf(unsigned long int StartLBA, char *filename, char *mode_str, int size_cdvdman_irx, void **cdvdman_irx, int size_mcemu_irx, void **mcemu_irx, int compatflags, int alt_ee_core) {
-#else
 void sysLaunchLoaderElf(unsigned long int StartLBA, char *filename, char *mode_str, int size_cdvdman_irx, void *cdvdman_irx, int compatflags, int alt_ee_core) {
-#endif
 	u8 *boot_elf = NULL;
 	elf_header_t *eh;
 	elf_pheader_t *eph;
@@ -252,12 +234,7 @@ void sysLaunchLoaderElf(unsigned long int StartLBA, char *filename, char *mode_s
 	if (gExitPath[0] == '\0')
 		strncpy(gExitPath, "Browser", 32);
 
-#ifdef VMC
-	LOG("SYSTEM LaunchLoaderElf called with size_mcemu_irx = %d\n", size_mcemu_irx);
-	sendIrxKernelRAM(size_cdvdman_irx, cdvdman_irx, size_mcemu_irx, mcemu_irx);
-#else
 	sendIrxKernelRAM(size_cdvdman_irx, cdvdman_irx);
-#endif
 
 	// NB: LOADER.ELF is embedded
 	if (alt_ee_core)
@@ -318,62 +295,4 @@ void sysLaunchLoaderElf(unsigned long int StartLBA, char *filename, char *mode_s
 	ExecPS2((void *)eh->entry, 0, NumArgs, argv);
 }
 
-#ifdef VMC
-// createSize == -1 : delete, createSize == 0 : probing, createSize > 0 : creation
-int sysCheckVMC(const char* prefix, const char* sep, char* name, int createSize, vmc_superblock_t* vmc_superblock) {
-	int size = -1;
-	char path[255];
-	snprintf(path, 255, "%sVMC%s%s.bin", prefix, sep, name);
-
-	if (createSize == -1)
-		fileXioRemove(path);
-	else {
-		int fd = fileXioOpen(path, O_RDONLY, FIO_S_IRUSR | FIO_S_IWUSR | FIO_S_IXUSR | FIO_S_IRGRP | FIO_S_IWGRP | FIO_S_IXGRP | FIO_S_IROTH | FIO_S_IWOTH | FIO_S_IXOTH);
-		if (fd >= 0) {
-			size = fileXioLseek(fd, 0, SEEK_END);
-
-			if (vmc_superblock) {
-				memset(vmc_superblock, 0, sizeof(vmc_superblock_t));
-				fileXioLseek(fd, 0, SEEK_SET);
-				fileXioRead(fd, (void*)vmc_superblock, sizeof(vmc_superblock_t));
-
-				LOG("SYSTEM File size  : 0x%X\n", size);
-				LOG("SYSTEM Magic      : %s\n", vmc_superblock->magic);
-				LOG("SYSTEM Card type  : %d\n", vmc_superblock->mc_type);
-				LOG("SYSTEM Flags      : 0x%X\n", (vmc_superblock->mc_flag & 0xFF) | 0x100);
-				LOG("SYSTEM Page_size  : 0x%X\n", vmc_superblock->page_size);
-				LOG("SYSTEM Block_size : 0x%X\n", vmc_superblock->pages_per_block);
-				LOG("SYSTEM Card_size  : 0x%X\n", vmc_superblock->pages_per_cluster * vmc_superblock->clusters_per_card);
-
-				if(!strncmp(vmc_superblock->magic, "Sony PS2 Memory Card Format", 27) && vmc_superblock->mc_type == 0x2
-					&& size == vmc_superblock->pages_per_cluster * vmc_superblock->clusters_per_card * vmc_superblock->page_size) {
-					LOG("SYSTEM VMC file structure valid: %s\n", path);
-				} else
-					size = 0;
-			}
-
-			if (size % 1048576) // invalid size, should be a an integer (8, 16, 32, 64, ...)
-				size = 0;
-			else
-				size /= 1048576;
-
-			fileXioClose(fd);
-
-			if (createSize && (createSize != size))
-				fileXioRemove(path);
-		}
-
-		if (createSize && (createSize != size)) {
-			createVMCparam_t createParam;
-			strcpy(createParam.VMC_filename, path);
-			createParam.VMC_size_mb = createSize;
-			createParam.VMC_blocksize = 16;
-			createParam.VMC_thread_priority = 0x0f;
-			createParam.VMC_card_slot = -1;
-			fileXioDevctl("genvmc:", 0xC0DE0001, (void*) &createParam, sizeof(createParam), NULL, 0);
-		}
-	}
-	return size;
-}
-#endif
 

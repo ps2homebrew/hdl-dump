@@ -38,6 +38,8 @@ extern unsigned int size_iomanx_irx;
 extern unsigned char filexio_irx[];
 extern unsigned int size_filexio_irx;
 
+int timer = 47;
+
 int hddGetHDLGameInfo(const char *Partition, hdl_game_info_t *ginfo);
 
 static inline const char *GetMountParams(const char *command, char *BlockDevice){
@@ -149,25 +151,33 @@ int main(int argc, char *argv[]){
 			}
 		}
 
+		// patch 48bit flag
+			u8 flag_48bit = hddIs48bit() & 0xff;
+			memcpy((void*)((u32)irx + i + 34),&flag_48bit, 1);
+		
 		if (compatMode & COMPAT_MODE_2) {
-			u32 alt_read_mode = 1;
-			memcpy((void*)((u32)irx+i+35),&alt_read_mode,1);
+			u8 alt_read_mode = 1;
+			memcpy((void*)((u32)irx + i + 35),&alt_read_mode,1);
+		}
+		if (compatMode & COMPAT_MODE_7) {
+			u8 use_threading_hack = 1;
+			memcpy((void*)((u32)irx + i + 36),&use_threading_hack, 1);
 		}
 		if (compatMode & COMPAT_MODE_5) {
-			u32 no_dvddl = 1;
-			memcpy((void*)((u32)irx+i+36),&no_dvddl,4);
+			u8 no_dvddl = 1;
+			memcpy((void*)((u32)irx + i + 37),&no_dvddl,1);
 		}
 		if (compatMode & COMPAT_MODE_4) {
-			u32 no_pss = 1;
-			memcpy((void*)((u32)irx+i+40),&no_pss,4);
+			u16 no_pss = 1;
+			memcpy((void*)((u32)irx + i + 38),&no_pss,2);
 		}
-
-		// patch 48bit flag
-		u8 flag_48bit = hddIs48bit() & 0xff;
-		memcpy((void*)((u32)irx+i+34), &flag_48bit, 1);
+		
+		// patch cdvdman timer
+			u32 cdvdmanTimer = timer * 250;
+			memcpy((void*)((u32)irx + i + 40), &cdvdmanTimer, 4);
 
 		// patch start_sector
-		memcpy((void*)((u32)irx+i+44), &GameInfo.start_sector, 4);
+			memcpy((void*)((u32)irx + i + 44),&GameInfo.start_sector, 4);
 
 		for (i=0;i<size_irx;i++){
 			if(!strcmp((const char*)((u32)irx+i),"B00BS")){
@@ -176,19 +186,6 @@ int main(int argc, char *argv[]){
 		}
 		// game id
 		memcpy((void*)((u32)irx+i), &gid, 5);
-
-		// patches cdvdfsv	
-		u32 *p = (u32 *)cdvdfsv_irx;
-		for (i = 0; i < (size_cdvdfsv_irx >> 2); i++) {
-			if (*p == 0xC0DEC0DE) {
-				if (compatMode & COMPAT_MODE_7)
-					*p = 1;
-				else
-					*p = 0;
-				break;
-			}
-			p++;
-		}
 
 		DPRINTF("Launching game...\n");	
 

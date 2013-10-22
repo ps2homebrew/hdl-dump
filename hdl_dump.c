@@ -315,7 +315,7 @@ show_hdl_toc (const dict_t *config,
 		  {
 		    int dma_dummy = 0;
 			dma_dummy = ((unsigned short)game->dma - 64)/256;
-			if (dma_dummy < 7)
+			if (dma_dummy < 5)
 			{
 			  char buffer[5];
 			  sprintf (buffer, "%s","*u");
@@ -458,7 +458,7 @@ show_hdl_game_info (const dict_t *config,
 			  else if ((unsigned int)dma_type == 64)
 			  {
 				u_int8_t dma_mode = get_u8 (buffer + 0x00ab);
-				if ((unsigned int)dma_mode < 7)
+				if ((unsigned int)dma_mode < 5)
 				{
 				  char dma[4];
 				  char tmp[5];
