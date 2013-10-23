@@ -38,7 +38,11 @@ extern unsigned int size_iomanx_irx;
 extern unsigned char filexio_irx[];
 extern unsigned int size_filexio_irx;
 
-int timer = 47;
+int timer = 10;
+gDisableDebug=1;
+gExitPath[0]='\0';
+gHDDSpindown=0;
+
 
 int hddGetHDLGameInfo(const char *Partition, hdl_game_info_t *ginfo);
 
@@ -62,7 +66,7 @@ int main(int argc, char *argv[]){
 	unsigned char gid[5];
 	int i, size_irx = 0, result;
 	unsigned char *irx = NULL;
-	int compatMode;
+	char filename[32];
 
 	hdl_game_info_t GameInfo;
 
@@ -110,7 +114,7 @@ int main(int argc, char *argv[]){
 
 	SifExecModuleBuffer(ps2atad_irx, size_ps2atad_irx, 0, NULL, NULL);
 	SifExecModuleBuffer(ps2hdd_irx, size_ps2hdd_irx, 0, NULL, NULL);
-	hddSetIdleTimeout(0); // gHDDSpindown [0..20] -> spindown [0..240] -> seconds [0..1200] */
+	hddSetIdleTimeout(gHDDSpindown * 12); // gHDDSpindown [0..20] -> spindown [0..240] -> seconds [0..1200]
 
 	SifLoadFileExit();
 	SifExitIopHeap();
@@ -121,18 +125,18 @@ int main(int argc, char *argv[]){
 		DPRINTF("Partition name: %s \nTitle: %s \nStartup: %s\n", PartitionName, GameInfo.name, GameInfo.startup);
 
 		DPRINTF("Configuring core...\n");
+		char gid[5];
 		//configGetDiscIDBinary(GameInfo.startup, gid);
 		memset(gid, 0, sizeof(gid));
 
+		int dmaType = 0x40, dmaMode = 4, compatMode = 0;
+		
 		compatMode = GameInfo.ops2l_compat_flags;
-
-		gDisableDebug=1;
-		gExitPath[0]='\0';
-
-		gHDDSpindown=0;
-
-		hddSetTransferMode(GameInfo.dma_type, GameInfo.dma_mode);
-		hddSetIdleTimeout(0);
+		dmaType = GameInfo.dma_type;
+		dmaMode = GameInfo.dma_mode;
+		
+		hddSetTransferMode(dmaType, dmaMode);
+		hddSetIdleTimeout(gHDDSpindown * 12);
 
 		if (sysPcmciaCheck()) {
 			DPRINTF("CXD9566 detected.\n");
@@ -152,8 +156,8 @@ int main(int argc, char *argv[]){
 		}
 
 		// patch 48bit flag
-			u8 flag_48bit = hddIs48bit() & 0xff;
-			memcpy((void*)((u32)irx + i + 34),&flag_48bit, 1);
+		u8 flag_48bit = hddIs48bit() & 0xff;
+		memcpy((void*)((u32)irx + i + 34),&flag_48bit, 1);
 		
 		if (compatMode & COMPAT_MODE_2) {
 			u8 alt_read_mode = 1;
@@ -177,19 +181,21 @@ int main(int argc, char *argv[]){
 			memcpy((void*)((u32)irx + i + 40), &cdvdmanTimer, 4);
 
 		// patch start_sector
-			memcpy((void*)((u32)irx + i + 44),&GameInfo.start_sector, 4);
+		memcpy((void*)((u32)irx + i + 44),&GameInfo.start_sector, 4);
 
 		for (i=0;i<size_irx;i++){
-			if(!strcmp((const char*)((u32)irx+i),"B00BS")){
+			if(!strcmp((const char*)((u32)irx + i),"B00BS")){
 				break;
 			}
 		}
 		// game id
-		memcpy((void*)((u32)irx+i), &gid, 5);
+		memcpy((void*)((u32)irx + i), &gid, 5);
 
 		DPRINTF("Launching game...\n");	
 
-		sysLaunchLoaderElf(GameInfo.start_sector, GameInfo.startup, "HDD_MODE", size_irx, irx, compatMode, compatMode & COMPAT_MODE_1);
+		sprintf(filename, "%s", GameInfo.startup);
+		
+		sysLaunchLoaderElf(GameInfo.start_sector, filename, "HDD_MODE", size_irx, irx, compatMode, compatMode & COMPAT_MODE_1);
 		result=-1;
 	}
 

@@ -35,7 +35,48 @@
 #include "hio.h"
 
 #include "kelf.h"
+#include "icon.h"
 
+typedef int iconIVECTOR[4];
+typedef float iconFVECTOR[4];
+
+typedef struct
+{
+    unsigned char  head[4];
+    unsigned short type;
+    unsigned short nlOffset;
+    unsigned unknown2;
+    unsigned trans;
+    iconIVECTOR bgCol[4];
+    iconFVECTOR lightDir[3];
+    iconFVECTOR lightCol[3];
+    iconFVECTOR lightAmbient;
+    unsigned short title[34];
+    unsigned char view[64];
+    unsigned char copy[64];
+    unsigned char del[64];
+    unsigned char unknown3[512];
+} mcIcon;
+
+struct IconSysData{
+	wchar_t title0[HDL_GAME_NAME_MAX+1];
+	wchar_t title1[HDL_GAME_NAME_MAX+1];
+	unsigned char bgcola;
+	unsigned char bgcol0[3];
+	unsigned char bgcol1[3];
+	unsigned char bgcol2[3];
+	unsigned char bgcol3[3];
+	float lightdir0[3];
+	float lightdir1[3];
+	float lightdir2[3];
+	unsigned char lightcolamb[3];
+	unsigned char lightcol0[3];
+	unsigned char lightcol1[3];
+	unsigned char lightcol2[3];
+	wchar_t uninstallmes0[61];
+	wchar_t uninstallmes1[61];
+	wchar_t uninstallmes2[61];
+};
 
 /*
  * notice: that code would only run on a big-endian machine
@@ -53,21 +94,21 @@ static const char *HDL_HDR1 =
 
 static const char *HDL_HDR2 =
 "PS2X\n"
-"title0 = HD Loader\n"
-"title1 = %s\n"
-"bgcola = 64\n"
-"bgcol0 = 22, 47, 92\n"
-"bgcol1 = 3, 10, 28\n"
-"bgcol2 = 3, 10, 28\n"
-"bgcol3 = 22, 47, 92\n"
-"lightdir0 = 0.5, 0.5, 0.5\n"
-"lightdir1 = 0.0, -0.4, -1.0\n"
-"lightdir2 = -0.5, -0.5, 0.5\n"
-"lightcolamb = 31, 31, 31\n"
-"lightcol0 = 62, 62, 55\n"
-"lightcol1 = 33, 42, 64\n"
-"lightcol2 = 18, 18, 49\n"
-"uninstallmes0 =\n"
+"title0 = HD Loader\n"				/* "HD Loader" */
+"title1 = %s\n"						/* game title */
+"bgcola = %u\n"						/* transparency=64 */
+"bgcol0 = %u,%u,%u\n"				/* 22, 47, 92 */
+"bgcol1 = %u,%u,%u\n"				/* 3, 10, 28 */
+"bgcol2 = %u,%u,%u\n"				/* 3, 10, 28 */
+"bgcol3 = %u,%u,%u\n"				/* 22, 47, 92 */
+"lightdir0 = %1.4f,%1.4f,%1.4f\n"	/* 0.5, 0.5, 0.5 */
+"lightdir1 = %1.4f,%1.4f,%1.4f\n"	/* 0.0, -0.4, -1.0 */
+"lightdir2 = %1.4f,%1.4f,%1.4f\n"	/* 0.5, -0.5, 0.5 */
+"lightcolamb = %u,%u,%u\n"			/* 31, 31, 31 */
+"lightcol0 = %u,%u,%u\n"			/* 62, 62, 55 */
+"lightcol1 = %u,%u,%u\n"			/* 33, 42, 64 */
+"lightcol2 = %u,%u,%u\n"			/* 18, 18, 49 */
+"uninstallmes0 =This will delete the game.\n"
 "uninstallmes1 =\n"
 "uninstallmes2 =\n";
 
@@ -101,18 +142,21 @@ prepare_main (const hdl_game_t *details,
 
   /* read icon */
   result = read_file ("./list.ico", &icon, &icon_length);
-
-  if (result == OSAL_OK)
+  if (result != OSAL_OK)
   {
-    result = read_file ("./boot.elf", &patinfo, &patinfo_length);
-	if (result == OSAL_OK)
-	  for (i = 0; i < slice->part_count; ++i)
-		if (get_u32 (&slice->parts[i].header.start) == starting_partition_sector)
-		{ /* locate starting partition index */
+	icon = (char*) hdloader_icon;
+	icon_length = HDLOADER_ICON_LEN;
+	result = OSAL_OK;
+  }
+  
+  result = read_file ("./boot.elf", &patinfo, &patinfo_length);
+  if (result == OSAL_OK)
+	for (i = 0; i < slice->part_count; ++i)
+	  if (get_u32 (&slice->parts[i].header.start) == starting_partition_sector)
+	    { /* locate starting partition index */
 		  part = &slice->parts[i].header;
 		  break;
 		}
-  }
 	
   if (part == NULL)
     result = RET_NOT_FOUND;
@@ -132,7 +176,10 @@ prepare_main (const hdl_game_t *details,
       memset (buffer_4m, 0, 4 * 1024 * 1024);
       memcpy (buffer_4m, part, 1024);
 
-      sprintf (icon_props, HDL_HDR2, details->name);
+      sprintf (icon_props, HDL_HDR2, details->name, 64,
+		22,47,92, 3,10,28, 3,10,28, 22,47,92,
+		0.5,0.5,0.5, 0.0,-0.4,-1.0, 0.5,-0.5,0.5,
+		31,31,31, 62,62,55, 33,42,64, 18,18,49);
 
       /*
        *  1000: 50 53 32 49 43 4f 4e 33  44 00 00 00 00 00 00 00  PS2ICON3D.......
@@ -387,10 +434,19 @@ hdd_inject_header (hio_t *hio,
 	  result = read_file ("./icon.sys", &iconsys, &iconsys_length);
 	  if (result == OSAL_OK)
 	  {
-		set_u32 (buffer_4m + 0x001018, 0x0400);
-		set_u32 (buffer_4m + 0x00101C, iconsys_length);
-		memcpy (buffer_4m + 0x001400, iconsys, iconsys_length);
-		fprintf (stdout, "Succesfully read icon.sys\n");
+		if(!strncmp(iconsys, "PS2X", 4))
+		  {
+		  	set_u32 (buffer_4m + 0x001018, 0x0400);
+			set_u32 (buffer_4m + 0x00101C, iconsys_length);
+			memcpy (buffer_4m + 0x001400, iconsys, iconsys_length);
+			fprintf (stdout, "Succesfully read icon.sys\n");
+		  }
+		else if(!strncmp(iconsys, "PS2D", 4))
+		  {
+			mcIcon McIconSys;		
+			memcpy (&McIconSys, &iconsys, iconsys_length);
+/*			McIconSys*/
+		  }
 	  }
 	  else
 	  {

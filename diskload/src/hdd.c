@@ -1,6 +1,8 @@
 #include "include/usbld.h"
 #include "include/hddsupport.h"
 
+//#define TEST_WRITES
+
 typedef struct				// size = 1024
 {
 	u32	checksum;		// HDL uses 0xdeadfeed magic here
@@ -58,10 +60,10 @@ int hddIs48bit(void)
 //-------------------------------------------------------------------------
 int hddSetTransferMode(int type, int mode)
 {
-	u32 args[4];
+	u8 args[16];
 
-	args[0] = type;
-	args[1] = mode;
+	*(u32 *)&args[0] = type;
+	*(u32 *)&args[4] = mode;
 
 	return fileXioDevctl("hdd0:", APA_DEVCTL_SET_TRANSFER_MODE, args, 8, NULL, 0);
 }
@@ -83,7 +85,7 @@ int hddSetIdleTimeout(int timeout)
 
 	u8 args[16];
 
-	args[0]=timeout;
+	*(u32 *)&args[0] = timeout & 0xff;
 
 	return fileXioDevctl("hdd0:", APA_DEVCTL_IDLE, args, 4, NULL, 0);
 }

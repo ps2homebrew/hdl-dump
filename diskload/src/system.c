@@ -6,7 +6,6 @@
 
 #include "include/usbld.h"
 #include "include/system.h"
-#include "include/crc16.h"
 
 extern unsigned char imgdrv_irx[];
 extern unsigned int size_imgdrv_irx;
@@ -80,115 +79,39 @@ int sysPcmciaCheck(void) {
 	return(fileXioDevctl("dev9x:", 0x4401, NULL, 0, NULL, 0)==0?1:0);
 }
 
-/*
-	static inline int IsLogoValid(u32 StartLBA);
-
-	Parameters: StartLBA - LBA of the first sector of the disc image.
-	Return values:
-		<0	- Error.
-		0	- Logo is not valid for use with the console.
-		1	- Logo is valid for use with the console.
-*/
-#if 0
-static inline int IsLogoValid(u32 StartLBA){
-	int fd, result;
-	char *LogoBuffer, RegionCode;
-	hddAtaTransfer_t ReadArg ALIGNED(64);
-	unsigned int i;
-	unsigned short int crc16checksum;
-
-	fd=fileXioOpen("rom0:ROMVER", O_RDONLY, 666);
-	fileXioLseek(fd, 4, SEEK_SET);
-	fileXioRead(fd, &RegionCode, 1);
-	fileXioClose(fd);
-
-	InitCRC16Table();
-
-	LogoBuffer=memalign(64, 2048);
-
-	result=0;
-	for(i=0,crc16checksum=CRC16_INITIAL_CHECKSUM; (i<12) && (result>=0); i++){
-		ReadArg.lba=StartLBA+i*4;
-		ReadArg.size=4;
-		result=fileXioDevctl("hdd0:", APA_DEVCTL_ATA_READ, &ReadArg, sizeof(hddAtaTransfer_t), LogoBuffer, ReadArg.size*512);
-		crc16checksum=CalculateCRC16(LogoBuffer, 2048, crc16checksum);
-	}
-
-	if(result>=0){
-		crc16checksum=ReflectAndXORCRC16(crc16checksum);
-
-		switch(RegionCode){
-			/* NTSC regions. */
-			case 'J':
-			case 'A':
-			case 'C':
-			case 'H':
-			case 'M':
-				result=(crc16checksum==0xD2BC)?1:0;
-				break;
-			/* PAL regions. */
-			case 'E':
-			case 'R':
-			case 'O':
-				result=(crc16checksum==0x4702)?1:0;
-				break;
-			default:
-				result=0;
-		}
-
-		LOG("Console region:\t%c\nLogo checksum:\t0x%04x\nResult:\t%d\n", RegionCode, crc16checksum, result);
-	}
-	else{
-		LOG("Error reading logo: %d\n", result);
-	}
-
-	free(LogoBuffer);
-
-	return result;
-}
-#endif
-
-#ifdef VMC
-#define IRX_NUM 11
-#else
 #define IRX_NUM 10
-#endif
 
 static inline void sendIrxKernelRAM(int size_cdvdman_irx, void *cdvdman_irx) { // Send IOP modules that core must use to Kernel RAM
 	void *irxtab = (void *)0x80033010;
 	void *irxptr = (void *)0x80033100;
 	irxptr_t irxptr_tab[IRX_NUM];
 	void *irxsrc[IRX_NUM];
-	int i;
+	int i, n;
 	u32 irxsize, curIrxSize;
 
-	irxptr_tab[0].irxsize = size_imgdrv_irx;
-	irxptr_tab[1].irxsize = size_eesync_irx;
-	irxptr_tab[2].irxsize = size_cdvdman_irx;
-	irxptr_tab[3].irxsize = size_cdvdfsv_irx;
-	irxptr_tab[4].irxsize = size_cddev_irx;
-	irxptr_tab[5].irxsize = 0;	//usbd
-	irxptr_tab[6].irxsize = 0;	//smsmap
-	irxptr_tab[7].irxsize = 0;	//udptty
-	irxptr_tab[8].irxsize = 0;	//ioptrap
-	irxptr_tab[9].irxsize = 0;	//smstcpip
-#ifdef VMC
-	irxptr_tab[10].irxsize = 0;	//mcemu
-#endif
+	n = 0;
+	irxptr_tab[n++].irxsize = size_imgdrv_irx;
+	irxptr_tab[n++].irxsize = size_eesync_irx;
+	irxptr_tab[n++].irxsize = size_cdvdman_irx;
+	irxptr_tab[n++].irxsize = size_cdvdfsv_irx;
+	irxptr_tab[n++].irxsize = size_cddev_irx;
+	irxptr_tab[n++].irxsize = 0;	//usbd
+	irxptr_tab[n++].irxsize = 0;	//smsmap
+	irxptr_tab[n++].irxsize = 0;	//udptty
+	irxptr_tab[n++].irxsize = 0;	//ioptrap
+	irxptr_tab[n++].irxsize = 0;	//smstcpip
 
-	irxsrc[0] = (void *)imgdrv_irx;
-	irxsrc[1] = (void *)eesync_irx;
-	irxsrc[2] = (void *)cdvdman_irx;
-	irxsrc[3] = (void *)cdvdfsv_irx;
-	irxsrc[4] = (void *)cddev_irx;
-	irxsrc[5] = NULL;
-	irxsrc[6] = NULL;
-	irxsrc[7] = NULL;
-	irxsrc[8] = NULL;
-	irxsrc[9] = NULL;
-#ifdef VMC
-	irxsrc[10] = NULL;
-#endif
+	n = 0;
+	irxsrc[n++] = (void *)imgdrv_irx;
+	irxsrc[n++]= (void *)eesync_irx;
+	irxsrc[n++] = (void *)cdvdman_irx;
+	irxsrc[n++] = (void *)cdvdfsv_irx;
+	irxsrc[n++] = (void *)cddev_irx;
+	irxsrc[n++] = NULL;
+	irxsrc[n++] = NULL;
+	irxsrc[n++] = NULL;
+	irxsrc[n++] = NULL;
+	irxsrc[n++] = NULL;
 
 	irxsize = 0;
 
@@ -208,7 +131,7 @@ static inline void sendIrxKernelRAM(int size_cdvdman_irx, void *cdvdman_irx) { /
 			DIntr();
 			ee_kmode_enter(); */
 
-			if(curIrxSize>0) memcpy((void *)irxptr_tab[i].irxaddr, (void *)irxsrc[i], curIrxSize);
+			memcpy((void *)irxptr_tab[i].irxaddr, (void *)irxsrc[i], curIrxSize);
 
 			irxptr += curIrxSize;
 			irxsize += curIrxSize;
