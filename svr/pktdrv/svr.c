@@ -130,7 +130,7 @@ svr_read (const udp_frame_t *uf,
       rd_sector = start - (start % rd_buf_size);
       if (start + count > rd_sector + rd_buf_size)
 	rd_sector = start;
-      int result = ata_device_dma_transfer (0, (char*) rd_buf,
+      int result = ata_device_sector_io (0, (char*) rd_buf,
 					    rd_sector, rd_buf_size,
 					    ATA_DIR_READ);
       if (result != 0)
@@ -164,7 +164,7 @@ svr_sync_buffer (void)
       { /* end run? */
 	if (start != NULL)
 	  {
-	    int result = ata_device_dma_transfer (0, (char*) start,
+	    int result = ata_device_sector_io (0, (char*) start,
 						  start_sect, num_sect,
 						  ATA_DIR_WRITE);
 	    if (result != 0)
@@ -175,7 +175,7 @@ svr_sync_buffer (void)
 
   if (start != NULL)
     { /* last run */
-      int result = ata_device_dma_transfer (0, (char*) start,
+      int result = ata_device_sector_io (0, (char*) start,
 					    start_sect, num_sect,
 					    ATA_DIR_WRITE);
       if (result != 0)

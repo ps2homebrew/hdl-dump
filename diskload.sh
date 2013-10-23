@@ -25,4 +25,5 @@ rm -rf Makefile
 rm -rf .hg
 mv README README_OLD
 cp -rf ../diskload/* ./
+make clean
 make
