@@ -39,10 +39,6 @@ extern unsigned char filexio_irx[];
 extern unsigned int size_filexio_irx;
 
 int timer = 10;
-gDisableDebug=1;
-gExitPath[0]='\0';
-gHDDSpindown=0;
-
 
 int hddGetHDLGameInfo(const char *Partition, hdl_game_info_t *ginfo);
 
@@ -64,6 +60,10 @@ static inline const char *GetMountParams(const char *command, char *BlockDevice)
 int main(int argc, char *argv[]){
 	char PartitionName[33], BlockDevice[38];
 	unsigned char gid[5];
+	gDisableDebug=1;
+	gExitPath[0]='\0';
+	gHDDSpindown=0;
+
 	int i, size_irx = 0, result;
 	unsigned char *irx = NULL;
 	char filename[32];
@@ -125,7 +125,6 @@ int main(int argc, char *argv[]){
 		DPRINTF("Partition name: %s \nTitle: %s \nStartup: %s\n", PartitionName, GameInfo.name, GameInfo.startup);
 
 		DPRINTF("Configuring core...\n");
-		char gid[5];
 		//configGetDiscIDBinary(GameInfo.startup, gid);
 		memset(gid, 0, sizeof(gid));
 
