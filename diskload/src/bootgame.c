@@ -38,7 +38,7 @@ extern unsigned int size_iomanx_irx;
 extern unsigned char filexio_irx[];
 extern unsigned int size_filexio_irx;
 
-int timer = 10;
+int timer = 43;
 
 int hddGetHDLGameInfo(const char *Partition, hdl_game_info_t *ginfo);
 
