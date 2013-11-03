@@ -580,7 +580,7 @@ zero_device (const char *device_name)
       void *buffer = osal_alloc (1 _MB);
       if (buffer != NULL)
 	{
-	  static const int ZERO_BYTE = 0x7f;
+	  static const int ZERO_BYTE = 0x00;
 	  u_int32_t bytes, counter = 0;
 	  memset (buffer, ZERO_BYTE, 1 _MB);
 	  do

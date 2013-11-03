@@ -40,7 +40,8 @@
 typedef int iconIVECTOR[4];
 typedef float iconFVECTOR[4];
 
-typedef struct
+typedef struct McIconSys
+/*struct mcIcon*/
 {
     unsigned char  head[4];
     unsigned short type;
@@ -56,7 +57,7 @@ typedef struct
     unsigned char copy[64];
     unsigned char del[64];
     unsigned char unknown3[512];
-} mcIcon;
+} McIcon;
 
 struct IconSysData{
 	wchar_t title0[HDL_GAME_NAME_MAX+1];
@@ -133,6 +134,8 @@ prepare_main (const hdl_game_t *details,
   
   char *icon = NULL;
   u_int32_t icon_length;
+  char *iconsys = NULL;
+  u_int32_t iconsys_length;
 
   char icon_props[1024];
   const ps2_partition_header_t *part;
@@ -175,11 +178,42 @@ prepare_main (const hdl_game_t *details,
       /* PS2 partition header */
       memset (buffer_4m, 0, 4 * 1024 * 1024);
       memcpy (buffer_4m, part, 1024);
-
-      sprintf (icon_props, HDL_HDR2, details->name, 64,
-		22,47,92, 3,10,28, 3,10,28, 22,47,92,
-		0.5,0.5,0.5, 0.0,-0.4,-1.0, 0.5,-0.5,0.5,
-		31,31,31, 62,62,55, 33,42,64, 18,18,49);
+	  
+	  result = read_file ("./icon.sys", &iconsys, &iconsys_length);
+	  if ((result == OSAL_OK) && (!strncmp(iconsys, "PS2D", 4)))
+	  {
+		McIcon *mcIcon_details;
+		mcIcon_details=(McIcon*)iconsys;
+		sprintf(icon_props, HDL_HDR2,
+		details->name,
+		mcIcon_details->trans,
+		mcIcon_details->bgCol[0][0]/2, mcIcon_details->bgCol[0][1]/2, mcIcon_details->bgCol[0][2]/2,
+		mcIcon_details->bgCol[1][0]/2, mcIcon_details->bgCol[1][1]/2, mcIcon_details->bgCol[1][2]/2,
+		mcIcon_details->bgCol[2][0]/2, mcIcon_details->bgCol[2][1]/2, mcIcon_details->bgCol[2][2]/2,
+		mcIcon_details->bgCol[3][0]/2, mcIcon_details->bgCol[3][1]/2, mcIcon_details->bgCol[3][2]/2,
+		mcIcon_details->lightDir[0][0], mcIcon_details->lightDir[0][1], mcIcon_details->lightDir[0][2],
+		mcIcon_details->lightDir[1][0], mcIcon_details->lightDir[1][1], mcIcon_details->lightDir[1][2],
+		mcIcon_details->lightDir[2][0], mcIcon_details->lightDir[2][1], mcIcon_details->lightDir[2][2],
+		(unsigned char)(mcIcon_details->lightAmbient[0]*128),
+		(unsigned char)(mcIcon_details->lightAmbient[1]*128),
+		(unsigned char)(mcIcon_details->lightAmbient[2]*128),
+		(unsigned char)(mcIcon_details->lightCol[0][0]*128),
+		(unsigned char)(mcIcon_details->lightCol[0][1]*128),
+		(unsigned char)(mcIcon_details->lightCol[1][0]*128),
+		(unsigned char)(mcIcon_details->lightCol[1][1]*128),
+		(unsigned char)(mcIcon_details->lightCol[1][2]*128),
+		(unsigned char)(mcIcon_details->lightCol[2][0]*128),
+		(unsigned char)(mcIcon_details->lightCol[2][1]*128),
+		(unsigned char)(mcIcon_details->lightCol[2][2]*128)	);
+/*		McIconSys*/
+	  }
+	  else
+	  {
+		sprintf (icon_props, HDL_HDR2, details->name, 64,
+		  22,47,92, 3,10,28, 3,10,28, 22,47,92,
+		  0.5,0.5,0.5, 0.0,-0.4,-1.0, 0.5,-0.5,0.5,
+		  31,31,31, 62,62,55, 33,42,64, 18,18,49);
+	  }
 
       /*
        *  1000: 50 53 32 49 43 4f 4e 33  44 00 00 00 00 00 00 00  PS2ICON3D.......
@@ -330,6 +364,9 @@ prepare_main (const hdl_game_t *details,
 
   if (patinfo != NULL)
     osal_free (patinfo);
+	
+  if (iconsys != NULL)
+    osal_free (iconsys);
 
   return (result);
 }
@@ -432,21 +469,12 @@ hdd_inject_header (hio_t *hio,
        *        ...
        */
 	  result = read_file ("./icon.sys", &iconsys, &iconsys_length);
-	  if (result == OSAL_OK)
+	  if ((result == OSAL_OK) && (!strncmp(iconsys, "PS2X", 4)))
 	  {
-		if(!strncmp(iconsys, "PS2X", 4))
-		  {
-		  	set_u32 (buffer_4m + 0x001018, 0x0400);
-			set_u32 (buffer_4m + 0x00101C, iconsys_length);
-			memcpy (buffer_4m + 0x001400, iconsys, iconsys_length);
-			fprintf (stdout, "Succesfully read icon.sys\n");
-		  }
-		else if(!strncmp(iconsys, "PS2D", 4))
-		  {
-			mcIcon McIconSys;		
-			memcpy (&McIconSys, &iconsys, iconsys_length);
-/*			McIconSys*/
-		  }
+		set_u32 (buffer_4m + 0x001018, 0x0400);
+		set_u32 (buffer_4m + 0x00101C, iconsys_length);
+		memcpy (buffer_4m + 0x001400, iconsys, iconsys_length);
+		fprintf (stdout, "Succesfully read icon.sys\n");
 	  }
 	  else
 	  {
