@@ -83,7 +83,10 @@ query_result (hio_net_t *net,
   size_t count = 0;
 
   svr_packet packet;
-  COPY_NT_DWORD (packet.magic, svr_magic);
+  /*COPY_NT_DWORD (packet.magic, svr_magic);*/
+  packet.magic [0] = svr_magic [0];
+  packet.magic [1] = svr_magic [1];
+  packet.magic [2] = svr_magic [2];
   packet.seq_no = (unsigned char) ++seq_no;
   packet.command = (unsigned char) command;
   packet.count = 0;
@@ -213,7 +216,10 @@ net_read_32k (hio_net_t *net,
 	  if (ck && !ck->done)
 	    { /* send request */
 	      svr_packet packet;
-	      COPY_NT_DWORD (packet.magic, svr_magic);
+		  /*COPY_NT_DWORD (packet.magic, svr_magic);*/
+		  packet.magic [0] = svr_magic [0];
+		  packet.magic [1] = svr_magic [1];
+		  packet.magic [2] = svr_magic [2];
 	      packet.seq_no = ck->seq_no;
 	      SET_NT_DWORD (packet.start, ck->start);
 	      SET_NT_DWORD (packet.result, 0);
@@ -377,7 +383,10 @@ net_write_32k (hio_net_t *net,
 	      char buf[1500];
 	      const size_t bytes = ck->count * 512;
 	      svr_packet *packet = (svr_packet*) buf;
-	      COPY_NT_DWORD (packet->magic, svr_magic);
+	      /*COPY_NT_DWORD (packet->magic, svr_magic);*/
+		  packet->magic [0] = svr_magic [0];
+		  packet->magic [1] = svr_magic [1];
+		  packet->magic [2] = svr_magic [2];
 	      packet->seq_no = ck->seq_no;
 	      SET_NT_DWORD (packet->start, ck->start);
 	      SET_NT_DWORD (packet->result, 0);
@@ -479,7 +488,10 @@ net_poweroff (hio_t *hio)
   size_t i;
 
   svr_packet packet;
-  COPY_NT_DWORD (packet.magic, svr_magic);
+  /*COPY_NT_DWORD (packet.magic, svr_magic);*/
+  packet.magic [0] = svr_magic [0];
+  packet.magic [1] = svr_magic [1];
+  packet.magic [2] = svr_magic [2];
   packet.seq_no = (unsigned char) ++seq_no;
   packet.command = (unsigned char) cmd_shutdown;
   packet.count = 0;
