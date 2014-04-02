@@ -87,7 +87,7 @@ LDFLAGS += -lwsock32 -lcomctl32 -lwinmm
 
 # whether to include ASPI support or not
 ifeq ($(WINDOWS), yes)
-  CFLAGS += -D_WITH_ASPI -mno-cygwin
+  CFLAGS += -D_WITH_ASPI
   CFLAGS += -ansi -pedantic
 
   SOURCES += 

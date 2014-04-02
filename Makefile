@@ -81,8 +81,8 @@ endif
 ifeq ($(WINDOWS), yes)
   SOURCES += iin_spti.c iin_aspi.c aspi_hlio.c osal_win32.c
   OBJECTS += rsrc.o
-  CFLAGS += -mno-cygwin -D_BUILD_WIN32
-  CXXFLAGS += -mno-cygwin -D_BUILD_WIN32
+  CFLAGS += -D_BUILD_WIN32
+  CXXFLAGS += -D_BUILD_WIN32
   LDFLAGS += -lwsock32 -lwinmm
   EXESUF = .exe
 

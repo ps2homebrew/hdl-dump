@@ -1460,31 +1460,36 @@ show_usage_and_exit (const char *app_path,
       { CMD_HDL_EXTRACT, "device name output_file",
 	"Extracts application image from HD Loader partition.",
 	"hdd1: \"tekken tag tournament\" c:\\tekken.iso", NULL, 0 },
-      { CMD_HDL_INJECT_CD, "target name source [startup] [flags] [dma] [@slice_index]",
+      { CMD_HDL_INJECT_CD, "target name source [startup] [flags] dma [@slice_index]",
 	"Creates a new HD Loader partition from a CD.\n"
-	"You need boot.elf and list.ico for installing the game. More info in Readme\n"
+	"You need boot.elf for installing the game (list.ico\n"
+	"and icon.sys are optional). More info in Readme\n"
 	"Supported inputs: plain ISO files, CDRWIN cuesheets, Nero images and tracks,\n"
 	"RecordNow! Global images, HD Loader partitions (PP.HDL.Xenosaga@hdd1:) and\n"
 	"Sony CD/DVD generator IML files (if files are listed with full paths).\n"
+	"WARNING: BUG: You need to specify dma mode or hdl_dump crashes (*u4, *m2).\n"
 	"Startup file and compatibility flags are optional. Flags syntax is\n"
-	"`+#[+#[+#]]' or `0xNN', for example `+1', `+2+3', `0x01', `0x03', etc.",
-	"192.168.0.10 \"Tekken Tag Tournament\" cd0: SCES_xxx.xx",
-	"hdd1: \"Tekken\" c:\\tekken.iso SCES_xxx.xx +1+2", 1 },
-      { CMD_HDL_INJECT_DVD, "target name source [startup] [flags] [dma] [@slice_index]",
+	"`+#[+#[+#]]' or `0xNN', for example `+1', `+2+3', `0x00', `0x03', etc.",
+	"192.168.0.10 \"Tekken Tag Tournament\" cd0: SCES_xxx.xx *u4",
+	"hdd1: \"Tekken\" c:\\tekken.iso SCES_xxx.xx +1+2 *u4", 1 },
+      { CMD_HDL_INJECT_DVD, "target name source [startup] [flags] dma [@slice_index]",
 	"Creates a new HD Loader partition from a DVD.\n"
-	"You need boot.elf and list.ico. More info in Readme.\n"
+	"You need boot.elf for installing the game (list.ico\n"
+	"and icon.sys are optional). More info in Readme\n"
 	"DVD-9 can be ibstalled only from ISO or IML.\n"
 	"Supported inputs: plain ISO files, CDRWIN cuesheets, Nero images and tracks,\n"
 	"RecordNow! Global images, HD Loader partitions (PP.HDL.Xenosaga@192....) and\n"
 	"Sony CD/DVD generator IML files (if files are listed with full paths).\n"
+	"WARNING: BUG: You need to specify dma mode or hdl_dump crashes (*u4, *m2).\n"
 	"Startup file and compatibility flags are optional. Flags syntax is\n"
 	"`+#[+#[+#]]' or `0xNN', for example `+1', `+2+3', `0x01', `0x03', etc.",
-	"192.168.0.10 \"Gran Turismo 3\" cd0:",
-	"hdd1: \"Gran Turismo 3\" c:\\gt3.iso SCES_xxx.xx +2+3", 1 },
+	"192.168.0.10 \"Gran Turismo 3\" cd0: *u4",
+	"hdd1: \"Gran Turismo 3\" c:\\gt3.iso SCES_xxx.xx +2+3 *u4", 1 },
       { CMD_HDL_INSTALL, "target source [@slice_index]",
 	"Creates a new HD Loader partition from a source, that has an entry\n"
 	"in compatibility list.\n"
-	"You need boot.elf and list.ico for installing the game. More info in Readme",
+	"You need boot.elf for installing the game (list.ico\n"
+	"and icon.sys are optional). More info in Readme\n"
 	"192.168.0.10 cd0:", "hdd1: c:\\gt3.iso", 1 },
       { CMD_CDVD_INFO, "iin_input",
 	"Displays signature (startup file), volume label and data size\n"
@@ -1971,7 +1976,7 @@ main (int argc, char *argv[])
 	       caseless_compare (command_name, CMD_HDL_INJECT_DVD))
 	{ /* inject game image into a new HD Loader partition */
 	  int slice_index = -1;
-	  compat_flags_t compat_flags = 0;
+	  compat_flags_t compat_flags = COMPAT_FLAGS_INVALID;
 	  unsigned short dma = 0;
 	  const char *startup = NULL;
 	  int is_dvd =
@@ -1980,7 +1985,8 @@ main (int argc, char *argv[])
 
 	  if (!(argc >= 5 && argc <= 9))
 	    show_usage_and_exit (argv[0], command_name);
-
+	  
+	  compat_flags = parse_compat_flags ("0x00");
 	  for (i = 5; i < argc; ++i)
 	    {
 	      if (argv[i][0] == '@')
@@ -2000,7 +2006,9 @@ main (int argc, char *argv[])
 
 	  if (compat_flags == COMPAT_FLAGS_INVALID ||
 	      !(slice_index >= -1 && slice_index <= 1) || (dma == 0))
-	    show_usage_and_exit (argv[0], command_name);
+		  {
+			show_usage_and_exit (argv[0], command_name);
+		  }
 
 	  handle_result_and_exit (inject (config, argv[2], argv[3], argv[4],
 					  startup, compat_flags, dma, is_dvd,

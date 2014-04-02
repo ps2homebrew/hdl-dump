@@ -143,15 +143,7 @@ prepare_main (const hdl_game_t *details,
 
   part = NULL;
 
-  /* read icon */
-  result = read_file ("./list.ico", &icon, &icon_length);
-  if (result != OSAL_OK)
-  {
-	icon = (char*) hdloader_icon;
-	icon_length = HDLOADER_ICON_LEN;
-	result = OSAL_OK;
-  }
-  
+  /* read miniopl (we need this file */
   result = read_file ("./boot.elf", &patinfo, &patinfo_length);
   if (result == OSAL_OK)
 	for (i = 0; i < slice->part_count; ++i)
@@ -160,7 +152,7 @@ prepare_main (const hdl_game_t *details,
 		  part = &slice->parts[i].header;
 		  break;
 		}
-	
+
   if (part == NULL)
     result = RET_NOT_FOUND;
 
@@ -175,10 +167,22 @@ prepare_main (const hdl_game_t *details,
       u_int32_t partitions_used = 0;
       u_int32_t sector;
 
+	  /* read icon (optional if skipped - used hdloader icon) */
+	  result = read_file ("./list.ico", &icon, &icon_length);
+	  if (result != OSAL_OK)
+	  {
+		icon = (char*) hdloader_icon;
+		icon_length = HDLOADER_ICON_LEN;
+		result = OSAL_OK;
+	  }  
+
       /* PS2 partition header */
       memset (buffer_4m, 0, 4 * 1024 * 1024);
       memcpy (buffer_4m, part, 1024);
 	  
+	  /* read icon.sys in memory card format
+		 if in another format or skipped used
+		 default data for HDLoader icon        */
 	  result = read_file ("./icon.sys", &iconsys, &iconsys_length);
 	  if ((result == OSAL_OK) && (!strncmp(iconsys, "PS2D", 4)))
 	  {
@@ -213,6 +217,7 @@ prepare_main (const hdl_game_t *details,
 		  22,47,92, 3,10,28, 3,10,28, 22,47,92,
 		  0.5,0.5,0.5, 0.0,-0.4,-1.0, 0.5,-0.5,0.5,
 		  31,31,31, 62,62,55, 33,42,64, 18,18,49);
+		result = OSAL_OK;
 	  }
 
       /*
