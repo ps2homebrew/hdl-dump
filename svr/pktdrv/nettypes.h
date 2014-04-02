@@ -127,7 +127,7 @@ typedef struct icmp_echo_rr_type
   nt_word_t id;
   nt_word_t seq_no;
   nt_byte_t data[1]; /* usually more than 1 byte */
-} __attribute__((packed)) icmp_echo_request_t, __attribute__((packed)) icmp_echo_reply_t; /* 8 bytes+ */
+} __attribute__((packed)) icmp_echo_request_t, icmp_echo_reply_t; /* 8 bytes+ */
 
 typedef struct udp_hdr_type
 {
@@ -149,7 +149,7 @@ typedef struct ping_frame_type
   eth_hdr_t eth;
   ip_hdr_t ip;
   icmp_echo_request_t echo;
-} __attribute__((packed)) ping_frame_t, __attribute__((packed)) pong_frame_t;
+} __attribute__((packed)) ping_frame_t, pong_frame_t;
 
 typedef struct udp_frame_type
 {

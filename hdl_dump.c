@@ -287,7 +287,7 @@ show_hdl_toc (const dict_t *config,
 	      const hdl_game_info_t *game = glist->games + i;
 	      char compat_flags[MAX_FLAGS * 2 + 1];
 	      char dma[4];
-		  unsigned short dma_dummy = 0;
+		  /*unsigned short dma_dummy = 0;*/
 	      compat_flags[0] = compat_flags[1] = '\0';
 	      dma[0] = dma[1] = '\0';
 	      for (j = 0; j < MAX_FLAGS; ++j)
@@ -297,7 +297,7 @@ show_hdl_toc (const dict_t *config,
 		    sprintf (buffer, "+%u", (unsigned int) (j + 1));
 		    strcat (compat_flags, buffer);
 		  }
-		  dma_dummy = game->dma;
+		  /*dma_dummy = game->dma;*/
 		  if ((unsigned short)game->dma%256 == 32)
 		  {
 		    int dma_dummy = 0;
@@ -1462,34 +1462,31 @@ show_usage_and_exit (const char *app_path,
 	"hdd1: \"tekken tag tournament\" c:\\tekken.iso", NULL, 0 },
       { CMD_HDL_INJECT_CD, "target name source [startup] [flags] dma [@slice_index]",
 	"Creates a new HD Loader partition from a CD.\n"
-	"You need boot.elf for installing the game (list.ico\n"
-	"and icon.sys are optional). More info in Readme\n"
+	"You need boot.elf for installing the game. More info in Readme\n"
 	"Supported inputs: plain ISO files, CDRWIN cuesheets, Nero images and tracks,\n"
 	"RecordNow! Global images, HD Loader partitions (PP.HDL.Xenosaga@hdd1:) and\n"
-	"Sony CD/DVD generator IML files (if files are listed with full paths).\n"
-	"WARNING: BUG: You need to specify dma mode or hdl_dump crashes (*u4, *m2).\n"
+	"Sony CD/DVD generator IML files (with full paths).\n"
+	"BUG: You need to specify dma mode.\n"
 	"Startup file and compatibility flags are optional. Flags syntax is\n"
 	"`+#[+#[+#]]' or `0xNN', for example `+1', `+2+3', `0x00', `0x03', etc.",
 	"192.168.0.10 \"Tekken Tag Tournament\" cd0: SCES_xxx.xx *u4",
 	"hdd1: \"Tekken\" c:\\tekken.iso SCES_xxx.xx +1+2 *u4", 1 },
       { CMD_HDL_INJECT_DVD, "target name source [startup] [flags] dma [@slice_index]",
 	"Creates a new HD Loader partition from a DVD.\n"
-	"You need boot.elf for installing the game (list.ico\n"
-	"and icon.sys are optional). More info in Readme\n"
-	"DVD-9 can be ibstalled only from ISO or IML.\n"
+	"You need boot.elf. More info in Readme\n"
+	"DVD-9 supports only ISO or IML.\n"
 	"Supported inputs: plain ISO files, CDRWIN cuesheets, Nero images and tracks,\n"
 	"RecordNow! Global images, HD Loader partitions (PP.HDL.Xenosaga@192....) and\n"
-	"Sony CD/DVD generator IML files (if files are listed with full paths).\n"
-	"WARNING: BUG: You need to specify dma mode or hdl_dump crashes (*u4, *m2).\n"
+	"Sony CD/DVD generator IML files (with full paths).\n"
+	"BUG: You need to specify dma mode.\n"
 	"Startup file and compatibility flags are optional. Flags syntax is\n"
-	"`+#[+#[+#]]' or `0xNN', for example `+1', `+2+3', `0x01', `0x03', etc.",
+	"`+#[+#[+#]]' or `0xNN',for example `+1', `+2+3', `0x00', `0x03', etc.",
 	"192.168.0.10 \"Gran Turismo 3\" cd0: *u4",
 	"hdd1: \"Gran Turismo 3\" c:\\gt3.iso SCES_xxx.xx +2+3 *u4", 1 },
       { CMD_HDL_INSTALL, "target source [@slice_index]",
 	"Creates a new HD Loader partition from a source, that has an entry\n"
 	"in compatibility list.\n"
-	"You need boot.elf for installing the game (list.ico\n"
-	"and icon.sys are optional). More info in Readme\n"
+	"You need boot.elf for installing the game. More info in Readme",
 	"192.168.0.10 cd0:", "hdd1: c:\\gt3.iso", 1 },
       { CMD_CDVD_INFO, "iin_input",
 	"Displays signature (startup file), volume label and data size\n"
