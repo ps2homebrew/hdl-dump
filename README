@@ -19,7 +19,7 @@ Latest version, as well as some documentation is to be found on the new official
 repository -- https://bitbucket.org/AKuHAK/hdl-dump/
 Me reads w1zard0f07@yahoo.com and psx-scene forums every now and then.
 Easy guide for installing games can be found here -- 
-http://openps2loader.info/hdldump/howto.html
+http://web.archive.org/web/20120720230755/http://openps2loader.info/hdldump/howto.html
 
 
 Networking server
@@ -28,6 +28,7 @@ Networking server
 A new, purely UDP networking server is available, based on recently released on
 psx-scene forums smap driver --
 http://ichiba.geocities.jp/ysai187/PS2/smap.htm
+It is called hdl_svr_093.elf and is a part of hdl_dump sources.
 
 You might need to punch a hole in your firewall for incoming UDP from port 12345.
 
@@ -55,10 +56,8 @@ then use
 	make RELEASE=yes
 	make -C gui RELEASE=yes
 to compile command-line or GUI version.
-
-NOTICE: with current compilation flags hdl_dump would not handle correctly Ctrl+C
-if ran from-within a CYGWIN shell. AFAIR, removing "-mno-cygwin" might correct
-this behaviour, but will break Ctrl+C handling when ran from a Command Prompt.
+You can use this guide for preparing sdk for windows:
+http://psx-scene.com/forums/f150/compiling-windows-118947/#post1124987
 
 
 
@@ -85,18 +84,28 @@ Configuration
 New features
 ------------
 
-All new stuffs can be used from HDD_OSD or BB Navigator.
+All new stuffs can be used from HDD_OSD or BB Navigator or XMB from DVR.
 
 inject_dvd, inject_cd, install or copy_hdd.
 
 The only thing you need - you have to place boot.elf (which is actually
-miniopl.elf) and list.ico (*.ico from memory card) in the folder where
-is launched from hdl_dump.
+miniopl.elf) in the folder where is launched from hdl_dump.
+WARNING: BUG: You need to specify dma mode or hdl_dump crashes (*u4, *m2)
+
+You also can place list.ico (*.ico from memory card)
+and icon.sys (*.sys from memory card).
+You can use both files or skip any of them.
+If you skip *.ico will be used HDloader default icon.
+If you skip *.sys will be used HDloader default icon settings.
+You can use only memory card *.sys file. If you want to use HDD *.sys
+you need to use modify_header command.
+
 This command will install game onto hard disk. Be careful if you choose
 command copy_hdd - every HDL game will loose their icons and will use only
-one for all (the same for kelf).
+one for all.
 boot.elf - you can use everything but I prefer miniopl. Miniopl allows you
-to launch titles from HDD OSD or BB NAV by pressing on title.
+to launch titles from HDD OSD or BB NAV by pressing on title. Miniopl now
+is a part of hdl_dump project.
 boot.elf injection address - 0x111000
 boot.elf size limit - 732 160 bytes (restricted due to free KELF poc size)
 --------------------------------------------------------------------------
@@ -116,6 +125,7 @@ MBR.KELF doesn't have any restrictions by themself.
 There is no easy way to make MBR.KELFS from common elf.
 ------------------------------------------------------------------------------
 modify_header
+
 Code:
 hdl_dump.exe modify_header 192.168.0.10 PP.TEST
 
@@ -131,6 +141,8 @@ boot.kirx
 Any file can be skipped. Program first of all tries to inject boot.kelf. 
 If it is not found it will try to inject boot.elf.
 
+Now icon.sys can be in any of 2 formats: Memory Card format or HDD format.
+
 del.ico injection address: 0x041000
 If del.ico is used list.ico maximum size 260 096bytes.
 boot.elf (or boot.kelf) injection address - 0x111000
@@ -140,8 +152,8 @@ boot.kelf size limit - 2 031 616 bytes (if boot.kirx is used)
 boot.kirx injection address - 0x301000
 boot.kirx size limit - 1 044 480 bytes
 ------------------------------------------------------------------------------------
-If you want to know much about these files (and their restrictions) you have to study
-official ps2sdk document called
+If you want to know more about these files (and their restrictions) you have to
+study official ps2sdk document called
 
 hdd_rule_3.0.2.pdf
 
