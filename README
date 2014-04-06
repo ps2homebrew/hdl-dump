@@ -88,10 +88,10 @@ All new stuffs can be used from HDD_OSD or BB Navigator or XMB from DVR.
 
 inject_dvd, inject_cd, install or copy_hdd.
 
-The only thing you need - you have to place boot.elf (which is actually
-miniopl.elf) in the folder where is launched from hdl_dump.
 WARNING: BUG: You need to specify dma mode or hdl_dump crashes (*u4, *m2)
 
+You can place boot.elf (which is actually miniopl.elf) in the folder
+where is launched from hdl_dump. It is optional you can skip this file.
 You also can place list.ico (*.ico from memory card)
 and icon.sys (*.sys from memory card).
 You can use both files or skip any of them.
@@ -107,7 +107,7 @@ boot.elf - you can use everything but I prefer miniopl. Miniopl allows you
 to launch titles from HDD OSD or BB NAV by pressing on title. Miniopl now
 is a part of hdl_dump project.
 boot.elf injection address - 0x111000
-boot.elf size limit - 732 160 bytes (restricted due to free KELF poc size)
+boot.elf size limit - 2 026 464 bytes (thanks to kHn)
 --------------------------------------------------------------------------
 initialize
 
@@ -138,19 +138,26 @@ del.ico
 boot.kelf
 boot.elf
 boot.kirx
+logo.raw
 Any file can be skipped. Program first of all tries to inject boot.kelf. 
 If it is not found it will try to inject boot.elf.
 
 Now icon.sys can be in any of 2 formats: Memory Card format or HDD format.
+logo.raw is used for replacing Playstation 2 disk logo.
+Old logo will be saved as logo.bak
+If there is logo.bak in the folder, then logo.raw will be skipped.
+WARNING: If you try to inject logo.raw in non-game partition you will
+totally destroy it.
 
 del.ico injection address: 0x041000
 If del.ico is used list.ico maximum size 260 096bytes.
 boot.elf (or boot.kelf) injection address - 0x111000
-boot.elf size limit - 732 160 bytes (restricted due to free KELF poc size)
+boot.elf size limit - 2 026 464 bytes (thanks to kHn)
 boot.kelf size limit - 3 076 096 bytes (if boot.kirx not used)
 boot.kelf size limit - 2 031 616 bytes (if boot.kirx is used)
 boot.kirx injection address - 0x301000
 boot.kirx size limit - 1 044 480 bytes
+logo.raw size limit - 24 576 bytes
 ------------------------------------------------------------------------------------
 If you want to know more about these files (and their restrictions) you have to
 study official ps2sdk document called

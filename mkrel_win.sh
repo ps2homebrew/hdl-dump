@@ -28,7 +28,8 @@ make clean
 cd ../
 
 cp open-ps2-loader/diskload.elf rel/boot.elf
+cp README rel/README.txt
 
 cd rel/
-zip -9 hdl_dumx.zip hdl_* boot.elf
+zip -9 hdl_dumx.zip hdl_* boot.elf README.txt
 cd ../

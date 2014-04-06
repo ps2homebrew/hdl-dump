@@ -123,19 +123,21 @@ prepare_main (const hdl_game_t *details,
 	      u_int32_t size_in_kb,
 	      /*@out@*/ u_int8_t *buffer_4m)
 {
-  int result;
+  int result = OSAL_OK;
   u_int32_t i;
   
   const char *patinfo_header = (const char*) hdloader_kelf_header;
+  const char *patinfo_footer = (const char*) hdloader_kelf_footer;
   u_int32_t patinfo_header_length = HDLOADER_KELF_HEADER_LEN;
+  u_int32_t patinfo_footer_length = HDLOADER_KELF_FOOTER_LEN;
   char *patinfo = NULL;
-  u_int32_t patinfo_length;
+  u_int32_t patinfo_length=0;
   u_int32_t patinfo_kelf_length = KELF_LENGTH;
   
   char *icon = NULL;
-  u_int32_t icon_length;
+  u_int32_t icon_length=0;
   char *iconsys = NULL;
-  u_int32_t iconsys_length;
+  u_int32_t iconsys_length=0;
 
   char icon_props[1024];
   const ps2_partition_header_t *part;
@@ -143,15 +145,12 @@ prepare_main (const hdl_game_t *details,
 
   part = NULL;
 
-  /* read miniopl (we need this file */
-  result = read_file ("./boot.elf", &patinfo, &patinfo_length);
-  if (result == OSAL_OK)
-	for (i = 0; i < slice->part_count; ++i)
-	  if (get_u32 (&slice->parts[i].header.start) == starting_partition_sector)
-	    { /* locate starting partition index */
-		  part = &slice->parts[i].header;
-		  break;
-		}
+  for (i = 0; i < slice->part_count; ++i)
+	if (get_u32 (&slice->parts[i].header.start) == starting_partition_sector)
+	{ /* locate starting partition index */
+	  part = &slice->parts[i].header;
+	  break;
+	}
 
   if (part == NULL)
     result = RET_NOT_FOUND;
@@ -166,6 +165,15 @@ prepare_main (const hdl_game_t *details,
       u_int32_t partition_data_len_in_kb;
       u_int32_t partitions_used = 0;
       u_int32_t sector;
+
+	  /* read miniopl (optional) */
+	  result = read_file ("./boot.elf", &patinfo, &patinfo_length);
+	  if (result != OSAL_OK)
+	  {
+		patinfo = NULL;
+		patinfo_length = 0;
+		result = OSAL_OK;
+	  }
 
 	  /* read icon (optional if skipped - used hdloader icon) */
 	  result = read_file ("./list.ico", &icon, &icon_length);
@@ -211,7 +219,7 @@ prepare_main (const hdl_game_t *details,
 		(unsigned char)(mcIcon_details->lightCol[2][2]*128)	);
 /*		McIconSys*/
 	  }
-	  else
+	  else if (iconsys_length != 0)
 	  {
 		sprintf (icon_props, HDL_HDR2, details->name, 64,
 		  22,47,92, 3,10,28, 3,10,28, 22,47,92,
@@ -251,8 +259,11 @@ prepare_main (const hdl_game_t *details,
        *         |  |  |  |  +--+--+--+- BE, PATINFO.KELF length in bytes
        *         +--+--+--+- PATINFO.KELF offset relative to 0x1000
        */
-      set_u32 (tmp++, 0x110000);
-      set_u32 (tmp++, patinfo_kelf_length);
+	  if (patinfo_length != 0)/* no boot.elf */
+	  {
+		set_u32 (tmp++, 0x110000);
+		set_u32 (tmp++, patinfo_kelf_length);
+	  }
 
       /*
        *  1200: 42 4f 4f 54 32 20 3d 20 50 41 54 49 4e 46 4f 0a  BOOT2 = PATINFO.
@@ -322,8 +333,12 @@ prepare_main (const hdl_game_t *details,
        *        ... PATINFO.KELF ...
        *179640: 7e bd 13 b2 4e 1f 26 08  29 53 97 37 13 c3 71 1c 
        */
-      memcpy (buffer_4m + 0x111000 + patinfo_header_length, patinfo, patinfo_length);
-      memcpy (buffer_4m + 0x111000, patinfo_header, patinfo_header_length);
+	  if (patinfo_length != 0)
+	  {
+		memcpy (buffer_4m + 0x111000, patinfo_header, patinfo_header_length);
+		memcpy (buffer_4m + 0x111000 + patinfo_header_length, patinfo, patinfo_length);
+		memcpy (buffer_4m + 0x111000 + patinfo_kelf_length - patinfo_footer_length, patinfo_footer, patinfo_footer_length);
+	  }
 
       partition_usable_size_in_kb = (get_u32 (&part->length) - 0x2000) / 2; /* 2 sectors == 1K */
       partition_data_len_in_kb =
@@ -387,9 +402,11 @@ hdd_inject_header (hio_t *hio,
   int result;
   
   const char *patinfo_header = (const char*) hdloader_kelf_header;
+  const char *patinfo_footer = (const char*) hdloader_kelf_footer;
   u_int32_t patinfo_header_length = HDLOADER_KELF_HEADER_LEN;
+  u_int32_t patinfo_footer_length = HDLOADER_KELF_FOOTER_LEN;
   char *patinfo = NULL;
-  u_int32_t patinfo_length;
+  u_int32_t patinfo_length=0;
   u_int32_t patinfo_kelf_length = KELF_LENGTH;
   
   char *syscnf = NULL;
@@ -401,7 +418,9 @@ hdd_inject_header (hio_t *hio,
   char *del = NULL;
   u_int32_t del_length;
   char *kirx = NULL;
-  u_int32_t kirx_length;
+  u_int32_t kirx_length=0;
+  char *logo = NULL;
+  u_int32_t logo_length;
 
   apa_partition_t *part = NULL;
   const apa_slice_t *slice = toc->slice + slice_index;
@@ -411,17 +430,18 @@ hdd_inject_header (hio_t *hio,
   u_int32_t i;
   char *buffer_4m;
   for (i = 0; part == NULL && i < slice->part_count; ++i)
-    if (get_u32 (&slice->parts[i].header.start) == starting_partition_sector)
-      /* starting partition index located */
-      part = slice->parts + i;
+	if (get_u32 (&slice->parts[i].header.start) == starting_partition_sector)
+	  /* starting partition index located */
+	  part = slice->parts + i;
   if (part == NULL)
-    result = RET_NOT_FOUND;
-	
-  buffer_4m = osal_alloc (4 _MB);
+	result = RET_NOT_FOUND;
+
+  buffer_4m = osal_alloc (4 _MB + 24576);
   if (buffer_4m == NULL)
-    result = RET_NO_MEM;
+	result = RET_NO_MEM;
+
   sector = (get_u32 (&part->header.start) + slice_index * SLICE_2_OFFS);
-  result = hio->read (hio, sector, 4 _MB / 512, buffer_4m, &dummy);
+  result = hio->read (hio, sector, (4 _MB + 24576) / 512, buffer_4m, &dummy);
 
   if (result == RET_OK && part != NULL && buffer_4m != NULL)
     {
@@ -437,11 +457,11 @@ hdd_inject_header (hio_t *hio,
        *  1020: 00 08 00 00 58 81 00 00  00 08 00 00 58 81 00 00
        *         ^  ^  ^  ^  ^  ^  ^  ^               ^  ^  ^  ^
        *         |  |  |  |  +--+--+--+- same as =>   +--+--+--+- BE, icon length in bytes
-       *         +--+--+--+- part offset relative to 0x1000	 
+       *         +--+--+--+- part offset relative to 0x1000 
        *  1030: 00 00 11 00 58 81 00 00  00 00 00 00 00 00 00 00
        *         ^  ^  ^  ^  ^  ^  ^  ^
        *         |  |  |  |  +--+--+--+- BE, PATINFO.KELF length in bytes
-       *         +--+--+--+- PATINFO.KELF offset relative to 0x1000	   
+       *         +--+--+--+- PATINFO.KELF offset relative to 0x1000   
        */
       memcpy (buffer_4m + 0x001000, HDL_HDR0, strlen (HDL_HDR0));
 
@@ -536,10 +556,17 @@ hdd_inject_header (hio_t *hio,
 	  result = read_file ("./boot.kelf", &patinfo, &patinfo_length);
 	  if (result == OSAL_OK)
 	  {
-		set_u32 (buffer_4m + 0x001030, 0x110000);
-		set_u32 (buffer_4m + 0x001034, patinfo_length);
-		memcpy (buffer_4m + 0x111000, patinfo, patinfo_length);
-		fprintf (stdout, "Succesfully read boot.kelf\n");
+		if (patinfo_length != 0)
+		{
+		  set_u32 (buffer_4m + 0x001030, 0x110000);
+		  set_u32 (buffer_4m + 0x001034, patinfo_length);
+		  memcpy (buffer_4m + 0x111000, patinfo, patinfo_length);
+		  fprintf (stdout, "Succesfully read boot.kelf\n");
+		} else {
+		  set_u32 (buffer_4m + 0x001030, 0x000000);
+		  set_u32 (buffer_4m + 0x001034, patinfo_length);
+		  fprintf (stdout, "Boot.kelf was zero-sized - clear all patinfo data\n");
+		}
 	  }
 	  else
 	  {
@@ -553,6 +580,7 @@ hdd_inject_header (hio_t *hio,
 			set_u32 (buffer_4m + 0x001034, patinfo_kelf_length);
 			memcpy (buffer_4m + 0x111000, patinfo_header, patinfo_header_length);
 			memcpy (buffer_4m + 0x111000 + patinfo_header_length, patinfo, patinfo_length);
+			memcpy (buffer_4m + 0x111000 + patinfo_kelf_length - patinfo_footer_length, patinfo_footer, patinfo_footer_length);
 			fprintf (stdout, "Succesfully read boot.elf\n");
 		  }
 		  else
@@ -563,14 +591,21 @@ hdd_inject_header (hio_t *hio,
 	  if (patinfo != NULL)
 		osal_free (patinfo);
 	
-	/* kirx */
+	  /* kirx */
 	  result = read_file ("./boot.kirx", &kirx, &kirx_length);
 	  if (result == OSAL_OK)
 	  {
-		set_u32 (buffer_4m + 0x001038, 0x300000);
-		set_u32 (buffer_4m + 0x00103C, kirx_length);
-		memcpy (buffer_4m + 0x301000, kirx, kirx_length);
-		fprintf (stdout, "Succesfully read boot.kirx\n");
+		if (kirx_length != 0)
+		{
+		  set_u32 (buffer_4m + 0x001038, 0x300000);
+		  set_u32 (buffer_4m + 0x00103C, kirx_length);
+		  memcpy (buffer_4m + 0x301000, kirx, kirx_length);
+		  fprintf (stdout, "Succesfully read boot.kirx\n");
+		} else {
+		  set_u32 (buffer_4m + 0x001038, 0x000000);
+		  set_u32 (buffer_4m + 0x00103C, kirx_length);
+		  fprintf (stdout, "Boot.kirx was zero-sized - clear all kirx data\n");
+		}  
 	  }
 	  else
 	  {
@@ -578,9 +613,30 @@ hdd_inject_header (hio_t *hio,
 	  }
 	  if (kirx != NULL)
 		osal_free (kirx); 
+	  
+	  /* logo */
+	  result = read_file ("./logo.raw", &logo, &logo_length);
+	  if (result == OSAL_OK)
+	  {
+		if (file_exists ("./logo.bak"))
+		  fprintf (stdout, "Please remove old logo.bak. Skipped logo.raw\n");
+		else
+		{
+		  write_file("./logo.bak", buffer_4m + 4 _MB, 24576);
+		  memcpy (buffer_4m + 4 _MB, logo, logo_length);
+		  fprintf (stdout, "Succesfully read logo.raw. old logo saved as logo.bak\n");
+		}
+	  }
+	  else
+	  {
+		fprintf (stdout, "Skipped logo.raw\n");
+	  }
+	  if (logo != NULL)
+		osal_free (logo); 
+	  
 
 	}
-  result = hio->write (hio, sector, 4 _MB / 512, buffer_4m, &dummy);
+  result = hio->write (hio, sector, (4 _MB + 24576) / 512, buffer_4m, &dummy);
   if (result == RET_OK)
 	result = apa_commit_ex (hio, toc);
   if (buffer_4m != NULL)
