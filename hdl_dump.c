@@ -1461,8 +1461,8 @@ show_usage_and_exit (const char *app_path,
 	"Extracts application image from HD Loader partition.",
 	"hdd1: \"tekken tag tournament\" c:\\tekken.iso", NULL, 0 },
       { CMD_HDL_INJECT_CD, "target name source [startup] [flags] dma [@slice_index]",
-	"Creates a new HD Loader partition from a CD.\n"
-	"You need boot.elf for installing the game. More info in Readme\n"
+	"Creates a new HDLoader partition from a CD.\n"
+	"You can use boot.elf,list.cio, icon.sys. Check Readme\n"
 	"Supported inputs: plain ISO files, CDRWIN cuesheets, Nero images and tracks,\n"
 	"RecordNow! Global images, HD Loader partitions (PP.HDL.Xenosaga@hdd1:) and\n"
 	"Sony CD/DVD generator IML files (with full paths).\n"
@@ -1472,13 +1472,13 @@ show_usage_and_exit (const char *app_path,
 	"192.168.0.10 \"Tekken Tag Tournament\" cd0: SCES_xxx.xx *u4",
 	"hdd1: \"Tekken\" c:\\tekken.iso SCES_xxx.xx +1+2 *u4", 1 },
       { CMD_HDL_INJECT_DVD, "target name source [startup] [flags] dma [@slice_index]",
-	"Creates a new HD Loader partition from a DVD.\n"
-	"You need boot.elf. More info in Readme\n"
+	"Creates a new HDLoader partition from a DVD.\n"
+	"You can use boot.elf,list.cio, icon.sys. Check Readme\n"
 	"DVD-9 supports only ISO or IML.\n"
 	"Supported inputs: plain ISO files, CDRWIN cuesheets, Nero images and tracks,\n"
 	"RecordNow! Global images, HD Loader partitions (PP.HDL.Xenosaga@192....) and\n"
 	"Sony CD/DVD generator IML files (with full paths).\n"
-	"BUG: You need to specify dma mode.\n"
+	"BUG:You have to specify dma mode.\n"
 	"Startup file and compatibility flags are optional. Flags syntax is\n"
 	"`+#[+#[+#]]' or `0xNN',for example `+1', `+2+3', `0x00', `0x03', etc.",
 	"192.168.0.10 \"Gran Turismo 3\" cd0: *u4",
@@ -1545,7 +1545,8 @@ show_usage_and_exit (const char *app_path,
 	"del.ico,    if it is not present the list.ico will be used\n"
 	"boot.kelf,\n"
 	"boot.elf,   if boot.kelf not present, boot.elf will be parsed\n"
-	"boot.kirx.\n"
+	"boot.kirx,\n"
+	"logo.raw (logo.bak will be created).\n"
 	"Every file can be skipped. More info about using and restrictions in README.\n"
 	CMD_MODIFY_HEADER " is contributed by AKuHAK.",
 	"hdd2: PP.POPS-00001",

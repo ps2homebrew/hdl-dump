@@ -2,8 +2,12 @@
 
 DEBUG = 0
 EESIO_DEBUG = 0
+PS2LOGO = 0
 
-FRONTEND_OBJS = obj/system.o obj/bootgame.o obj/hdd.o #obj/crc16.o
+FRONTEND_OBJS = obj/system.o obj/bootgame.o obj/hdd.o 
+ifeq ($(PS2LOGO),1) 
+FRONTEND_OBJS += obj/crc16.o
+endif
 
 EECORE_OBJS =	obj/ee_core.o obj/alt_ee_core.o \
 		obj/imgdrv.o obj/eesync.o \
@@ -18,6 +22,10 @@ EE_SRC_DIR = src/
 EE_OBJS_DIR = obj/
 EE_ASM_DIR = asm/
 EE_OBJS = $(FRONTEND_OBJS) $(GFX_OBJS) $(EECORE_OBJS)
+
+ifeq ($(PS2LOGO),1) 
+EE_CFLAGS += -DPS2LOGO
+endif
 
 EE_LIBS = -L$(PS2SDK)/ports/lib -L$(GSKIT)/lib -lpoweroff -lfileXio -lpatches -ldebug -lmc -lcdvd
 EE_INCS += -I$(PS2SDK)/ports/include
