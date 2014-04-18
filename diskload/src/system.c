@@ -6,9 +6,6 @@
 
 #include "include/usbld.h"
 #include "include/system.h"
-#ifdef PS2LOGO
-#include "include/crc16.h"
-#endif
 
 extern unsigned char imgdrv_irx[];
 extern unsigned int size_imgdrv_irx;
@@ -81,74 +78,6 @@ int sysPcmciaCheck(void) {
 	/* fileXioDevctl returns 0 if the DEV9 device is the CXD9566 (PCMCIA), and 1 if it's the CXD9611 (Expansion bay). */
 	return(fileXioDevctl("dev9x:", 0x4401, NULL, 0, NULL, 0)==0?1:0);
 }
-
-#ifdef PS2LOGO
-/*
-	static inline int IsLogoValid(u32 StartLBA);
-
-	Parameters: StartLBA - LBA of the first sector of the disc image.
-	Return values:
-		<0	- Error.
-		0	- Logo is not valid for use with the console.
-		1	- Logo is valid for use with the console.
-*/
-static inline int IsLogoValid(u32 StartLBA){
-	int fd, result;
-	char *LogoBuffer, RegionCode;
-	hddAtaTransfer_t ReadArg ALIGNED(64);
-	unsigned int i;
-	unsigned short int crc16checksum;
-
-	fd=fileXioOpen("rom0:ROMVER", O_RDONLY, 666);
-	fileXioLseek(fd, 4, SEEK_SET);
-	fileXioRead(fd, &RegionCode, 1);
-	fileXioClose(fd);
-
-	InitCRC16Table();
-
-	LogoBuffer=memalign(64, 2048);
-
-	result=0;
-	for(i=0,crc16checksum=CRC16_INITIAL_CHECKSUM; (i<12) && (result>=0); i++){
-		ReadArg.lba=StartLBA+i*4;
-		ReadArg.size=4;
-		result=fileXioDevctl("hdd0:", APA_DEVCTL_ATA_READ, &ReadArg, sizeof(hddAtaTransfer_t), LogoBuffer, ReadArg.size*512);
-		crc16checksum=CalculateCRC16(LogoBuffer, 2048, crc16checksum);
-	}
-
-	if(result>=0){
-		crc16checksum=ReflectAndXORCRC16(crc16checksum);
-
-		switch(RegionCode){
-			/* NTSC regions. */
-			case 'J':
-			case 'A':
-			case 'C':
-			case 'H':
-			case 'M':
-				result=(crc16checksum==0xD2BC)?1:0;
-				break;
-			/* PAL regions. */
-			case 'E':
-			case 'R':
-			case 'O':
-				result=(crc16checksum==0x4702)?1:0;
-				break;
-			default:
-				result=0;
-		}
-
-		LOG("Console region:\t%c\nLogo checksum:\t0x%04x\nResult:\t%d\n", RegionCode, crc16checksum, result);
-	}
-	else{
-		LOG("Error reading logo: %d\n", result);
-	}
-
-	free(LogoBuffer);
-
-	return result;
-}
-#endif
 
 
 #define IRX_NUM 10
@@ -272,19 +201,15 @@ void sysLaunchLoaderElf(unsigned long int StartLBA, char *filename, char *mode_s
 
 	printf("Starting EE core.\n");
 
-#ifdef PS2LOGO
-	if(IsLogoValid(StartLBA)==1){
-		argv[3] = "rom0:PS2LOGO";
-		argv[4] = FullELFPath;
-		argv[5] = NULL;
-		NumArgs=5;
-	} else
+#if 0
+	argv[3] = "rom0:PS2LOGO";
+	argv[4] = FullELFPath;
+	argv[5] = NULL;
+	NumArgs=5;
 #endif
-	{
-		argv[3] = FullELFPath;
-		argv[4] = NULL;
-		NumArgs=4;
-	}
+	argv[3] = FullELFPath;
+	argv[4] = NULL;
+	NumArgs=4;
 
 	fileXioStop();
 	SifExitRpc();

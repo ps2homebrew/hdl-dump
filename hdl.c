@@ -89,13 +89,13 @@ static const char *HDL_HDR0 =
 
 static const char *HDL_HDR1 =
 "BOOT2 = PATINFO\n"
-"VER = 1.00\n"
-"VMODE = PAL\n"
+"VER = 1.20\n"
+"VMODE = NTSC\n"
 "HDDUNITPOWER = NICHDD\n";
 
 static const char *HDL_HDR2 =
 "PS2X\n"
-"title0 = HD Loader\n"				/* "HD Loader" */
+"title0 = miniOPL\n"				/* "HD Loader" */
 "title1 = %s\n"						/* game title */
 "bgcola = %u\n"						/* transparency=64 */
 "bgcol0 = %u,%u,%u\n"				/* 22, 47, 92 */
@@ -565,7 +565,7 @@ hdd_inject_header (hio_t *hio,
 		} else {
 		  set_u32 (buffer_4m + 0x001030, 0x000000);
 		  set_u32 (buffer_4m + 0x001034, patinfo_length);
-		  fprintf (stdout, "Boot.kelf was zero-sized - clear all patinfo data\n");
+		  fprintf (stdout, "Boot.kelf was %d-sized - clear all patinfo data\n",patinfo_length);
 		}
 	  }
 	  else
