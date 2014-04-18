@@ -69,8 +69,8 @@
 #if defined (INCLUDE_MAP_CMD)
 #  define CMD_MAP "map"
 #endif
-#if defined (INCLUDE_DELETE_CMD)
-#  define CMD_DELETE "delete"
+#if defined (INCLUDE_HIDE_CMD)
+#  define CMD_HIDE "delete"
 #endif
 #if defined (INCLUDE_ZERO_CMD)
 #  define CMD_ZERO "zero"
@@ -538,7 +538,7 @@ show_apa_cut_out_for_inject (const dict_t *config,
 
 
 /**************************************************************/
-#if defined (INCLUDE_DELETE_CMD)
+#if defined (INCLUDE_HIDE_CMD)
 static int
 delete_partition (const dict_t *config,
 		  const char *device_name,
@@ -548,14 +548,14 @@ delete_partition (const dict_t *config,
   int result = apa_toc_read (config, device_name, &toc);
   if (result == RET_OK && toc != NULL)
     {
-      result = apa_delete_partition (toc, name);
+      result = apa_HIDE_partition (toc, name);
       if (result == RET_NOT_FOUND)
 	{ /* assume `name' is game name, instead of partition name */
 	  char partition_id[PS2_PART_IDMAX + 1];
 	  result = hdl_lookup_partition (config, device_name,
 					 name, partition_id);
 	  if (result == RET_OK)
-	    result = apa_delete_partition (toc, partition_id);
+	    result = apa_HIDE_partition (toc, partition_id);
 	}
 
       if (result == RET_OK)
@@ -565,7 +565,7 @@ delete_partition (const dict_t *config,
     }
   return (result);
 }
-#endif /* INCLUDE_DELETE_CMD defined? */
+#endif /* INCLUDE_HIDE_CMD defined? */
 
 
 /**************************************************************/
@@ -1434,10 +1434,10 @@ show_usage_and_exit (const char *app_path,
 	"Displays PlayStation 2 HDD usage map.",
 	"hdd1:", NULL, 0 },
 #endif
-#if defined (INCLUDE_DELETE_CMD)
-      { CMD_DELETE, "device partition/game",
-	"Deletes PlayStation 2 HDD partition. First attempts to locate partition\n"
-	"by name, then by game name.",
+#if defined (INCLUDE_HIDE_CMD)
+      { CMD_HIDE, "device partition/game",
+	"Hides PlayStation 2 HDD partition. First attempts to locate partition\n"
+	"by name, then by game name. It is better to use another tool for removing.",
 	"hdd1: \"PP.HDL.Tekken Tag Tournament\"", "192.168.0.10 \"Tekken\"", 1 },
 #endif
 #if defined (INCLUDE_ZERO_CMD)
@@ -1922,16 +1922,16 @@ main (int argc, char *argv[])
 	}
 #endif /* INCLUDE_MAP_CMD defined? */
 
-#if defined (INCLUDE_DELETE_CMD)
-      else if (caseless_compare (command_name, CMD_DELETE))
+#if defined (INCLUDE_HIDE_CMD)
+      else if (caseless_compare (command_name, CMD_HIDE))
 	{ /* delete partition */
 	  if (argc != 4)
-	    show_usage_and_exit (argv[0], CMD_DELETE);
+	    show_usage_and_exit (argv[0], CMD_HIDE);
 
 	  handle_result_and_exit (delete_partition (config, argv[2], argv[3]),
 				  argv[2], argv[3]);
 	}
-#endif /* INCLUDE_DELETE_CMD defined? */
+#endif /* INCLUDE_HIDE_CMD defined? */
 
 #if defined (INCLUDE_ZERO_CMD)
       else if (caseless_compare (command_name, CMD_ZERO))

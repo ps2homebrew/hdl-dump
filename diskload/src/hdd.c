@@ -120,6 +120,10 @@ int hddGetHDLGameInfo(const char *Partition, hdl_game_info_t *ginfo)
 
 			// calculate total size
 			size = PartStat.size;
+			if (PartStat.mode != 0x1337) {// Check if partition type is HD Loader (0x1337)
+				free(PathToPart);
+				return -1;
+			}
 
 			strncpy(ginfo->partition_name, Partition, sizeof(ginfo->partition_name)-1);
 			ginfo->partition_name[sizeof(ginfo->partition_name)-1]='\0';
