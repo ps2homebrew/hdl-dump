@@ -6,11 +6,10 @@
 
 int sysGetDiscID(char *discID);
 int sysPcmciaCheck(void);
-void sysGetCDVDFSV(void **data_irx, int *size_irx);
 #ifdef VMC
-void sysLaunchLoaderElf(unsigned long int StartLBA, char *filename, char *mode_str, int size_cdvdman_irx, void *cdvdman_irx, int size_mcemu_irx, void *mcemu_irx, int compatflags, int alt_ee_core);
+void sysLaunchLoaderElf(unsigned long int StartLBA, char *filename, char *mode_str, int size_cdvdman_irx, void *cdvdman_irx, int size_mcemu_irx, void *mcemu_irx, unsigned int compatflags);
 #else
-void sysLaunchLoaderElf(unsigned long int StartLBA, char *filename, char *mode_str, int size_cdvdman_irx, void *cdvdman_irx, int compatflags, int alt_ee_core);
+void sysLaunchLoaderElf(unsigned long int StartLBA, char *filename, char *mode_str, int size_cdvdman_irx, void *cdvdman_irx, unsigned int compatflags);
 #endif
 #ifdef VMC
 int sysCheckVMC(const char* prefix, const char* sep, char* name, int createSize);

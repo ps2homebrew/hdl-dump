@@ -1,29 +1,27 @@
 /*
   Copyright 2009, Ifcaro
   Licenced under Academic Free License version 3.0
-  Review OpenUsbLd README & LICENSE files for further details.  
+  Review OpenUsbLd README & LICENSE files for further details.
 */
 
 #include "include/usbld.h"
 #include "include/system.h"
+#include "include/ioprp.h"
+
+extern unsigned char udnl_irx[];
+extern unsigned int size_udnl_irx;
 
 extern unsigned char imgdrv_irx[];
 extern unsigned int size_imgdrv_irx;
 
-extern unsigned char eesync_irx[];
-extern unsigned int size_eesync_irx;
-
 extern unsigned char cdvdfsv_irx[];
 extern unsigned int size_cdvdfsv_irx;
-
-extern unsigned char cddev_irx[];
-extern unsigned int size_cddev_irx;
 
 extern unsigned char eecore_elf[];
 extern unsigned int size_eecore_elf;
 
-extern unsigned char alt_eecore_elf[];
-extern unsigned int size_alt_eecore_elf;
+extern unsigned char IOPRP_img[];
+extern unsigned int size_IOPRP_img;
 
 #define ELF_MAGIC		0x464c457f
 #define ELF_PT_LOAD		1
@@ -58,7 +56,7 @@ typedef struct {
 
 typedef struct {
 	void *irxaddr;
-	int irxsize;
+	unsigned int irxsize;
 } irxptr_t;
 
 // structs for DEVCTL commands
@@ -76,26 +74,29 @@ typedef struct
 
 int sysPcmciaCheck(void) {
 	/* fileXioDevctl returns 0 if the DEV9 device is the CXD9566 (PCMCIA), and 1 if it's the CXD9611 (Expansion bay). */
-	return(fileXioDevctl("dev9x:", 0x4401, NULL, 0, NULL, 0)==0?1:0);
+	return(fileXioDevctl("dev9x0:", 0x4401, NULL, 0, NULL, 0)==0?1:0);
 }
 
 
-#define IRX_NUM 10
+#define IRX_NUM 8
 
 static inline void sendIrxKernelRAM(int size_cdvdman_irx, void *cdvdman_irx) { // Send IOP modules that core must use to Kernel RAM
-	void *irxtab = (void *)0x80033010;
-	void *irxptr = (void *)0x80033100;
-	irxptr_t irxptr_tab[IRX_NUM];
+	irxptr_t *irxptr_tab;
 	void *irxsrc[IRX_NUM];
+	void *irxptr;
 	int i, n;
-	u32 irxsize, curIrxSize;
+	unsigned int irxsize, curIrxSize;
+	void *ioprp_image;
+	unsigned int size_ioprp_image;
+
+	irxptr_tab=(irxptr_t*)0x00088004;
+	ioprp_image=malloc(size_IOPRP_img+size_cdvdman_irx+size_cdvdfsv_irx+256);
+	size_ioprp_image=patch_IOPRP_image(ioprp_image, cdvdman_irx, size_cdvdman_irx);
 
 	n = 0;
+	irxptr_tab[n++].irxsize = size_ioprp_image;
+	irxptr_tab[n++].irxsize = size_udnl_irx;
 	irxptr_tab[n++].irxsize = size_imgdrv_irx;
-	irxptr_tab[n++].irxsize = size_eesync_irx;
-	irxptr_tab[n++].irxsize = size_cdvdman_irx;
-	irxptr_tab[n++].irxsize = size_cdvdfsv_irx;
-	irxptr_tab[n++].irxsize = size_cddev_irx;
 	irxptr_tab[n++].irxsize = 0;	//usbd
 	irxptr_tab[n++].irxsize = 0;	//smsmap
 	irxptr_tab[n++].irxsize = 0;	//udptty
@@ -103,11 +104,9 @@ static inline void sendIrxKernelRAM(int size_cdvdman_irx, void *cdvdman_irx) { /
 	irxptr_tab[n++].irxsize = 0;	//smstcpip
 
 	n = 0;
-	irxsrc[n++] = (void *)imgdrv_irx;
-	irxsrc[n++]= (void *)eesync_irx;
-	irxsrc[n++] = (void *)cdvdman_irx;
-	irxsrc[n++] = (void *)cdvdfsv_irx;
-	irxsrc[n++] = (void *)cddev_irx;
+	irxsrc[n++] = ioprp_image;
+	irxsrc[n++] = (void *)&udnl_irx;
+	irxsrc[n++] = (void *)&imgdrv_irx;
 	irxsrc[n++] = NULL;
 	irxsrc[n++] = NULL;
 	irxsrc[n++] = NULL;
@@ -116,36 +115,28 @@ static inline void sendIrxKernelRAM(int size_cdvdman_irx, void *cdvdman_irx) { /
 
 	irxsize = 0;
 
-	DIntr();
-	ee_kmode_enter();
-
-	*(void**)0x80033000 = irxtab;
+	*(irxptr_t**)0x00088000 = irxptr_tab;
+	irxptr = (void *)((((unsigned int)irxptr_tab+sizeof(irxptr_t)*IRX_NUM)+0xF)&~0xF);
 
 	for (i = 0; i < IRX_NUM; i++) {
 		curIrxSize = irxptr_tab[i].irxsize;
 		irxptr_tab[i].irxaddr = irxptr;
 
 		if (curIrxSize > 0) {
-	/*		ee_kmode_exit();
-			EIntr();
-			LOG("irx addr start: %p end: %p\n", irxptr_tab[i].irxaddr, irxptr_tab[i].irxaddr+curIrxSize);
-			DIntr();
-			ee_kmode_enter(); */
+	/*		LOG("irx addr start: %p end: %p\n", irxptr_tab[i].irxaddr, irxptr_tab[i].irxaddr+curIrxSize);
+			*/
 
 			memcpy((void *)irxptr_tab[i].irxaddr, (void *)irxsrc[i], curIrxSize);
 
-			irxptr += curIrxSize;
+			irxptr += ((curIrxSize+0xF)&~0xF);
 			irxsize += curIrxSize;
 		}
 	}
 
-	memcpy(irxtab, irxptr_tab, sizeof(irxptr_tab));
-
-	ee_kmode_exit();
-	EIntr();
+	free(ioprp_image);
 }
 
-void sysLaunchLoaderElf(unsigned long int StartLBA, char *filename, char *mode_str, int size_cdvdman_irx, void *cdvdman_irx, int compatflags, int alt_ee_core) {
+void sysLaunchLoaderElf(unsigned long int StartLBA, char *filename, char *mode_str, int size_cdvdman_irx, void *cdvdman_irx, unsigned int compatflags) {
 	u8 *boot_elf = NULL;
 	elf_header_t *eh;
 	elf_pheader_t *eph;
@@ -158,13 +149,13 @@ void sysLaunchLoaderElf(unsigned long int StartLBA, char *filename, char *mode_s
 	if (gExitPath[0] == '\0')
 		strncpy(gExitPath, "Browser", 32);
 
+	memset((void*)0x00082000, 0, 0x00100000-0x00082000);
+
 	sendIrxKernelRAM(size_cdvdman_irx, cdvdman_irx);
 
 	// NB: LOADER.ELF is embedded
-	if (alt_ee_core)
-		boot_elf = (u8 *)&alt_eecore_elf;
-	else
-		boot_elf = (u8 *)&eecore_elf;
+
+	boot_elf = (u8 *)&eecore_elf;
 	eh = (elf_header_t *)boot_elf;
 	if (_lw((u32)&eh->ident) != ELF_MAGIC)
 		while (1);
@@ -192,7 +183,7 @@ void sysLaunchLoaderElf(unsigned long int StartLBA, char *filename, char *mode_s
 
 	char cmask[10];
 	snprintf(cmask, 10, "%d", compatflags);
-	argv[0] = config_str;	
+	argv[0] = config_str;
 	argv[1] = filename;
 	argv[2] = cmask;
 

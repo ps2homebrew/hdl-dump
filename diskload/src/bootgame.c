@@ -8,8 +8,6 @@
 #define COMPAT_MODE_4 		0x08
 #define COMPAT_MODE_5 		0x10
 #define COMPAT_MODE_6 		0x20
-#define COMPAT_MODE_7 		0x40
-#define COMPAT_MODE_8 		0x80
 
 extern unsigned char hdd_cdvdman_irx[];
 extern unsigned int size_hdd_cdvdman_irx;
@@ -165,17 +163,13 @@ int main(int argc, char *argv[]){
 			u8 alt_read_mode = 1;
 			memcpy((void*)((u32)irx + i + 35),&alt_read_mode,1);
 		}
-		if (compatMode & COMPAT_MODE_7) {
-			u8 use_threading_hack = 1;
-			memcpy((void*)((u32)irx + i + 36),&use_threading_hack, 1);
-		}
 		if (compatMode & COMPAT_MODE_5) {
 			u8 no_dvddl = 1;
-			memcpy((void*)((u32)irx + i + 37),&no_dvddl,1);
+			memcpy((void*)((u32)irx + i + 36),&no_dvddl,1);
 		}
 		if (compatMode & COMPAT_MODE_4) {
-			u16 no_pss = 1;
-			memcpy((void*)((u32)irx + i + 38),&no_pss,2);
+			u8 no_pss = 1;
+			memcpy((void*)((u32)irx + i + 37),&no_pss,1);
 		}
 		
 		// patch cdvdman timer
@@ -197,7 +191,7 @@ int main(int argc, char *argv[]){
 
 		sprintf(filename, "%s", GameInfo.startup);
 		
-		sysLaunchLoaderElf(GameInfo.start_sector, filename, "HDD_MODE", size_irx, irx, compatMode, compatMode & COMPAT_MODE_1);
+		sysLaunchLoaderElf(GameInfo.start_sector, filename, "HDD_MODE", size_irx, irx, compatMode);
 		result=-1;
 	}
 
