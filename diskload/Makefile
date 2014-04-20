@@ -5,13 +5,11 @@ EESIO_DEBUG = 0
 
 FRONTEND_OBJS = obj/system.o obj/bootgame.o obj/hdd.o
 
-EECORE_OBJS =	obj/ee_core.o obj/alt_ee_core.o \
-		obj/imgdrv.o obj/eesync.o \
+EECORE_OBJS =	obj/ee_core.o obj/ioprp.o obj/udnl.o \
+		obj/imgdrv.o obj/eesync.o obj/IOPRP_img.o \
 		obj/hdd_cdvdman.o obj/hdd_pcmcia_cdvdman.o \
-		obj/cdvdfsv.o obj/cddev.o \
-		obj/ps2dev9.o \
-		obj/ps2atad.o obj/poweroff.o obj/ps2hdd.o \
-		obj/iomanx.o obj/filexio.o \
+		obj/cdvdfsv.o obj/ps2dev9.o obj/ps2atad.o \
+		obj/poweroff.o obj/ps2hdd.o obj/iomanx.o obj/filexio.o \
 
 EE_BIN = diskload.elf
 EE_SRC_DIR = src/
@@ -81,8 +79,9 @@ sclean:
 	echo "    * Interface"
 	rm -f $(EE_BIN) OPNPS2LD.ELF asm/*.* obj/*.*
 	echo "    * EE core"
+	echo "    * udnl.irx"
+	$(MAKE) -C modules/iopcore/udnl clean
 	$(MAKE) -C ee_core clean
-	$(MAKE) -C ee_core -f Makefile.alt clean
 	echo "    * imgdrv.irx"
 	$(MAKE) -C modules/iopcore/imgdrv clean
 	echo "    * eesync.irx"
@@ -93,8 +92,6 @@ sclean:
 	echo "    * cdvdfsv.irx"
 	$(MAKE) -C modules/iopcore/cdvdfsv clean
 	echo "    * cddev.irx"
-	$(MAKE) -C modules/iopcore/cddev clean
-	echo "    * ps2dev9.irx"
 	$(MAKE) -C modules/dev9 clean
 	echo "    * ps2hdd.irx"
 	$(MAKE) -C modules/hdd/ps2hdd clean
@@ -109,11 +106,10 @@ ee_core.s:
 	$(MAKE) $(VMC_FLAGS) $(EECORE_DEBUG_FLAGS) -C ee_core
 	bin2s ee_core/ee_core.elf asm/ee_core.s eecore_elf
 
-alt_ee_core.s:
-	echo "    * alternative EE core"
-	$(MAKE) -C ee_core -f Makefile.alt clean
-	$(MAKE) $(VMC_FLAGS) $(EECORE_DEBUG_FLAGS) -C ee_core -f Makefile.alt
-	bin2s ee_core/ee_core.elf asm/alt_ee_core.s alt_eecore_elf
+udnl.s:
+	echo "    * udnl.irx"
+	$(MAKE) -C modules/iopcore/udnl
+	bin2s modules/iopcore/udnl/udnl.irx asm/udnl.s udnl_irx
 
 imgdrv.s:
 	echo "    * imgdrv.irx"
@@ -142,11 +138,6 @@ cdvdfsv.s:
 	$(MAKE) -C modules/iopcore/cdvdfsv
 	bin2s modules/iopcore/cdvdfsv/cdvdfsv.irx asm/cdvdfsv.s cdvdfsv_irx
 
-cddev.s:
-	echo "    * cddev.irx"
-	$(MAKE) -C modules/iopcore/cddev
-	bin2s modules/iopcore/cddev/cddev.irx asm/cddev.s cddev_irx
-
 ps2dev9.s:
 	echo "    * ps2dev9.irx"
 	$(MAKE) -C modules/dev9
@@ -171,6 +162,9 @@ iomanx.s:
 filexio.s:
 	bin2s $(PS2SDK)/iop/irx/fileXio.irx asm/filexio.s filexio_irx
   
+IOPRP_img.s:
+	bin2s modules/iopcore/IOPRP.img asm/IOPRP_img.s IOPRP_img
+
 $(EE_OBJS_DIR)%.o : $(EE_SRC_DIR)%.c
 	$(EE_CC) $(EE_CFLAGS) $(EE_INCS) -c $< -o $@
 
