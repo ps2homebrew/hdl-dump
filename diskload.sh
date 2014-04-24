@@ -14,7 +14,9 @@ rm -rf thirdparty
 rm -rf include
 rm -rf src
 rm -rf modules/cdvd
-rm -rf modules/debug
+rm -rf modules/debug/ps2link
+rm -rf modules/debug/ioptrap
+rm -rf modules/debug/udptty
 rm -rf modules/mcemu
 rm -rf modules/network
 rm -rf modules/ps2fs
