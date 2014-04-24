@@ -1,7 +1,10 @@
 .SILENT:
 
+#For debugging with DECI2 (EE only), enable DEBUG, INGAME_DEBUG and DECI2_DEBUG.
 DEBUG = 0
 EESIO_DEBUG = 0
+INGAME_DEBUG = 0
+DECI2_DEBUG = 0
 
 FRONTEND_OBJS = obj/system.o obj/bootgame.o obj/hdd.o
 
@@ -38,6 +41,13 @@ endif
 ifeq ($(INGAME_DEBUG),1)
 	EECORE_DEBUG_FLAGS = LOAD_DEBUG_MODULES=1
 	CDVDMAN_DEBUG_FLAGS = USE_DEV9=1
+	ifeq ($(DECI2_DEBUG),1)
+		EECORE_DEBUG_FLAGS += DECI2_DEBUG=1
+		EE_CFLAGS += -D__DECI2_DEBUG
+		EECORE_OBJS += obj/drvtif_irx.o obj/tifinet_irx.o
+		UDNL_CFLAGS = DECI2_DEBUG=1
+	endif
+
 else
 	ifeq ($(IOPCORE_DEBUG),1)
 		EECORE_DEBUG_FLAGS = LOAD_DEBUG_MODULES=1
@@ -70,6 +80,9 @@ eesio_debug:
 
 iopcore_debug:
 	$(MAKE) IOPCORE_DEBUG=1 DEBUG=1 all
+
+deci2_debug:
+	$(MAKE) DEBUG=1 INGAME_DEBUG=1 DECI2_DEBUG=1 all
 
 clean:  sclean
 
@@ -108,7 +121,7 @@ ee_core.s:
 
 udnl.s:
 	echo "    * udnl.irx"
-	$(MAKE) -C modules/iopcore/udnl
+	$(MAKE) $(UDNL_CFLAGS) -C modules/iopcore/udnl
 	bin2s modules/iopcore/udnl/udnl.irx asm/udnl.s udnl_irx
 
 imgdrv.s:
@@ -164,6 +177,12 @@ filexio.s:
   
 IOPRP_img.s:
 	bin2s modules/iopcore/IOPRP.img asm/IOPRP_img.s IOPRP_img
+
+drvtif_irx.s:
+	bin2s modules/debug/drvtif.irx asm/drvtif_irx.s drvtif_irx
+
+tifinet_irx.s:
+	bin2s modules/debug/tifinet.irx asm/tifinet_irx.s tifinet_irx
 
 $(EE_OBJS_DIR)%.o : $(EE_SRC_DIR)%.c
 	$(EE_CC) $(EE_CFLAGS) $(EE_INCS) -c $< -o $@
