@@ -94,7 +94,7 @@ int _start(int argc, char *argv[]){
 	}
 
 	InitPktDrv(ip_address, subnet_mask, gateway);
-	NetManInit(&stack);
+	NetManRegisterNetworkStack(&stack);
 
 	return MODULE_RESIDENT_END;
 }

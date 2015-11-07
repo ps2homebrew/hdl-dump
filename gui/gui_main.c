@@ -282,10 +282,10 @@ dlg_switch_operation (HWND dlg)
 
   ShowWindow (GetDlgItem (dlg, IDC_DMA_LBL), inject_show);
   ShowWindow (GetDlgItem (dlg, IDC_DMA_TYPE), inject_show);
-  
+#if 0
   SetWindowText (GetDlgItem (dlg, IDC_ACTION),
 		 get_string (inject_show ? IDS_INSTALL_LBL : IDS_DELETE_LBL, 0));
-
+#endif
   ShowWindow (GetDlgItem (dlg, IDC_CONTENTS), examine_show);
 }
 
@@ -868,7 +868,7 @@ install (HWND dlg)
     return; /* all are required */
 }
 
-
+#if 0
 /**************************************************************/
 static void
 delete (HWND dlg)
@@ -917,17 +917,13 @@ delete (HWND dlg)
       dlg_refresh_hdd_info (dlg); /* always reload HDD info */
     }
 }
-
+#endif INCLUDE_HIDE_CMD
 
 /**************************************************************/
 void
 install_or_delete (HWND dlg)
 {
-  BOOL inject_mode = IsDlgButtonChecked (dlg, IDC_INSTALL_OPT) == BST_CHECKED;
-  if (inject_mode)
     install (dlg);
-  else
-    delete (dlg);
 }
 
 

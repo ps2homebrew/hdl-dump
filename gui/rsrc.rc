@@ -78,7 +78,7 @@ BEGIN
     LTEXT           "Operation:",IDC_OPERATION_LBL,5,81,50,8
     CONTROL         "Install games",IDC_INSTALL_OPT,"Button",
                     BS_AUTORADIOBUTTON,60,80,90,10
-    CONTROL         "Browse and delete",IDC_BROWSE_OPT,"Button",
+    CONTROL         "Browse",IDC_BROWSE_OPT,"Button",
                     BS_AUTORADIOBUTTON,155,80,90,10
 
     GROUPBOX        "Source",IDC_SOURCE_LBL,5,95,240,45,WS_GROUP
@@ -101,7 +101,7 @@ BEGIN
     LTEXT           "&Startup:",IDC_SIGNATURE_LBL,10,187,45,8
     EDITTEXT        IDC_SIGNATURE,60,185,60,12,ES_AUTOHSCROLL
     LTEXT           "Compatibility:",IDC_FLAGS_LBL,10,200,70,8
-    CONTROL         "1: Load alt. core",IDC_MODE1,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
+    CONTROL         "1: Accurate Reads",IDC_MODE1,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
                     60,200,85,10
     CONTROL         "2: Alt. data read",IDC_MODE2,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
                     60,210,85,10
@@ -109,11 +109,11 @@ BEGIN
                     60,220,85,10
     CONTROL         "4: 0 PSS mode",IDC_MODE4,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
                     60,230,85,10
-    CONTROL         "5: Disable DVD-DL",IDC_MODE5,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
+    CONTROL         "5: Emulate DVD-DL",IDC_MODE5,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
                     150,200,85,10
     CONTROL         "6: Disable IGR",IDC_MODE6,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
                     150,210,85,10
-    CONTROL         "7: Use IOP thread hack",IDC_MODE7,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
+    CONTROL         "7: High module storage",IDC_MODE7,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
                     150,220,85,10
     CONTROL         "8: Hide dev9 module",IDC_MODE8,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
                     150,230,85,10
