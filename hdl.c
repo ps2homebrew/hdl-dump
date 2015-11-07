@@ -113,6 +113,29 @@ static const char *HDL_HDR2 =
 "uninstallmes1 =\n"
 "uninstallmes2 =\n";
 
+static const char *HDL_HDR3 =
+"title = %s\n"				/* "Game Name" */
+"title_id = %s\n"						/* startup */
+"title_sub_id = 0\n"						
+"release_date = 20000101\n"				
+"developer_id =\n"				
+"publisher_id = miniOPL\n"				/* hdloader*/
+"note =\n"				/* 22, 47, 92 */
+"content_web =\n"
+"image_topviewflag = 0\n"
+"image_type = 0\n"
+"image_count = 1\n"
+"image_viewsec = 600\n"
+"copyright_viewflag = 1\n"
+"copyright_imgcount = 1\n"
+"genre =\n"
+"parental_lock = 1\n"
+"effective_date = 0\n"
+"expire_date = 0\n"
+"violence_flag = 0\n"
+"content_type = 255\n"
+"content_subtype = 0\n";
+
 
 /**************************************************************/
 static int
@@ -143,6 +166,15 @@ prepare_main (const hdl_game_t *details,
   const ps2_partition_header_t *part;
   const apa_slice_t *slice = toc->slice + slice_index;
 
+  FILE *out = fopen ("./info.sys", "wb");
+  if (out != NULL)
+	{
+	  char info_props[1024];
+	  sprintf(info_props, HDL_HDR3, details->name, details->startup);
+	  fwrite (info_props, 1, strlen (info_props), out);
+	}
+  (void) fclose (out);
+	
   part = NULL;
 
   for (i = 0; i < slice->part_count; ++i)
@@ -189,8 +221,10 @@ prepare_main (const hdl_game_t *details,
       memcpy (buffer_4m, part, 1024);
 	  
 	  /* read icon.sys in memory card format
-		 if in another format or skipped used
-		 default data for HDLoader icon        */
+	   * or in hdd format
+	   * if in another format or skipped used
+	   * default data for HDLoader icon 
+	   */
 	  result = read_file ("./icon.sys", &iconsys, &iconsys_length);
 	  if ((result == OSAL_OK) && (!strncmp(iconsys, "PS2D", 4)))
 	  {
@@ -219,7 +253,11 @@ prepare_main (const hdl_game_t *details,
 		(unsigned char)(mcIcon_details->lightCol[2][2]*128)	);
 /*		McIconSys*/
 	  }
-	  else if (iconsys_length != 0)
+	  else if ((result == OSAL_OK) && (!strncmp(iconsys, "PS2X", 4)))
+	  {
+		strcpy (icon_props,iconsys);
+	  }
+	  else
 	  {
 		sprintf (icon_props, HDL_HDR2, details->name, 64,
 		  22,47,92, 3,10,28, 3,10,28, 22,47,92,
@@ -234,14 +272,18 @@ prepare_main (const hdl_game_t *details,
       memcpy (buffer_4m + 0x001000, HDL_HDR0, strlen (HDL_HDR0));
 
       /*
-       *                     +--+--+--+- BE, BOOT2 = ... section length in bytes
-       *                     |  |  |  |               +--+--+--+- BE, PSX2... len in bytes
-       *                     v  v  v  v               v  v  v  v
+	   *         +--+--+--+- system.cnf offset relative to 0x1000
+       *         |  |  |  |  +--+--+--+- system.cnf section length in bytes
+       *         |  |  |  |  |  |  |  |   +--+--+--+- icon.sys offset relative to 0x1000
+       *         |  |  |  |  |  |  |  |   |  |  |  |  +--+--+--+- icon.sys length in bytes
+       *         v  v  v  v  v  v  v  v   v  v  v  v  v  v  v  v
        *  1010: 00 02 00 00 4b 00 00 00  00 04 00 00 70 01 00 00
        *  1020: 00 08 00 00 58 81 00 00  00 08 00 00 58 81 00 00
-       *         ^  ^  ^  ^  ^  ^  ^  ^               ^  ^  ^  ^
-       *         |  |  |  |  +--+--+--+- same as =>   +--+--+--+- BE, icon length in bytes
-       *         +--+--+--+- part offset relative to 0x1000	   
+       *         ^  ^  ^  ^  ^  ^  ^  ^   ^  ^  ^  ^  ^  ^  ^  ^
+       *         |  |  |  |  |  |  |  |   |  |  |  |  +--+--+--+- delete icon length in bytes
+       *         |  |  |  |  |  |  |  |   +--+--+--+- delete icon offset relative to 0x1000
+       *         |  |  |  |  +--+--+--+- main icon length in bytes
+       *         +--+--+--+- main icon offset relative to 0x1000
        */
       tmp = (u_int32_t*) (buffer_4m + 0x001010);
       set_u32 (tmp++, 0x0200);
@@ -307,24 +349,25 @@ prepare_main (const hdl_game_t *details,
       memcpy (buffer_4m + 0x1010ac, details->startup, strlen (details->startup));
 
       /*
-       *	          +- media type? 0x14 for DVD, 0x12 for CD, 0x10 for PSX CD (w/o audio)?
-       *	          |           +- number of partitions
-       *	          v           v
-       *	         14 00 00 00 05 00 00 00 00 
-   *1010f5: 00 00 00 00 20 50 00 00 00 c0 1f 00	;; 0x00500000, 512MB
-       *	f8 03 00 00 08 60 00 00 00 f0 1f 00	;; 0x00600000, 512MB
-       *	f6 07 00 00 08 70 00 00 00 f0 1f 00	;; 0x00700000, 512MB
-       *	f4 0b 00 00 08 44 00 00 00 f0 07 00	;; 0x00440000, 128MB
-       *	f2 0c 00 00 08 48 00 00 00 25 01 00	;; 0x00480000, 128MB
-       *	 ^  ^  ^  ^  ^  ^  ^  ^  ^  ^  ^  ^
-       *	 +--+--+--+  +--+--+--+  +--+--+--+- BE, x / 4 = part size in kilobytes[!]
-       *	          |           +- x << 8 = data start in HDD-sectors
-       *	          +- BE, x * 512 = part offset in megabytes, incremental counter[!]
+       *	 +- DVD9 layer break offset
+       *	 |           +- media type? 0x14 for DVD, 0x12 for CD, 0x10 for PSX CD (w/o audio)?
+       *	 |           |           +- number of partitions
+ 	   *     v           v           v
+   *1010e4: xx xx xx xx 14 00 00 00 05 00 00 00
+       *    00 00 00 00 00 20 50 00 00 00 c0 1f	;; 0x00500000, 512MB
+       *	00 f8 03 00 00 08 60 00 00 00 f0 1f	;; 0x00600000, 512MB
+       *	00 f6 07 00 00 08 70 00 00 00 f0 1f	;; 0x00700000, 512MB
+       *	00 f4 0b 00 00 08 44 00 00 00 f0 07	;; 0x00440000, 128MB
+       *	00 f2 0c 00 00 08 48 00 00 00 25 01	;; 0x00480000, 128MB
+       *	    ^  ^  ^  ^  ^  ^  ^  ^  ^  ^  ^
+       *	    +--+--+--+  +--+--+--+  +--+--+- BE, x / 4 = part size in kilobytes[!]
+       *	             |           +- x << 8 = data start in HDD-sectors
+       *	             +- BE, x * 512 = part offset in megabytes, incremental counter[!]
        */
 
-      /* that is aerial acrobatics :-) */
       set_u32 (buffer_4m + 0x1010e8, details->layer_break);
 	  set_u32 (buffer_4m + 0x1010ec, details->is_dvd ? 0x00000014 : 0x00000012);
+      /* that is aerial acrobatics :-) */
       buffer_4m[0x1010f0] = (u_int8_t) (get_u32 (&part->nsub) + 1);
       tmp = (u_int32_t*) (buffer_4m + 0x1010f5);
 
@@ -419,13 +462,12 @@ hdd_inject_header (hio_t *hio,
   u_int32_t del_length;
   char *kirx = NULL;
   u_int32_t kirx_length=0;
-  char *logo = NULL;
-  u_int32_t logo_length;
 
   apa_partition_t *part = NULL;
   const apa_slice_t *slice = toc->slice + slice_index;
   const u_int32_t SLICE_2_OFFS = 0x10000000; /* sectors */
   u_int32_t sector, dummy = 0;
+  char icon_props[1024];
 
   u_int32_t i;
   char *buffer_4m;
@@ -445,40 +487,50 @@ hdd_inject_header (hio_t *hio,
 
   if (result == RET_OK && part != NULL && buffer_4m != NULL)
     {
-
       /*
        *  1000: 50 53 32 49 43 4f 4e 33  44 00 00 00 00 00 00 00  PS2ICON3D.......
        *
-	   *
-       *                     +--+--+--+- BE, BOOT2 = ... section length in bytes
-       *                     |  |  |  |               +--+--+--+- BE, PSX2... len in bytes
-       *                     v  v  v  v               v  v  v  v
+	   *         +--+--+--+- system.cnf offset relative to 0x1000
+       *         |  |  |  |  +--+--+--+- system.cnf section length in bytes
+       *         |  |  |  |  |  |  |  |   +--+--+--+- icon.sys offset relative to 0x1000
+       *         |  |  |  |  |  |  |  |   |  |  |  |  +--+--+--+- icon.sys len in bytes
+       *         v  v  v  v  v  v  v  v   v  v  v  v  v  v  v  v
        *  1010: 00 02 00 00 4b 00 00 00  00 04 00 00 70 01 00 00
        *  1020: 00 08 00 00 58 81 00 00  00 08 00 00 58 81 00 00
-       *         ^  ^  ^  ^  ^  ^  ^  ^               ^  ^  ^  ^
-       *         |  |  |  |  +--+--+--+- same as =>   +--+--+--+- BE, icon length in bytes
-       *         +--+--+--+- part offset relative to 0x1000 
+       *         ^  ^  ^  ^  ^  ^  ^  ^   ^  ^  ^  ^  ^  ^  ^  ^
+       *         |  |  |  |  |  |  |  |   |  |  |  |  +--+--+--+- delete icon length in bytes
+       *         |  |  |  |  |  |  |  |   +--+--+--+- delete icon offset relative to 0x1000
+       *         |  |  |  |  +--+--+--+- main icon length in bytes
+       *         +--+--+--+- main icon offset relative to 0x1000
        *  1030: 00 00 11 00 58 81 00 00  00 00 00 00 00 00 00 00
-       *         ^  ^  ^  ^  ^  ^  ^  ^
-       *         |  |  |  |  +--+--+--+- BE, PATINFO.KELF length in bytes
-       *         +--+--+--+- PATINFO.KELF offset relative to 0x1000   
+       *         ^  ^  ^  ^  ^  ^  ^  ^   ^  ^  ^  ^  ^  ^  ^  ^
+       *         |  |  |  |  |  |  |  |   |  |  |  |  +--+--+--+- PATINFO.KIRX length in bytes
+       *         |  |  |  |  |  |  |  |   +--+--+--+- PATINFO.KIRX offset relative to 0x1000 (optional)
+       *         |  |  |  |  |  |  |  |   
+       *         |  |  |  |  +--+--+--+- PATINFO.KELF length in bytes
+       *         +--+--+--+- PATINFO.KELF offset relative to 0x1000 (optional)
        */
       memcpy (buffer_4m + 0x001000, HDL_HDR0, strlen (HDL_HDR0));
 
-
-      /*
+      /* system.cnf
        *  1200: 42 4f 4f 54 32 20 3d 20 50 41 54 49 4e 46 4f 0a  BOOT2 = PATINFO.
        *  1210: 56 45 52 20 3D 20 31 2E 30 30 0A 56 4D 4F 44 45  VER = 1.00.VMODE
        *  1220: 20 3d 20 50 41 4c 0a 48 44 44 55 4e 49 54 50 4f   = PAL.HDDUNITPO
        *  1230: 57 45 52 20 3d 20 4e 49 43 48 44 44 0a 00 00 00  WER = NICHDD....
        */
+
 	  result = read_file ("./system.cnf", &syscnf, &syscnf_length);
 	  if (result == OSAL_OK)
-	  {
-		set_u32 (buffer_4m + 0x001010, 0x0200);
-		set_u32 (buffer_4m + 0x001014, syscnf_length);
-		memcpy (buffer_4m + 0x001200, syscnf, syscnf_length);
-		fprintf (stdout, "Succesfully read system.cnf\n");
+	  {	  
+		if (syscnf_length > 0x200)
+		  fprintf (stdout, "system.cnf is larger than 512 Kbytes\n");
+	    else
+		{
+		  set_u32 (buffer_4m + 0x001010, 0x0200);
+		  set_u32 (buffer_4m + 0x001014, syscnf_length);
+		  memcpy (buffer_4m + 0x001200, syscnf, syscnf_length);
+		  fprintf (stdout, "Succesfully read system.cnf\n");
+		}
 	  }
 	  else
 	  {
@@ -487,19 +539,56 @@ hdd_inject_header (hio_t *hio,
 	  if (syscnf != NULL)
 		osal_free (syscnf); 
 
-      /*
+      /* icon.sys (HDD format) auto converted from MC format
        *  1400: 50 53 32 58 0a 74 69 74  6c 65 30 20 3d 20 48 44  PS2X.title0 = HD
        *  1410: 20 4c 6f 61 64 65 72 0a  74 69 74 6c 65 31 20 3d   Loader.title1 =
        *  1420: 20 54 77 69 73 74 65 64  20 4d 65 74 61 6c 3a 20   Twisted Metal: 
        *        ...
        */
+
 	  result = read_file ("./icon.sys", &iconsys, &iconsys_length);
-	  if ((result == OSAL_OK) && (!strncmp(iconsys, "PS2X", 4)))
+	  if ((result == OSAL_OK) && (!strncmp(iconsys, "PS2X", 4)))		  
 	  {
+		if (iconsys_length > 0x200)
+		  fprintf (stdout, "icon.sys is larger than 512 Kbytes\n");
+	    else
+		{
+		  set_u32 (buffer_4m + 0x001018, 0x0400);
+		  set_u32 (buffer_4m + 0x00101C, iconsys_length);
+		  memcpy (buffer_4m + 0x001400, iconsys, iconsys_length);
+		  fprintf (stdout, "Succesfully read icon.sys\n");
+		}
+	  }
+	  else if ((result == OSAL_OK) && (!strncmp(iconsys, "PS2D", 4)))
+	  {
+		McIcon *mcIcon_details;
+		mcIcon_details=(McIcon*)iconsys;
+		sprintf(icon_props, HDL_HDR2,
+		"HDLoader game",
+		mcIcon_details->trans,
+		mcIcon_details->bgCol[0][0]/2, mcIcon_details->bgCol[0][1]/2, mcIcon_details->bgCol[0][2]/2,
+		mcIcon_details->bgCol[1][0]/2, mcIcon_details->bgCol[1][1]/2, mcIcon_details->bgCol[1][2]/2,
+		mcIcon_details->bgCol[2][0]/2, mcIcon_details->bgCol[2][1]/2, mcIcon_details->bgCol[2][2]/2,
+		mcIcon_details->bgCol[3][0]/2, mcIcon_details->bgCol[3][1]/2, mcIcon_details->bgCol[3][2]/2,
+		mcIcon_details->lightDir[0][0], mcIcon_details->lightDir[0][1], mcIcon_details->lightDir[0][2],
+		mcIcon_details->lightDir[1][0], mcIcon_details->lightDir[1][1], mcIcon_details->lightDir[1][2],
+		mcIcon_details->lightDir[2][0], mcIcon_details->lightDir[2][1], mcIcon_details->lightDir[2][2],
+		(unsigned char)(mcIcon_details->lightAmbient[0]*128),
+		(unsigned char)(mcIcon_details->lightAmbient[1]*128),
+		(unsigned char)(mcIcon_details->lightAmbient[2]*128),
+		(unsigned char)(mcIcon_details->lightCol[0][0]*128),
+		(unsigned char)(mcIcon_details->lightCol[0][1]*128),
+		(unsigned char)(mcIcon_details->lightCol[1][0]*128),
+		(unsigned char)(mcIcon_details->lightCol[1][1]*128),
+		(unsigned char)(mcIcon_details->lightCol[1][2]*128),
+		(unsigned char)(mcIcon_details->lightCol[2][0]*128),
+		(unsigned char)(mcIcon_details->lightCol[2][1]*128),
+		(unsigned char)(mcIcon_details->lightCol[2][2]*128)	);
+		/* McIconSys*/
 		set_u32 (buffer_4m + 0x001018, 0x0400);
-		set_u32 (buffer_4m + 0x00101C, iconsys_length);
-		memcpy (buffer_4m + 0x001400, iconsys, iconsys_length);
-		fprintf (stdout, "Succesfully read icon.sys\n");
+		set_u32 (buffer_4m + 0x00101C, strlen (icon_props));
+		memcpy (buffer_4m + 0x001400, icon_props, strlen (icon_props));
+		fprintf (stdout, "Succesfully converted icon.sys into HDD format\n");		
 	  }
 	  else
 	  {
@@ -510,18 +599,24 @@ hdd_inject_header (hio_t *hio,
 
       /*
        *  1800: 00 00 01 00 01 00 00 00  07 00 00 00 00 00 80 3f  ...............?
-       *        ... icon ...
+       *        ... main icon ...
        *  9950: 00 04 00 00 00 00 00 00  00 00 00 00 00 00 00 00  ................
        */
+
 	  result = read_file ("./list.ico", &icon, &icon_length);
 	  if (result == OSAL_OK)
-	  {
-		set_u32 (buffer_4m + 0x001020, 0x0800);
-		set_u32 (buffer_4m + 0x001024, icon_length);
-		set_u32 (buffer_4m + 0x001028, 0x0800);
-		set_u32 (buffer_4m + 0x00102C, icon_length);
-		memcpy (buffer_4m + 0x001800, icon, icon_length);
-		fprintf (stdout, "Succesfully read list.ico\n");
+	  {		  
+		if (icon_length > 0x3F800)
+		  fprintf (stdout, "list.ico is larger than 260 096 Kbytes\n");
+	    else
+		{
+		  set_u32 (buffer_4m + 0x001020, 0x0800);
+		  set_u32 (buffer_4m + 0x001024, icon_length);
+		  set_u32 (buffer_4m + 0x001028, 0x0800);
+		  set_u32 (buffer_4m + 0x00102C, icon_length);
+		  memcpy (buffer_4m + 0x001800, icon, icon_length);
+		  fprintf (stdout, "Succesfully read list.ico\n");
+		}
 	  }
 	  else
 	  {
@@ -530,14 +625,24 @@ hdd_inject_header (hio_t *hio,
 	  if (icon != NULL)
 		osal_free (icon);
 
-	  /*  del.ico  */
+      /*
+       *  41000: 00 00 01 00 01 00 00 00  07 00 00 00 00 00 80 3f  ...............?
+       *        ... delete icon ...
+       *  49150: 00 04 00 00 00 00 00 00  00 00 00 00 00 00 00 00  ................
+       */
+
 	  result = read_file ("./del.ico", &del, &del_length);
 	  if (result == OSAL_OK)
 	  {
-		set_u32 (buffer_4m + 0x001028, 0x040000);
-		set_u32 (buffer_4m + 0x00102C, del_length);
-		memcpy (buffer_4m + 0x041000, del, del_length);
-		fprintf (stdout, "Succesfully read del.ico\n");
+		if (del_length > 0xC0000)
+		  fprintf (stdout, "del.ico is larger than 786 432 Kbytes\n");
+	    else
+		{
+		  set_u32 (buffer_4m + 0x001028, 0x040000);
+		  set_u32 (buffer_4m + 0x00102C, del_length);
+		  memcpy (buffer_4m + 0x041000, del, del_length);
+		  fprintf (stdout, "Succesfully read del.ico\n");
+		}
 	  }
 	  else
 	  {
@@ -547,94 +652,97 @@ hdd_inject_header (hio_t *hio,
 		osal_free (del);
 
 	  /*
-       *111000: 01 00 00 01 00 03 00 4a  00 01 02 19 00 00 00 56 
+       *  111000: 01 00 00 01 00 03 00 4a  00 01 02 19 00 00 00 56 
        *        ... PATINFO.KELF ...
-       *179640: 7e bd 13 b2 4e 1f 26 08  29 53 97 37 13 c3 71 1c 
+       *  179640: 7e bd 13 b2 4e 1f 26 08  29 53 97 37 13 c3 71 1c 
        *
 	   * read kelf or elf 
 	   */
-	  result = read_file ("./boot.kelf", &patinfo, &patinfo_length);
+
+	  fprintf (stdout, "Skipped boot.kelf. Trying to inject boot.elf\n");
+	  if (patinfo != NULL)
+		osal_free (patinfo);
+
+	  result = read_file ("./boot.elf", &patinfo, &patinfo_length);
 	  if (result == OSAL_OK)
 	  {
-		if (patinfo_length != 0)
+		if (patinfo_length > 0x1EEBE0)
+		  fprintf (stdout, "boot.elf is larger than 2 026 464 Kbytes\n");
+	    else
 		{
 		  set_u32 (buffer_4m + 0x001030, 0x110000);
-		  set_u32 (buffer_4m + 0x001034, patinfo_length);
-		  memcpy (buffer_4m + 0x111000, patinfo, patinfo_length);
-		  fprintf (stdout, "Succesfully read boot.kelf\n");
-		} else {
-		  set_u32 (buffer_4m + 0x001030, 0x000000);
-		  set_u32 (buffer_4m + 0x001034, patinfo_length);
-		  fprintf (stdout, "Boot.kelf was %d-sized - clear all patinfo data\n",patinfo_length);
+		  set_u32 (buffer_4m + 0x001034, patinfo_kelf_length);
+		  memcpy (buffer_4m + 0x111000, patinfo_header, patinfo_header_length);
+		  memcpy (buffer_4m + 0x111000 + patinfo_header_length, patinfo, patinfo_length);
+		  memcpy (buffer_4m + 0x111000 + patinfo_kelf_length - patinfo_footer_length, patinfo_footer, patinfo_footer_length);
+		  fprintf (stdout, "Succesfully read boot.elf\n");
 		}
 	  }
 	  else
 	  {
-		fprintf (stdout, "Skipped boot.kelf. Trying to boot boot.elf\n");
-		if (patinfo != NULL)
-		  osal_free (patinfo);
-		result = read_file ("./boot.elf", &patinfo, &patinfo_length);
-		if (result == OSAL_OK)
+		fprintf (stdout, "Skipped boot.elf\n");
+	  }
+	  if (patinfo != NULL)
+		osal_free (patinfo);
+
+	  result = read_file ("./boot.kelf", &patinfo, &patinfo_length);
+	  if (result == OSAL_OK)
+	  {
+		if (patinfo_length > 0x1F0000)
+		  fprintf (stdout, "boot.kelf is larger than 2 031 616 Kbytes\n");
+	    else
+		{
+		  if (patinfo_length != 0)
 		  {
 			set_u32 (buffer_4m + 0x001030, 0x110000);
-			set_u32 (buffer_4m + 0x001034, patinfo_kelf_length);
-			memcpy (buffer_4m + 0x111000, patinfo_header, patinfo_header_length);
-			memcpy (buffer_4m + 0x111000 + patinfo_header_length, patinfo, patinfo_length);
-			memcpy (buffer_4m + 0x111000 + patinfo_kelf_length - patinfo_footer_length, patinfo_footer, patinfo_footer_length);
-			fprintf (stdout, "Succesfully read boot.elf\n");
+			set_u32 (buffer_4m + 0x001034, patinfo_length);
+			memcpy (buffer_4m + 0x111000, patinfo, patinfo_length);
+			fprintf (stdout, "Succesfully read boot.kelf\n");
+		  } else {
+		/* if want to completely remove kelf - we need zero-sized boot.kelf 
+		 * For some reason HDD Browser 2.00 ignores system.cnf boot2
+		 * and loads boot.kelf if it is not zerosized 
+		 */
+		  set_u32 (buffer_4m + 0x001030, 0x000000);
+		  set_u32 (buffer_4m + 0x001034, patinfo_length);
+		  fprintf (stdout, "Boot.kelf was %d-sized - clear all patinfo data\n",patinfo_length);
 		  }
-		  else
-		  {
-			fprintf (stdout, "Skipped boot.elf\n");
-		  }
+		}
 	  }
 	  if (patinfo != NULL)
 		osal_free (patinfo);
 	
-	  /* kirx */
+	  /*
+       *  301000: 
+       *        ... PATINFO.KIRX ...
+	   *  400000:
+	   */
 	  result = read_file ("./boot.kirx", &kirx, &kirx_length);
 	  if (result == OSAL_OK)
 	  {
-		if (kirx_length != 0)
+		if (kirx_length > 0xFF000)
+		  fprintf (stdout, "boot.kirx is larger than 1 044 480 Kbytes\n");
+	    else
 		{
-		  set_u32 (buffer_4m + 0x001038, 0x300000);
-		  set_u32 (buffer_4m + 0x00103C, kirx_length);
-		  memcpy (buffer_4m + 0x301000, kirx, kirx_length);
-		  fprintf (stdout, "Succesfully read boot.kirx\n");
-		} else {
-		  set_u32 (buffer_4m + 0x001038, 0x000000);
-		  set_u32 (buffer_4m + 0x00103C, kirx_length);
-		  fprintf (stdout, "Boot.kirx was zero-sized - clear all kirx data\n");
-		}  
+		  if (kirx_length != 0)
+		  {
+			set_u32 (buffer_4m + 0x001038, 0x300000);
+			set_u32 (buffer_4m + 0x00103C, kirx_length);
+			memcpy (buffer_4m + 0x301000, kirx, kirx_length);
+			fprintf (stdout, "Succesfully read boot.kirx\n");
+		  } else {
+			set_u32 (buffer_4m + 0x001038, 0x000000);
+			set_u32 (buffer_4m + 0x00103C, kirx_length);
+			fprintf (stdout, "Boot.kirx was zero-sized - clear all kirx data\n");
+		  }
+		}
 	  }
 	  else
 	  {
 		fprintf (stdout, "Skipped boot.kirx\n");
 	  }
 	  if (kirx != NULL)
-		osal_free (kirx); 
-	  
-	  /* logo */
-	  result = read_file ("./logo.raw", &logo, &logo_length);
-	  if (result == OSAL_OK)
-	  {
-		if (file_exists ("./logo.bak"))
-		  fprintf (stdout, "Please remove old logo.bak. Skipped logo.raw\n");
-		else
-		{
-		  write_file("./logo.bak", buffer_4m + 4 _MB, 24576);
-		  memcpy (buffer_4m + 4 _MB, logo, logo_length);
-		  fprintf (stdout, "Succesfully read logo.raw. old logo saved as logo.bak\n");
-		}
-	  }
-	  else
-	  {
-		fprintf (stdout, "Skipped logo.raw\n");
-	  }
-	  if (logo != NULL)
-		osal_free (logo); 
-	  
-
+		osal_free (kirx);
 	}
   result = hio->write (hio, sector, (4 _MB + 24576) / 512, buffer_4m, &dummy);
   if (result == RET_OK)
@@ -648,17 +756,35 @@ hdd_inject_header (hio_t *hio,
 
 /**************************************************************/
 void
-hdl_pname (const char *name,
+hdl_pname (const char *startup_name, const char *name,
 	   char partition_name[PS2_PART_IDMAX + 1])
 {
-  u_int32_t game_name_len = PS2_PART_IDMAX - 1 - 7; /* limit partition name length */
+  u_int32_t game_name_len = 0;
   char *p;
 
   game_name_len = strlen (name) < game_name_len ? strlen (name) : game_name_len;
-  strcpy (partition_name, "PP.HDL.");
-  memmove (partition_name + 7, name, game_name_len);
-  partition_name[7 + game_name_len] = '\0';
-  p = partition_name + 7; /* len ("PP.HDL.") */
+  if (name[0] != '_' && name[1] != '_')
+  {
+	game_name_len = PS2_PART_IDMAX - 1 - 3 - 10 - 5; /* limit partition name length */
+	strcpy (partition_name, "PP.");
+	memmove (partition_name + 3, "SLUS-00000", 10);/*if startup file name absent*/  
+	if (startup_name != NULL) {
+	  memmove (partition_name + 3, startup_name, 4);/*we will copy first 4 symbols*/
+	  partition_name[8] = startup_name[5];
+	  partition_name[9] = startup_name[6];
+	  partition_name[10] = startup_name[7];
+	  partition_name[11] = startup_name[9];
+	  partition_name[12] = startup_name[10];
+	  /*we will copy last 5 digits*/
+	}
+	memmove (partition_name + 13, ".HDL.", 5);
+	memmove (partition_name + 18, name, game_name_len);
+	partition_name[18 + game_name_len] = '\0';
+	p = partition_name + 18; /* len ("PP.XXXX-xxxx.HDL.") */
+  } else {
+	game_name_len = PS2_PART_IDMAX - 1;
+	memmove (partition_name, name, game_name_len); /* __.linux.nr */
+  }
   while (*p != '\0')
     {
       if (!isalnum (*p) && *p != ' ' && *p != '.')
@@ -929,13 +1055,14 @@ hdl_inject (hio_t *hio,
 	  u_int32_t new_partition_start;
 
 	  if (details->partition_name[0] == '\0')
-	    { /* partition naming is now auto-detected */
-	      if (toc->is_toxic)
-		/* Toxic OS partition naming: "PP.HDL.STARTUP" */
-		hdl_pname (details->startup, details->partition_name);
-	      else
-		/* HD Loader partition naming: "PP.HDL.Game name" */
-		hdl_pname (details->name, details->partition_name);
+	    { /* partition naming is now auto-detected
+		   * Toxic OS partition naming: "PP.HDL.STARTUP" doesnt work
+		   * if (toc->is_toxic)
+			   hdl_pname (details->startup, details->startup, details->partition_name);
+		   * else
+		   *
+		   * PP.XXXX-xxxxx.HDL.name */
+		hdl_pname (details->startup, details->name, details->partition_name);
 	    }
 
 	  result = apa_allocate_space (toc, details->partition_name,
@@ -1234,7 +1361,7 @@ hdl_modify_game (hio_t *hio,
 	  char part_id[PS2_PART_IDMAX];
 	  int tmp_slice_index = 0;
 	  u_int32_t tmp_partition_index = 0;
-	  hdl_pname (new_name, part_id);
+	  hdl_pname (NULL, new_name, part_id);
 	  result = apa_find_partition (toc, part_id, &tmp_slice_index,
 				       &tmp_partition_index);
 	  if (result == RET_NOT_FOUND)

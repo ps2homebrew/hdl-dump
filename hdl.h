@@ -70,7 +70,7 @@ typedef struct hdl_games_list_type
 typedef /*@only@*/ /*@null@*/ /*@out@*/ hdl_games_list_t* hdl_games_list_p_t;
 
 
-void hdl_pname (const char *name,
+void hdl_pname (const char *startup_name, const char *name,
 		/*@out@*/ char partition_name[PS2_PART_IDMAX + 1]);
 
 int hdl_extract_ex (hio_t *hio,

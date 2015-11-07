@@ -103,6 +103,7 @@ static const compat_flags_t COMPAT_FLAGS_INVALID = (compat_flags_t) -1;
 #define INCLUDE_DIAG_CMD
 #define INCLUDE_MODIFY_CMD
 #define INCLUDE_COPY_HDD_CMD
+#undef INCLUDE_HIDE_CMD /*Hide function is malfunction*/
 
 /* option names and values for the config file */
 #define CONFIG_ENABLE_ASPI_FLAG           "enable_aspi"
