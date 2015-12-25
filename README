@@ -84,7 +84,7 @@ Configuration
 New features
 ------------
 
-All new stuffs can be used from HDD_OSD or BB Navigator or XMB from DVR.
+All new stuffs can be used from HDD_OSD or BB Navigator or XMB from PSX DVR.
 
 inject_dvd, inject_cd, install or copy_hdd.
 
@@ -94,18 +94,16 @@ You can place boot.elf (which is actually miniopl.elf) in the folder
 where is launched from hdl_dump. It is optional you can skip this file.
 You also can place list.ico (*.ico from memory card)
 and icon.sys (*.sys from memory card).
+Or you can write your own icon.sys file.
 You can use both files or skip any of them.
 If you skip *.ico will be used HDloader default icon.
 If you skip *.sys will be used HDloader default icon settings.
-You can use only memory card *.sys file. If you want to use HDD *.sys
-you need to use modify_header command.
 
 This command will install game onto hard disk. Be careful if you choose
 command copy_hdd - every HDL game will loose their icons and will use only
 one for all.
 boot.elf - you can use everything but I prefer miniopl. Miniopl allows you
-to launch titles from HDD OSD or BB NAV by pressing on title. Miniopl now
-is a part of hdl_dump project.
+to launch titles from HDD OSD or BB NAV by pressing on title.
 boot.elf injection address - 0x111000
 boot.elf size limit - 2 026 464 bytes (thanks to kHn)
 --------------------------------------------------------------------------
@@ -138,16 +136,10 @@ del.ico
 boot.kelf
 boot.elf
 boot.kirx
-logo.raw
 Any file can be skipped. Program first of all tries to inject boot.kelf. 
 If it is not found it will try to inject boot.elf.
 
 Now icon.sys can be in any of 2 formats: Memory Card format or HDD format.
-logo.raw is used for replacing Playstation 2 disk logo.
-Old logo will be saved as logo.bak
-If there is logo.bak in the folder, then logo.raw will be skipped.
-WARNING: If you try to inject logo.raw in non-game partition you will
-totally destroy it.
 
 del.ico injection address: 0x041000
 If del.ico is used list.ico maximum size 260 096bytes.
@@ -157,7 +149,6 @@ boot.kelf size limit - 3 076 096 bytes (if boot.kirx not used)
 boot.kelf size limit - 2 031 616 bytes (if boot.kirx is used)
 boot.kirx injection address - 0x301000
 boot.kirx size limit - 1 044 480 bytes
-logo.raw size limit - 24 576 bytes
 ------------------------------------------------------------------------------------
 If you want to know more about these files (and their restrictions) you have to
 study official ps2sdk document called
@@ -165,12 +156,14 @@ study official ps2sdk document called
 hdd_rule_3.0.2.pdf
 
 There is also some undocumented features like this:
-- If you want to inject boot.kelf (or *.elf) you have to change BOOT2 in system.cnf 
+- If you want to inject boot.kelf (or boot.elf) you have to change BOOT2 in system.cnf 
 Code:
 |-----------------|
 | BOOT2 = PATINFO |
 |-----------------|
 This is used for HDL games for example.
+If you need to erase boot.elf from PATINFO you have to place zero-sized boot.kelf or elf
+in program folder.
 
 -If you want to launch KELF from PFS partition you have to change BOOT2 in system.cnf 
 Code:
@@ -193,4 +186,4 @@ Don't ask me about kirx - I don't know where it can be used.
 
 Happy gaming.
 
-$Id: README,v 2.0 2013-05-01 20:13:14 AKuHAK Exp $
+$Id: README,v 2.0 2015-12-12 20:13:14 AKuHAK Exp $
