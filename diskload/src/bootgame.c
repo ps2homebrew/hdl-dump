@@ -1,19 +1,12 @@
-#include "include/system.h"
-#include "include/usbld.h"
-#include "include/hddsupport.h"
+#include <tamtypes.h>
 
-#define COMPAT_MODE_1 		0x01
-#define COMPAT_MODE_2 		0x02
-#define COMPAT_MODE_3 		0x04
-#define COMPAT_MODE_4 		0x08
-#define COMPAT_MODE_5 		0x10
-#define COMPAT_MODE_6 		0x20
+#include "include/system.h"
+#include "include/opl.h"
+#include "include/hddsupport.h"
+#include "modules/iopcore/common/cdvd_config.h"
 
 extern unsigned char hdd_cdvdman_irx[];
 extern unsigned int size_hdd_cdvdman_irx;
-
-extern unsigned char hdd_pcmcia_cdvdman_irx[];
-extern unsigned int size_hdd_pcmcia_cdvdman_irx;
 
 extern unsigned char cdvdfsv_irx[];
 extern unsigned int size_cdvdfsv_irx;
@@ -36,8 +29,6 @@ extern unsigned int size_iomanx_irx;
 extern unsigned char filexio_irx[];
 extern unsigned int size_filexio_irx;
 
-int timer = 43;
-
 int hddGetHDLGameInfo(const char *Partition, hdl_game_info_t *ginfo);
 
 static inline const char *GetMountParams(const char *command, char *BlockDevice){
@@ -55,16 +46,59 @@ static inline const char *GetMountParams(const char *command, char *BlockDevice)
 	return MountPath;
 }
 
+static int ConfigureOPL(hdl_game_info_t *game, int size_cdvdman, void* cdvdman_irx){
+	int i;
+	unsigned int compatmask;
+	static const struct cdvdman_settings_common cdvdman_settings_common_sample={
+		0x69, 0x69,
+		0x1234,
+		0x39393939,
+		"B00BS"
+	};
+	struct cdvdman_settings_hdd *settings;
+
+	for (i = 0, settings = NULL; i < size_cdvdman; i+=4) {
+		if (!memcmp((void*)((u8*)cdvdman_irx + i), &cdvdman_settings_common_sample, sizeof(cdvdman_settings_common_sample))) {
+			settings=(struct cdvdman_settings_hdd*)((u8*)cdvdman_irx + i);
+			break;
+		}
+	}
+	if (settings == NULL) return -1;	//Internal error - should not happen
+
+	settings->common.flags = 0;
+	compatmask = game->ops2l_compat_flags;
+
+	if (compatmask & COMPAT_MODE_1) {
+		settings->common.flags |= IOPCORE_COMPAT_ACCU_READS;
+	}
+
+	if (compatmask & COMPAT_MODE_2) {
+		settings->common.flags |= IOPCORE_COMPAT_ALT_READ;
+	}
+
+	if (compatmask & COMPAT_MODE_4) {
+		settings->common.flags |= IOPCORE_COMPAT_0_PSS;
+	}
+
+	if (compatmask & COMPAT_MODE_5) {
+		settings->common.flags |= IOPCORE_COMPAT_EMU_DVDDL;
+	}
+
+	if (compatmask & COMPAT_MODE_6) {
+		settings->common.flags |= IOPCORE_ENABLE_POFF;
+	}
+
+	settings->common.media = hddIs48bit() & 0xff;
+
+	// patch start_sector
+	settings->lba_start = game->start_sector;
+
+	return 0;
+}
+
 int main(int argc, char *argv[]){
 	char PartitionName[33], BlockDevice[38];
-	unsigned char gid[5];
-	gDisableDebug=1;
-	gExitPath[0]='\0';
-	gHDDSpindown=0;
-
-	int i, size_irx = 0, result;
-	unsigned char *irx = NULL;
-	char filename[32];
+	int result;
 
 	hdl_game_info_t GameInfo;
 
@@ -112,87 +146,31 @@ int main(int argc, char *argv[]){
 
 	SifExecModuleBuffer(ps2atad_irx, size_ps2atad_irx, 0, NULL, NULL);
 	SifExecModuleBuffer(ps2hdd_irx, size_ps2hdd_irx, 0, NULL, NULL);
-	hddSetIdleTimeout(gHDDSpindown * 12); // gHDDSpindown [0..20] -> spindown [0..240] -> seconds [0..1200]
+	hddSetIdleTimeout(0); // gHDDSpindown [0..20] -> spindown [0..240] -> seconds [0..1200] */
 
 	SifLoadFileExit();
 	SifExitIopHeap();
 
 	DPRINTF("Retrieving game information...\n");
 
-	if((result=hddGetHDLGameInfo(PartitionName, &GameInfo))<0)
-		PartitionName[1] = 'C';   // Check if PP. is HDL and if not, convert target name from "PP." to "PC." (Child partition)
-
 	if((result=hddGetHDLGameInfo(PartitionName, &GameInfo))>=0){
 		DPRINTF("Partition name: %s \nTitle: %s \nStartup: %s\n", PartitionName, GameInfo.name, GameInfo.startup);
 
 		DPRINTF("Configuring core...\n");
-		//configGetDiscIDBinary(GameInfo.startup, gid);
-		memset(gid, 0, sizeof(gid));
+		gDisableDebug=1;
+		gExitPath[0]='\0';
 
-		int dmaType = 0x40, dmaMode = 4, compatMode = 0;
-		
-		compatMode = GameInfo.ops2l_compat_flags;
-		dmaType = GameInfo.dma_type;
-		dmaMode = GameInfo.dma_mode;
-		
-		hddSetTransferMode(dmaType, dmaMode);
-		hddSetIdleTimeout(gHDDSpindown * 12);
+		gHDDSpindown=0;
 
-		if (sysPcmciaCheck()) {
-			DPRINTF("CXD9566 detected.\n");
-			size_irx = size_hdd_pcmcia_cdvdman_irx;
-			irx = hdd_pcmcia_cdvdman_irx;
+		hddSetTransferMode(GameInfo.dma_type, GameInfo.dma_mode);
+		hddSetIdleTimeout(0);
+
+		if((result = ConfigureOPL(&GameInfo, size_hdd_cdvdman_irx, hdd_cdvdman_irx)) == 0){
+			DPRINTF("Launching game...\n");	
+
+			sysLaunchLoaderElf(GameInfo.start_sector, GameInfo.startup, "HDD_MODE", size_hdd_cdvdman_irx, hdd_cdvdman_irx, GameInfo.ops2l_compat_flags);
+			result=-1;
 		}
-		else {
-			DPRINTF("CXD9611 detected.\n");
-			size_irx = size_hdd_cdvdman_irx;
-			irx = hdd_cdvdman_irx;
-		}
-
-		for (i=0;i<size_irx;i++){
-			if(!strcmp((const char*)((u32)irx+i),"######    GAMESETTINGS    ######")){
-				break;
-			}
-		}
-
-		// patch 48bit flag
-		u8 flag_48bit = hddIs48bit() & 0xff;
-		memcpy((void*)((u32)irx + i + 34),&flag_48bit, 1);
-		
-		if (compatMode & COMPAT_MODE_2) {
-			u8 alt_read_mode = 1;
-			memcpy((void*)((u32)irx + i + 35),&alt_read_mode,1);
-		}
-		if (compatMode & COMPAT_MODE_5) {
-			u8 no_dvddl = 1;
-			memcpy((void*)((u32)irx + i + 36),&no_dvddl,1);
-		}
-		if (compatMode & COMPAT_MODE_4) {
-			u8 no_pss = 1;
-			memcpy((void*)((u32)irx + i + 37),&no_pss,1);
-		}
-		
-		// patch cdvdman timer
-			u32 cdvdmanTimer = timer * 250;
-			memcpy((void*)((u32)irx + i + 40), &cdvdmanTimer, 4);
-
-		// patch start_sector
-		memcpy((void*)((u32)irx + i + 44),&GameInfo.start_sector, 4);
-
-		for (i=0;i<size_irx;i++){
-			if(!strcmp((const char*)((u32)irx + i),"B00BS")){
-				break;
-			}
-		}
-		// game id
-		memcpy((void*)((u32)irx + i), &gid, 5);
-
-		DPRINTF("Launching game...\n");	
-
-		sprintf(filename, "%s", GameInfo.startup);
-		
-		sysLaunchLoaderElf(GameInfo.start_sector, filename, "HDD_MODE", size_irx, irx, compatMode);
-		result=-1;
 	}
 
 	DPRINTF("Error loading game: %s, code: %d\n", PartitionName, result);
