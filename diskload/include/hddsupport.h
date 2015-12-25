@@ -1,8 +1,6 @@
 #ifndef __HDD_SUPPORT_H
 #define __HDD_SUPPORT_H
 
-//#include "include/iosupport.h"
-
 #define PS2PART_IDMAX			32
 #define HDL_GAME_NAME_MAX  		64
 

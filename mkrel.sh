@@ -1,4 +1,5 @@
 #!/bin/sh
+./diskload.sh
 
 make clean
 make XC=win clean

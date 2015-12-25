@@ -1,35 +1,31 @@
 /*
   Copyright 2009, Ifcaro
   Licenced under Academic Free License version 3.0
-  Review OpenUsbLd README & LICENSE files for further details.
+  Review OpenUsbLd README & LICENSE files for further details.  
 */
 
-#include "include/usbld.h"
+#include "include/opl.h"
 #include "include/system.h"
 #include "include/ioprp.h"
+#include "../ee_core/include/modules.h"
 
 extern unsigned char udnl_irx[];
 extern unsigned int size_udnl_irx;
 
+extern unsigned char IOPRP_img[];
+extern unsigned int size_IOPRP_img;
+
 extern unsigned char imgdrv_irx[];
 extern unsigned int size_imgdrv_irx;
+
+extern unsigned char eesync_irx[];
+extern unsigned int size_eesync_irx;
 
 extern unsigned char cdvdfsv_irx[];
 extern unsigned int size_cdvdfsv_irx;
 
 extern unsigned char eecore_elf[];
 extern unsigned int size_eecore_elf;
-
-extern unsigned char IOPRP_img[];
-extern unsigned int size_IOPRP_img;
-
-#ifdef __DECI2_DEBUG
-extern unsigned char drvtif_irx[];
-extern unsigned int size_drvtif_irx;
-
-extern unsigned char *tifinet_irx;
-extern unsigned int size_tifinet_irx;
-#endif
 
 #define ELF_MAGIC		0x464c457f
 #define ELF_PT_LOAD		1
@@ -62,184 +58,84 @@ typedef struct {
 	u32	align;
 } elf_pheader_t;
 
-typedef struct {
-	void *irxaddr;
-	unsigned int irxsize;
-} irxptr_t;
+//Module bits
+#define CORE_IRX_USB	0x01
+#define CORE_IRX_ETH	0x02
+#define CORE_IRX_SMB	0x04
+#define CORE_IRX_HDD	0x08
+#define CORE_IRX_VMC	0x10
+#define CORE_IRX_DEBUG	0x20
+#define CORE_IRX_DECI2	0x40
 
-// structs for DEVCTL commands
-typedef struct
-{
-	u32 lba;
-	u32 size;
-	u8 data[0];
-} hddAtaTransfer_t; 
-
-//
-// DEVCTL commands
-//
-#define APA_DEVCTL_ATA_READ		0x00006836// arg  = hddAtaTransfer_t
-
-int sysPcmciaCheck(void) {
-	/* fileXioDevctl returns 0 if the DEV9 device is the CXD9566 (PCMCIA), and 1 if it's the CXD9611 (Expansion bay). */
-	return(fileXioDevctl("dev9x0:", 0x4401, NULL, 0, NULL, 0)==0?1:0);
-}
-
-
-#define IRX_NUM 8
-
-static inline void sendIrxKernelRAM(int size_cdvdman_irx, void *cdvdman_irx) { // Send IOP modules that core must use to Kernel RAM
+static unsigned int sendIrxKernelRAM(unsigned int modules, void *ModuleStorage, int size_cdvdman_irx, void **cdvdman_irx) { // Send IOP modules that core must use to Kernel RAM
+	irxtab_t *irxtable;
 	irxptr_t *irxptr_tab;
-	void *irxsrc[IRX_NUM];
-	void *irxptr;
-	int i, n;
-	unsigned int irxsize, curIrxSize;
-	void *ioprp_image;
-	unsigned int size_ioprp_image;
+	void *irxptr, *ioprp_image;
+	int i, modcount;
+	unsigned int curIrxSize, size_ioprp_image, total_size;
 
-	irxptr_tab=(irxptr_t*)0x00088004;
-	ioprp_image=malloc(size_IOPRP_img+size_cdvdman_irx+size_cdvdfsv_irx+256);
-	size_ioprp_image=patch_IOPRP_image(ioprp_image, cdvdman_irx, size_cdvdman_irx);
+	irxtable = (irxtab_t*)ModuleStorage;
+	irxptr_tab = (irxptr_t*)((unsigned char*)irxtable+sizeof(irxtab_t));
+	ioprp_image = malloc(size_IOPRP_img+size_cdvdman_irx+size_cdvdfsv_irx+256);
+	size_ioprp_image = patch_IOPRP_image(ioprp_image, cdvdman_irx, size_cdvdman_irx);
 
-	n = 0;
-	irxptr_tab[n++].irxsize = size_udnl_irx;
-	irxptr_tab[n++].irxsize = size_ioprp_image;
-	irxptr_tab[n++].irxsize = size_imgdrv_irx;
-	irxptr_tab[n++].irxsize = 0;	//usbd
-	irxptr_tab[n++].irxsize = 0;	//smsmap
-#ifdef __DECI2_DEBUG
-	irxptr_tab[n++].irxsize = size_drvtif_irx;
-	irxptr_tab[n++].irxsize = size_tifinet_irx;
-#else
-	irxptr_tab[n++].irxsize = 0;	//udptty
-	irxptr_tab[n++].irxsize = 0;	//ioptrap
-#endif
-	irxptr_tab[n++].irxsize = 0;	//smstcpip
+	modcount = 0;
+	//Basic modules
+	irxptr_tab[modcount].info	= size_udnl_irx | SET_OPL_MOD_ID(OPL_MODULE_ID_UDNL);
+	irxptr_tab[modcount++].ptr	= (void *)&udnl_irx;
+	irxptr_tab[modcount].info	= size_ioprp_image | SET_OPL_MOD_ID(OPL_MODULE_ID_IOPRP);
+	irxptr_tab[modcount++].ptr	= ioprp_image;
+	irxptr_tab[modcount].info	= size_imgdrv_irx | SET_OPL_MOD_ID(OPL_MODULE_ID_IMGDRV);
+	irxptr_tab[modcount++].ptr	= (void *)&imgdrv_irx;
 
-	n = 0;
-	irxsrc[n++] = (void *)&udnl_irx;
-	irxsrc[n++] = ioprp_image;
-	irxsrc[n++] = (void *)&imgdrv_irx;
-	irxsrc[n++] = NULL;
-	irxsrc[n++] = NULL;
-#ifdef __DECI2_DEBUG
-	irxsrc[n++] = (void *)&drvtif_irx;
-	irxsrc[n++] = (void *)&tifinet_irx;
-#else
-	irxsrc[n++] = NULL;
-	irxsrc[n++] = NULL;
-#endif
-	irxsrc[n++] = NULL;
+	irxtable->modules = irxptr_tab;
+	irxtable->count = modcount;
+	total_size = (sizeof(irxtab_t)+sizeof(irxptr_t)*modcount+0xF)&~0xF;
+	irxptr = (void *)((((unsigned int)irxptr_tab+sizeof(irxptr_t)*modcount)+0xF)&~0xF);
 
-	irxsize = 0;
-
-	*(irxptr_t**)0x00088000 = irxptr_tab;
-	irxptr = (void *)((((unsigned int)irxptr_tab+sizeof(irxptr_t)*IRX_NUM)+0xF)&~0xF);
-
-	#ifdef __DECI2_DEBUG
-	//For DECI2 debugging mode, the UDNL module will have to be stored within kernel RAM because there isn't enough space below user RAM.
-	irxptr_tab[0].irxaddr=(void*)0x00033000;
-	/*	LOG("SYSTEM DECI2 UDNL address start: %p end: %p\n", irxptr_tab[0].irxaddr, irxptr_tab[0].irxaddr+irxptr_tab[0].irxsize);
-	*/
-	DI();
-	ee_kmode_enter();
-	memcpy((void*)(0x80000000|(unsigned int)irxptr_tab[0].irxaddr), irxsrc[0], irxptr_tab[0].irxsize);
-	ee_kmode_exit();
-	EI();
-
-	for (i = 1; i< IRX_NUM; i++) {
-#else
-	for (i = 0; i < IRX_NUM; i++) {
-#endif
-		curIrxSize = irxptr_tab[i].irxsize;
-		irxptr_tab[i].irxaddr = irxptr;
+	for (i = 0; i < modcount; i++) {
+		curIrxSize = GET_OPL_MOD_SIZE(irxptr_tab[i].info);
 
 		if (curIrxSize > 0) {
-	/*	LOG("SYSTEM IRX address start: %p end: %p\n", irxptr_tab[i].irxaddr, irxptr_tab[i].irxaddr+curIrxSize);
-			*/
-			if(irxptr+curIrxSize>=(void*)0x000B3F00){	//Sanity check.
-			/*	LOG("*** OVERFLOW DETECTED. HALTED.\n");*/
-				asm volatile("break\n");
-			}
+			LOG("SYSTEM IRX %u address start: %p end: %p\n", GET_OPL_MOD_ID(irxptr_tab[i].info), irxptr, irxptr+curIrxSize);
+			memcpy(irxptr, irxptr_tab[i].ptr, curIrxSize);
 
-			memcpy(irxptr_tab[i].irxaddr, irxsrc[i], curIrxSize);
-
+			irxptr_tab[i].ptr = irxptr;
 			irxptr += ((curIrxSize+0xF)&~0xF);
-			irxsize += curIrxSize;
+			total_size += ((curIrxSize+0xF)&~0xF);
+		}else{
+			irxptr_tab[i].ptr = NULL;
 		}
 	}
 
 	free(ioprp_image);
+
+	LOG("SYSTEM IRX STORAGE %p - %p\n", ModuleStorage, (u8*)ModuleStorage + total_size);
+
+	return total_size;
 }
 
-#ifdef __DECI2_DEBUG
-/*
-	Look for the start of the EE DECI2 manager initialization function.
-
-	The stock EE kernel has no reset function, but the EE kernel is most likely already primed to self-destruct and in need of a good reset.
-	What happens is that the OSD initializes the EE DECI2 TTY protocol at startup, but the EE DECI2 manager is never aware that the OSDSYS ever loads other programs.
-
-	As a result, the EE kernel crashes immediately when the EE TTY gets used (when the IOP side of DECI2 comes up), when it invokes whatever that exists at the OSD's old ETTY handler's location. :(
-*/
-static int ResetDECI2(void){
-	int result;
-	unsigned int i, *ptr;
-	void (*pDeci2ManagerInit)(void);
-	static const unsigned int Deci2ManagerInitPattern[]={
-		0x3c02bf80,	//lui v0, $bf80
-		0x3c04bfc0,	//lui a0, $bfc0
-		0x34423800,	//ori v0, v0, $3800
-		0x34840102	//ori a0, a0, $0102
-	};
-
-	DI();
-	ee_kmode_enter();
-
-	result=-1;
-	ptr=(void*)0x80000000;
-	for(i=0; i<0x20000/4; i++){
-		if(	ptr[i+0]==Deci2ManagerInitPattern[0] &&
-			ptr[i+1]==Deci2ManagerInitPattern[1] &&
-			ptr[i+2]==Deci2ManagerInitPattern[2] &&
-			ptr[i+3]==Deci2ManagerInitPattern[3]
-			){
-			pDeci2ManagerInit=(void*)&ptr[i-14];
-			pDeci2ManagerInit();
-			result=0;
-			break;
-		}
-	}
-
-	ee_kmode_exit();
-	EI();
-
-	return result;
-}
-#endif
-
-void sysLaunchLoaderElf(unsigned long int StartLBA, char *filename, char *mode_str, int size_cdvdman_irx, void *cdvdman_irx, unsigned int compatflags) {
+void sysLaunchLoaderElf(u32 StartLBA, char *filename, char *mode_str, int size_cdvdman_irx, void *cdvdman_irx, int compatflags) {
+	unsigned int modules, ModuleStorageSize;
+	void *ModuleStorage;
 	u8 *boot_elf = NULL;
 	elf_header_t *eh;
 	elf_pheader_t *eph;
 	void *pdata;
-	int i, NumArgs;
+	int i;
 	char *argv[6];
-	char config_str[128];
-	char FullELFPath[22];	/* cdrom0:\\SXXX_YYY.ZZ;1" */
+	char config_str[256], ModStorageConfig[32];
 
 	if (gExitPath[0] == '\0')
 		strncpy(gExitPath, "Browser", 32);
 
 	memset((void*)0x00082000, 0, 0x00100000-0x00082000);
-
-	sendIrxKernelRAM(size_cdvdman_irx, cdvdman_irx);
-
-#ifdef __DECI2_DEBUG
-	ResetDECI2();
-#endif
+	modules = CORE_IRX_HDD;
+	ModuleStorage = (void*)((compatflags & COMPAT_MODE_7) ? OPL_MOD_STORAGE_HI : OPL_MOD_STORAGE);
+	ModuleStorageSize = (sendIrxKernelRAM(modules, ModuleStorage, size_cdvdman_irx, cdvdman_irx) + 0x3F) &~ 0x3F;
+	sprintf(ModStorageConfig, "%u %u", (unsigned int)ModuleStorage, (unsigned int)ModuleStorage + ModuleStorageSize);
 
 	// NB: LOADER.ELF is embedded
-
 	boot_elf = (u8 *)&eecore_elf;
 	eh = (elf_header_t *)boot_elf;
 	if (_lw((u32)&eh->ident) != ELF_MAGIC)
@@ -261,36 +157,22 @@ void sysLaunchLoaderElf(unsigned long int StartLBA, char *filename, char *mode_s
 	}
 
 	// Let's go.
-	sprintf(config_str, "%s %d %s %d %d %d.%d.%d.%d %d.%d.%d.%d %d.%d.%d.%d", mode_str, gDisableDebug, gExitPath, 0, gHDDSpindown, \
+	sprintf(config_str, "%s %d %s %d %u.%u.%u.%u %u.%u.%u.%u %u.%u.%u.%u %d", \
+		mode_str, gDisableDebug, gExitPath, gHDDSpindown, \
 		0, 0, 0, 0, \
 		0, 0, 0, 0, \
-		0, 0, 0, 0);
+		0, 0, 0, 0, \
+		0);
 
 	char cmask[10];
 	snprintf(cmask, 10, "%d", compatflags);
 	argv[0] = config_str;
-	argv[1] = filename;
-	argv[2] = cmask;
+	argv[1] = ModStorageConfig;
+	argv[2] = filename;
+	argv[3] = cmask;
 
-	filename[11]=0x00; // fix for 8+3 filename.
-	sprintf(FullELFPath, "cdrom0:\\%s;1", filename);
-
-	printf("Starting EE core.\n");
-
-#if 0
-	argv[3] = "rom0:PS2LOGO";
-	argv[4] = FullELFPath;
-	argv[5] = NULL;
-	NumArgs=5;
-#endif
-	argv[3] = FullELFPath;
-	argv[4] = NULL;
-	NumArgs=4;
-
-	fileXioStop();
+	fileXioExit();
 	SifExitRpc();
 
-	ExecPS2((void *)eh->entry, 0, NumArgs, argv);
+	ExecPS2((void *)eh->entry, NULL, 4, argv);
 }
-
-

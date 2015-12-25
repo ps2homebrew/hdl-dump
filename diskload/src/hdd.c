@@ -1,12 +1,11 @@
-#include "include/usbld.h"
+#include "include/opl.h"
 #include "include/hddsupport.h"
-
-//#define TEST_WRITES
 
 typedef struct				// size = 1024
 {
-	u32	checksum;		// HDL uses 0xdeadfeed magic here
-	u32	magic;
+	u32	magic;		// HDL uses 0xdeadfeed magic here
+	u16	reserved;
+	u16	version;
 	char	gamename[160];
 	u8  	hdl_compat_flags;
 	u8  	ops2l_compat_flags;
@@ -60,10 +59,10 @@ int hddIs48bit(void)
 //-------------------------------------------------------------------------
 int hddSetTransferMode(int type, int mode)
 {
-	u8 args[16];
+	u32 args[4];
 
-	*(u32 *)&args[0] = type;
-	*(u32 *)&args[4] = mode;
+	args[0] = type;
+	args[1] = mode;
 
 	return fileXioDevctl("hdd0:", APA_DEVCTL_SET_TRANSFER_MODE, args, 8, NULL, 0);
 }
@@ -85,7 +84,7 @@ int hddSetIdleTimeout(int timeout)
 
 	u8 args[16];
 
-	*(u32 *)&args[0] = timeout & 0xff;
+	args[0]=timeout;
 
 	return fileXioDevctl("hdd0:", APA_DEVCTL_IDLE, args, 4, NULL, 0);
 }
@@ -108,7 +107,7 @@ int hddGetHDLGameInfo(const char *Partition, hdl_game_info_t *ginfo)
 
 	DPRINTF("Path: %s\n", PathToPart);
 
-	if((fd=fileXioOpen(PathToPart, O_RDONLY, 666))>=0){
+	if((fd=fileXioOpen(PathToPart, O_RDONLY, 0666))>=0){
 		fileXioLseek(fd, HDL_GAME_DATA_OFFSET, SEEK_SET);
 		ret=fileXioRead(fd, buf, 1024);
 		fileXioClose(fd);
@@ -120,10 +119,6 @@ int hddGetHDLGameInfo(const char *Partition, hdl_game_info_t *ginfo)
 
 			// calculate total size
 			size = PartStat.size;
-			if (PartStat.mode != 0x1337) {// Check if partition type is HD Loader (0x1337)
-				free(PathToPart);
-				return -1;
-			}
 
 			strncpy(ginfo->partition_name, Partition, sizeof(ginfo->partition_name)-1);
 			ginfo->partition_name[sizeof(ginfo->partition_name)-1]='\0';
