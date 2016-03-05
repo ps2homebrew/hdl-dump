@@ -145,7 +145,7 @@ svr_read (const udp_frame_t *uf,
 static int
 svr_sync_buffer (void)
 {
-  const char *start = NULL;
+  const u8 *start = NULL;
   int start_sect = 0, num_sect = 0, i;
   for (i = 0; i < wr_buf_size; ++i)
     if (wr_dirty[i])

@@ -705,7 +705,7 @@ hdd_inject_header (hio_t *hio,
 		 */
 		  set_u32 (buffer_4m + 0x001030, 0x000000);
 		  set_u32 (buffer_4m + 0x001034, patinfo_length);
-		  fprintf (stdout, "Boot.kelf was %d-sized - clear all patinfo data\n",patinfo_length);
+		  fprintf (stdout, "Boot.kelf was %lui-sized - clear all patinfo data\n",patinfo_length);
 		  }
 		}
 	  }

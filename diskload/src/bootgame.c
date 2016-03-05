@@ -153,6 +153,9 @@ int main(int argc, char *argv[]){
 
 	DPRINTF("Retrieving game information...\n");
 
+	if((result=hddGetHDLGameInfo(PartitionName, &GameInfo))<0)
+		PartitionName[1] = 'C';   // Checks if PP. is HDL and if not, convert target name from "PP." to "PC." (Child partition)
+
 	if((result=hddGetHDLGameInfo(PartitionName, &GameInfo))>=0){
 		DPRINTF("Partition name: %s \nTitle: %s \nStartup: %s\n", PartitionName, GameInfo.name, GameInfo.startup);
 

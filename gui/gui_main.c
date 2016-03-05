@@ -917,7 +917,7 @@ delete (HWND dlg)
       dlg_refresh_hdd_info (dlg); /* always reload HDD info */
     }
 }
-#endif INCLUDE_HIDE_CMD
+#endif
 
 /**************************************************************/
 void
@@ -1122,7 +1122,7 @@ main_dlg_proc (HWND dlg,
 	      case LVN_BEGINLABELEDIT: return (TRUE); /* label edit allowed */
 	      case LVN_ENDLABELEDIT:
 		{
-		  LPNMLVDISPINFO info = (LPNMLVDISPINFO) lparam;
+		  LPNMLVDISPINFOW info = (LPNMLVDISPINFOW) lparam;
 		  if (info->item.pszText != NULL)
 		    { /* label of iItem changed */
 		      /* TODO: do rename */
