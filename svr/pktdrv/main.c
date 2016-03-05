@@ -93,7 +93,7 @@ int _start(int argc, char *argv[]){
 		else break;
 	}
 
-	InitPktDrv(ip_address, subnet_mask, gateway);
+	InitPktDrv((const char *)ip_address, (const char *)subnet_mask, (const char *)gateway);
 	NetManRegisterNetworkStack(&stack);
 
 	return MODULE_RESIDENT_END;

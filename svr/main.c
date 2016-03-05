@@ -102,7 +102,7 @@ int main(int argc, char* argv[]){
 	SifLoadStartModule("rom0:SIO2MAN", 0, NULL, NULL);
 	SifLoadStartModule("rom0:MCMAN", 0, NULL, NULL);
 
-	scr_printf("# Parsing IP configuration...");
+	scr_printf("\t\t# Parsing IP configuration...");
 
 	if(ParseConfig("mc0:/SYS-CONF/IPCONFIG.DAT", ip_address_str, subnet_mask_str, gateway_str)!=0){
 		if(ParseConfig("mc1:/SYS-CONF/IPCONFIG.DAT", ip_address_str, subnet_mask_str, gateway_str)!=0){
@@ -121,7 +121,7 @@ int main(int argc, char* argv[]){
 			"\t\tSubnet mask:\t%u.%u.%u.%u\n"	\
 			"\t\tGateway:\t\t%u.%u.%u.%u\n", ip_address[0], ip_address[1], ip_address[2], ip_address[3], subnet_mask[0], subnet_mask[1], subnet_mask[2], subnet_mask[3], gateway[0], gateway[1], gateway[2], gateway[3]);
 
-	scr_printf("\t# Loading modules...");
+	scr_printf("\t\t# Loading modules...");
 
 	SifExecModuleBuffer(IOMANX_irx, size_IOMANX_irx, 0, NULL, NULL);
 	SifExecModuleBuffer(FILEXIO_irx, size_FILEXIO_irx, 0, NULL, NULL);
@@ -152,14 +152,14 @@ int main(int argc, char* argv[]){
 #endif
 #endif
 
-	scr_printf("done!\n");
+	scr_printf("\tdone!\n");
 
 	SifLoadFileExit();
 	SifExitIopHeap();
 	fileXioInit();
 
-	scr_printf(	"\t# System initialized.\n"	\
-			"\t# Initializing network protocol stack...");
+	scr_printf(	"\t\t# System initialized.\n"	\
+			"\t\t# Initializing network protocol stack...");
 
 #ifdef USING_NETIF_RPC
 #ifdef USING_LWIP_STACK
@@ -174,8 +174,8 @@ int main(int argc, char* argv[]){
 	InitPS2IP(ip_address, subnet_mask, gateway);
 #endif
 #endif
-	scr_printf(	"done!\n"	\
-			"\t# Startup complete.\n");
+	scr_printf(	"\tdone!\n"	\
+			"\t\t# Startup complete.\n");
 
 	SleepThread();
 
