@@ -422,7 +422,7 @@ prepare_main (const hdl_game_t *details,
       buffer_4m[0x1010f0] = (u_int8_t) partitions_used;
     }
 
-  if (icon != NULL)
+  if ((icon != NULL) && (icon != hdloader_icon))
     osal_free (icon);
 
   if (patinfo != NULL)

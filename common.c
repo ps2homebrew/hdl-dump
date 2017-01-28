@@ -165,7 +165,10 @@ read_file (const char *file_name,
     }
   if (result != OSAL_OK)
     if (*data != NULL)
+	{
       osal_free (*data);
+	  *data = NULL;
+	}
   return (result);
 }
 
