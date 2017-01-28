@@ -16,7 +16,7 @@ Intro
 -----
 
 Latest version, as well as some documentation is to be found on the new official
-repository -- https://bitbucket.org/AKuHAK/hdl-dump/
+repository -- https://github.com/AKuHAK/hdl-dump/
 Me reads w1zard0f07@yahoo.com and psx-scene forums every now and then.
 Easy guide for installing games can be found here -- 
 http://web.archive.org/web/20120720230755/http://openps2loader.info/hdldump/howto.html
@@ -25,7 +25,7 @@ http://web.archive.org/web/20120720230755/http://openps2loader.info/hdldump/howt
 Networking server
 -----------------
 
-A new, purely UDP networking server is available, based on recently released on
+Purely UDP networking server is available, based on recently released on
 psx-scene forums smap driver --
 http://ichiba.geocities.jp/ysai187/PS2/smap.htm
 It is called hdl_svr_093.elf and is a part of hdl_dump sources.
