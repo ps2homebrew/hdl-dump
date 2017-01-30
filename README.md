@@ -1,189 +1,188 @@
-hdl_dump and hdl_dumb README
-=================================
+# `hdl_dump` and `hdl_dumb`
+
+## Contents
+
+* Intro
+* Networking server
+* Compilation 
+* Configuration and list file location
+* Configuration
+* New features
 
 
-TOC
----
-Intro
-Networking server
-Compilation 
-Configuration and list file location
-Configuration
-New features
+## Intro
+
+The latest version, as well as documentation can be found on the new official repository, <https://github.com/AKuHAK/hdl-dump/>
+
+Me reads <w1zard0f07@yahoo.com> and psx-scene forums every now and then.
+
+Easy guide for installing games can be found here <http://web.archive.org/web/20120720230755/http://openps2loader.info/hdldump/howto.html>
 
 
-Intro
------
+## Networking server
 
-Latest version, as well as some documentation is to be found on the new official
-repository -- https://github.com/AKuHAK/hdl-dump/
-Me reads w1zard0f07@yahoo.com and psx-scene forums every now and then.
-Easy guide for installing games can be found here -- 
-http://web.archive.org/web/20120720230755/http://openps2loader.info/hdldump/howto.html
+A UDP-based network server is available, based on the SMAP driver recently released on psx-scene forums <http://ichiba.geocities.jp/ysai187/PS2/smap.htm>. It is called `hdl_svr_093.elf` and is now part of the `hdl_dump` sources.
+
+_**Note**: You might need to punch a hole in your firewall for incoming UDP from port 12345._
 
 
-Networking server
------------------
+## Compilation
 
-Purely UDP networking server is available, based on recently released on
-psx-scene forums smap driver --
-http://ichiba.geocities.jp/ysai187/PS2/smap.htm
-It is called hdl_svr_093.elf and is a part of hdl_dump sources.
+First of all you have to update your PS2SDK.
 
-You might need to punch a hole in your firewall for incoming UDP from port 12345.
+Next: you have to run `diskload.sh` to get the latest version of MiniOPL.
 
-Compilation
------------
-Firts of all you have to update your PS2SDK.
-Next: you have to run shell script "diskload.sh" for getting latest mini-opl version.
-Finally: You just can run shell script in the project folder: "mkrel.sh". It will
-compile both gui and normal version for windows.
+Finally: You just can run shell script in the project folder: `mkrel.sh`. It will compile both gui and normal version for Windows.
 
-* Linux: Build and copy executable into a directory of your choice.
-	make RELEASE=yes
-Advanced Linux build commands:
-	make XC=win          # for Windows cross-compilation using mingw32
-	make -C gui          # for WineLib compilation (for now doesn't work)
-	make -C gui XC=win   # for GUI cross-compilation using mingw32
+* **Linux**: Build and copy executable into a directory of your choice.  
+	`make RELEASE=yes`  
+  Advanced Linux build commands:  
+	`make XC=win          # for Windows cross-compilation using mingw32`  
+	`make -C gui          # for WineLib compilation (for now doesn't work)`  
+	`make -C gui XC=win   # for GUI cross-compilation using mingw32`
 
-* FreeBSD and MacOS X: You'll need to have GNU make installed, then
-	gmake RELEASE=yes IIN_OPTICAL_MMAP=no
-or
-	make RELEASE=yes IIN_OPTICAL_MMAP=no
+* **Mac OS X** or **FreeBSD**: You'll need to have GNU make installed, then  
+	`gmake RELEASE=yes IIN_OPTICAL_MMAP=no`  
+  or  
+	`make RELEASE=yes IIN_OPTICAL_MMAP=no`
 
-* Windows: You need to have CYGWIN (http://www.cygwin.com/) installed;
-then use
-	make RELEASE=yes
-	make -C gui RELEASE=yes
-to compile command-line or GUI version.
-You can use this guide for preparing sdk for windows:
-http://psx-scene.com/forums/f150/compiling-windows-118947/#post1124987
+* **Windows**: You need to have [CYGWIN](http://www.cygwin.com/) installed;  
+  then use  
+	`make RELEASE=yes`  
+	`make -C gui RELEASE=yes`  
+  to compile command-line or GUI version.  
+  You can use [this guide](http://psx-scene.com/forums/f150/compiling-windows-118947/#post1124987) for preparing sdk for Windows.
 
-
-
-Configuration and list file location
-------------------------------------
+## Configuration and list file location
 
 You can place this files in folder where is installed hdl_dump for making it portable.
 
-* Windows: (cited names are for English version of Windows)
-C:\Documents and Settings\<login name>\Application Data\hdl_dump.conf
-C:\Documents and Settings\<login name>\Application Data\hdl_dump.list
+* **Windows**: (cited names are for English version of Windows)  
+  `C:\Documents and Settings\<login name>\Application Data\hdl_dump.conf`  
+  `C:\Documents and Settings\<login name>\Application Data\hdl_dump.list`
 
-* Linux, FreeBSD and MacOS X: (~ is your home dir)
-~/.hdl_dump.conf
-~/.hdl_dump.list
-
-
-Configuration
--------------
-
-* disc_database_file -- full path to your disc compatibility database file;
+* **Linux**, **Mac OS X** and **FreeBSD**: (`~` is your home dir)  
+  `~/.hdl_dump.conf`  
+  `~/.hdl_dump.list`
 
 
-New features
-------------
+## Configuration
 
-All new stuffs can be used from HDD_OSD or BB Navigator or XMB from PSX DVR.
+* `disc_database_file` -- full path to your disc compatibility database file;
 
-inject_dvd, inject_cd, install or copy_hdd.
 
-WARNING: BUG: You need to specify dma mode or hdl_dump crashes (*u4, *m2)
+## New features
 
-You can place boot.elf (which is actually miniopl.elf) in the folder
-where is launched from hdl_dump. It is optional you can skip this file.
-You also can place list.ico (*.ico from memory card)
-and icon.sys (*.sys from memory card).
-Or you can write your own icon.sys file.
-You can use both files or skip any of them.
-If you skip *.ico will be used HDloader default icon.
-If you skip *.sys will be used HDloader default icon settings.
+All new stuff can be used from HDDOSD or BB Navigator or XMB from PSX DVR.
 
-This command will install game onto hard disk. Be careful if you choose
-command copy_hdd - every HDL game will loose their icons and will use only
-one for all.
-boot.elf - you can use everything but I prefer miniopl. Miniopl allows you
-to launch titles from HDD OSD or BB NAV by pressing on title.
-boot.elf injection address - 0x111000
-boot.elf size limit - 2 026 464 bytes (thanks to kHn)
---------------------------------------------------------------------------
-initialize
 
-When you use this command and place hard drive into your playstation 2 phat
-and power it on - it will launch mbr. So it can be used as Free MC Boot
-replacement (no need for memory card or modchip for lauching homebrews).
+### `inject_dvd`, `inject_cd`, `install` or `copy_hdd`.
 
-In previous version this command tried to install one __mbr partition - but
-there was a bug in the code so this command won't work correctly. I decide to
-remove it at all and replace with MBR injection. All that you need - place
-MBR.KELF in the corresponding folder. All HDD data will remain intact!!!!!
+This command will install games onto the hard disk.
 
-MBR.KELF injection address - 0x404000 (for compatibility with BB Nav)
-MBR.KELF doesn't have any restrictions by themself.
-There is no easy way to make MBR.KELFS from common elf.
-------------------------------------------------------------------------------
-modify_header
+_**Warning**: You need to specify a DMA mode (like `*u4`, `*m2`) or `hdl_dump` crashes._
 
-Code:
+_**Warning**: Be careful with `copy_hdd` - every HDLoader game will be given the same icon._
+
+Optionally, you can place `boot.elf` (which is actually `miniopl.elf`) in the folder where `hdl_dump` is launched from.
+You can also optionally include `list.ico` (`*.ico` from memory card) and `icon.sys` (`*.sys` from memory card), or you can write your own `icon.sys` file.
+
+If you don't include an `*.ico`, the HDLoader logo is used. If you don't include `*.sys`, the default HDLoader icon settings are used..
+
+`boot.elf` - you can use everything but I prefer miniopl. Miniopl allows you to launch titles from HDD OSD or BB NAV by pressing on title.
+
+`boot.elf` injection address - `0x111000`
+
+`boot.elf` size limit - 2,026,464 bytes (thanks to kHn)
+
+
+### `initialize`
+
+When you use this command and place the hard drive into your PlayStation 2 phat, it will launch the injected `MBR.KELF`. So it can be used as Free MCBoot replacement (no need for memory card or modchip for lauching homebrews).
+
+All you need to do is place `MBR.KELF` in the corresponding folder. All HDD data will remain intact.
+
+`MBR.KELF` injection address - `0x404000` (for compatibility with PlayStation BB Navigator)
+
+`MBR.KELF` doesn't have any restrictions by itself.
+
+There is no easy way to make `MBR.KELF`s from a common elf.
+
+_**Note**: In a previous version this command tried to install one `__mbr` partition, but this command didn't work correctly and was replaced with MBR injection._
+
+
+### `modify_header`
+
+This command injects header attributes into an existing partition.
+
+```
 hdl_dump.exe modify_header 192.168.0.10 PP.TEST
+```
 
-This command will inject header attributes in any already existing partition.
-It can operate such files:
-system.cnf
-icon.sys
-list.ico
-del.ico
-boot.kelf
-boot.elf
-boot.kirx
-Any file can be skipped. Program first of all tries to inject boot.kelf. 
-If it is not found it will try to inject boot.elf.
+It can inject these files:
 
-Now icon.sys can be in any of 2 formats: Memory Card format or HDD format.
+* `system.cnf`
+* `icon.sys`
+* `list.ico`
+* `del.ico`
+* `boot.kelf`
+* `boot.elf`
+* `boot.kirx`
 
-del.ico injection address: 0x041000
-If del.ico is used list.ico maximum size 260 096bytes.
-boot.elf (or boot.kelf) injection address - 0x111000
-boot.elf size limit - 2 026 464 bytes (thanks to kHn)
-boot.kelf size limit - 3 076 096 bytes (if boot.kirx not used)
-boot.kelf size limit - 2 031 616 bytes (if boot.kirx is used)
-boot.kirx injection address - 0x301000
-boot.kirx size limit - 1 044 480 bytes
-------------------------------------------------------------------------------------
-If you want to know more about these files (and their restrictions) you have to
-study official ps2sdk document called
+Any one can be skipped. It first tries to inject `boot.kelf`, then if not found it will try to inject `boot.elf`.
 
-hdd_rule_3.0.2.pdf
+Now `icon.sys` can be in any of 2 formats: Memory Card format or HDD format.
 
-There is also some undocumented features like this:
-- If you want to inject boot.kelf (or boot.elf) you have to change BOOT2 in system.cnf 
-Code:
-|-----------------|
-| BOOT2 = PATINFO |
-|-----------------|
-This is used for HDL games for example.
-If you need to erase boot.elf from PATINFO you have to place zero-sized boot.kelf or elf
-in program folder.
+`del.ico` injection address: `0x041000` (If `del.ico` is used `list.ico` maximum size 260,096 bytes)
 
--If you want to launch KELF from PFS partition you have to change BOOT2 in system.cnf 
-Code:
-|---------------------------|
-| BOOT2 = pfs:/EXECUTE.KELF |
-|---------------------------|
-where EXECUTE.KELF - is path to KELF which is placed into partition. Can be changed.
+`boot.elf` (or `boot.kelf`) injection address - `0x111000`
 
--If you want to inject kirx into partition you have to add a line into system.cnf 
-Code:
-|-----------------|
-| IOPRP = PATINFO |
-|-----------------|
-Don't ask me about kirx - I don't know where it can be used.
+`boot.elf` size limit - 2,026,464 bytes (thanks to kHn)
 
--If you don't want to boot from HDD OSD you have to add such a line into system.cnf 
-|----------------|
-| BOOT2 = NOBOOT |
-|----------------|
+`boot.kelf` size limit - 3,076,096 bytes (if `boot.kirx` not used)
+
+`boot.kelf` size limit - 2,031,616 bytes (if `boot.kirx` is used)
+
+`boot.kirx` injection address - `0x301000`
+
+`boot.kirx` size limit - 1,044,480 bytes
+
+
+### Others
+
+If you want to know more about these files (and their restrictions) you have to study official ps2sdk document called `hdd_rule_3.0.2.pdf`
+
+There are also some undocumented features like this:
+
+* If you want to inject `boot.kelf` (or `boot.elf`) you have to change `BOOT2` in `system.cnf`
+
+  ```
+  BOOT2 = PATINFO
+  ```
+
+  This is used for HDL games for example.
+  If you need to erase `boot.elf` from PATINFO you have to place zero-sized `boot.kelf` or elf in program folder.
+
+* If you want to launch KELF from PFS partition you have to change `BOOT2` in `system.cnf` 
+
+  ```
+  BOOT2 = pfs:/EXECUTE.KELF
+  ```
+
+  where `EXECUTE.KELF` - is path to KELF which is placed into partition. Can be changed.
+
+* If you want to inject kirx into partition you have to add a line into `system.cnf` 
+
+  ```
+  IOPRP = PATINFO
+  ```
+
+  Don't ask me about kirx - I don't know where it can be used.
+
+* If you don't want to boot from HDD OSD you have to add such a line into system.cnf 
+
+  ```
+  BOOT2 = NOBOOT
+  ```
 
 Happy gaming.
-
-$Id: README,v 2.0 2015-12-12 20:13:14 AKuHAK Exp $
