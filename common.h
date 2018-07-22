@@ -35,7 +35,8 @@
 C_START
 
 #if !defined (MAX_PATH)
-#  define MAX_PATH 128
+/* This needs to be at least 256 bytes -- see iin_gi_probe_path */
+#  define MAX_PATH 1024
 #endif
 
 
