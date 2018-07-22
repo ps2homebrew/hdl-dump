@@ -62,7 +62,8 @@ typedef struct
 #  define OSAL_HANDLE_INIT { -1 } /* file descriptor */
 #  define OSAL_IS_OPENED(x) ((x).desc != -1)
 
-#  define MAX_PATH 256
+/* This needs to be at least 256 bytes -- see iin_gi_probe_path */
+#  define MAX_PATH 1024
 
 #endif
 typedef /*@special@*/ /*@only@*/ /*@out@*/ osal_handle_t* osal_handle_p_t;
