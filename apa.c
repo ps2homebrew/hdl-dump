@@ -1284,7 +1284,7 @@ apa_initialize_ex (hio_t *hio)
 	set_u32 (&header.length, 128 * 1024 * 2);
 	set_u16 (&header.type, 0x0001);
 	set_ps2fs_datetime (&header.created, time (NULL));
-	strcpy (header.mbr.magic, "Sony Computer Entertainment Inc.");
+	memcpy (header.mbr.magic, "Sony Computer Entertainment Inc.", 32);
 	header.mbr.unknown_0x02 = 0x02;
 	set_ps2fs_datetime (&header.mbr.created, time (NULL));
 
