@@ -44,9 +44,11 @@ VER_MAJOR = 0
 VER_MINOR = 9
 VER_PATCH = 2
 
+#WINMINGWPREFIX ?= i586-mingw32msvc
+WINMINGWPREFIX ?= i686-w64-mingw32
+
 # configuration end
 ###############################################################################
-
 
 CFLAGS = -Wall -ansi -pedantic -Wno-long-long
 
@@ -72,8 +74,8 @@ endif
 WINDRES = windres
 ifeq ($(XC), win)
   WINDOWS = yes
-  CC = i586-mingw32msvc-gcc
-  WINDRES = i586-mingw32msvc-windres
+  CC = $(WINMINGWPREFIX)-gcc
+  WINDRES = $(WINMINGWPREFIX)-windres
 endif
 
 

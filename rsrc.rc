@@ -29,12 +29,12 @@ BEGIN
       VALUE "Comments",
             "hdl_dump - Windows-based game installer for HD Loader\r\n"
             "Wizard of 0z (AKA b...), revisited by AKuHAK\r\n"
-            "https://bitbucket.org/AKuHAK/hdl-dump\r\n"
+            "https://github.com/AKuHAK/hdl-dump\r\n"
             "w1zard0f07@yahoo.com\0"
 
       VALUE "CompanyName",
             "AKuHAK\r\n"
-            "https://bitbucket.org/AKuHAK/hdl-dump\r\n"
+            "https://github.com/AKuHAK/hdl-dump\r\n"
             "w1zard0f07@yahoo.com\0"
 
       VALUE "FileDescription", "hdl_dump - Windows-based game installer for HD Loader\0"

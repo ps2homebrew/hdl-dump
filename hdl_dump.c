@@ -1294,7 +1294,7 @@ copy_hdd (const dict_t *config,
 
   if (result == RET_OK && count > 0)
     {
-      printf ("%dMB in %d game(s) remaining...\n",
+      printf ("%ldMB in %ld game(s) remaining...\n",
 	      chunks_needed * 128, count);
       for (i = 0; result == RET_OK && i < in_list->count; ++i)
 	if (i >= flags_count || tolower (flags[i]) == 'y')
@@ -1568,7 +1568,7 @@ show_usage_and_exit (const char *app_path,
 
   fprintf (stdout,
 	   "hdl_dump-" VERSION " by The W1zard 0f 0z (AKA b...), revisited by AKuHAK\n"
-	   "https://bitbucket.org/AKuHAK/hdl-dump w1zard0f07@yahoo.com\n"
+	   "https://github.com/AKuHAK/hdl-dump w1zard0f07@yahoo.com\n"
 	   "\n");
 
   command_found = 0;

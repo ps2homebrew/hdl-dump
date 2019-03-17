@@ -422,7 +422,7 @@ prepare_main (const hdl_game_t *details,
       buffer_4m[0x1010f0] = (u_int8_t) partitions_used;
     }
 
-  if ((icon != NULL) && (icon != hdloader_icon))
+  if ((icon != NULL) && (icon != ( void * )&hdloader_icon))
     osal_free (icon);
 
   if (patinfo != NULL)
@@ -705,7 +705,7 @@ hdd_inject_header (hio_t *hio,
 		 */
 		  set_u32 (buffer_4m + 0x001030, 0x000000);
 		  set_u32 (buffer_4m + 0x001034, patinfo_length);
-		  fprintf (stdout, "Boot.kelf was %lui-sized - clear all patinfo data\n",patinfo_length);
+		  fprintf (stdout, "Boot.kelf was %ui-sized - clear all patinfo data\n",patinfo_length);
 		  }
 		}
 	  }
