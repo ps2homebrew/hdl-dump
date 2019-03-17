@@ -192,7 +192,7 @@ BEGIN
     BEGIN
         BLOCK "040904b0"
         BEGIN
-            VALUE "Comments", "hdl_dumb - Windows-based game installer for HD Loader\r\nWizard of 0z (AKA b...)\r\nhttps://bitbucket.org/AKuHAK/hdl-dump\r\nw1zard0f07@yahoo.com\0"
+            VALUE "Comments", "hdl_dumb - Windows-based game installer for HD Loader\r\nWizard of 0z (AKA b...)\r\nhttps://github.com/AKuHAK/hdl-dump\r\nw1zard0f07@yahoo.com\0"
             VALUE "CompanyName", "Wizard of 0z (AKA b...)\r\nhttps://bitbucket.org/AKuHAK/hdl-dump\r\nw1zard0f07@yahoo.com\0"
             VALUE "FileDescription", "hdl_dumb - Windows-based game installer for HD Loader\0"
             VALUE "FileVersion", "0, 9, 2, 0\0"

@@ -43,6 +43,9 @@ VER_MAJOR = 0
 VER_MINOR = 9
 VER_PATCH = 1
 
+#WINMINGWPREFIX ?= i586-mingw32msvc
+WINMINGWPREFIX ?= i686-w64-mingw32
+
 # configuration end
 ###############################################################################
 
@@ -77,8 +80,8 @@ endif
 WINDRES = windres
 ifeq ($(XC), win)
   WINDOWS = yes
-  CC = i586-mingw32msvc-gcc
-  WINDRES = i586-mingw32msvc-windres
+  CC = $(WINMINGWPREFIX)-gcc
+  WINDRES = $(WINMINGWPREFIX)-windres
 endif
 
 
@@ -195,7 +198,7 @@ $(BINARY): $(OBJECTS)
 # for wine
 %.res : %.rc
 	@echo -e "\tRC  $<"
-	@echo '#include "winres.h"' > afxres.h
+	@echo '#include <winresrc.h>' > afxres.h
 	@$(RC) $(RCFLAGS) $(RCEXTRA) $(DEFINCL) -fo$@ $<
 	@rm -f afxres.h
 
