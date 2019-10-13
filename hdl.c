@@ -251,7 +251,7 @@ prepare_main (const hdl_game_t *details,
 		(unsigned char)(mcIcon_details->lightCol[2][0]*128),
 		(unsigned char)(mcIcon_details->lightCol[2][1]*128),
 		(unsigned char)(mcIcon_details->lightCol[2][2]*128)	);
-/*		McIconSys*/
+      /* McIconSys */
 	  }
 	  else if ((result == OSAL_OK) && (!strncmp(iconsys, "PS2X", 4)))
 	  {
@@ -272,7 +272,7 @@ prepare_main (const hdl_game_t *details,
       memcpy (buffer_4m + 0x001000, HDL_HDR0, strlen (HDL_HDR0));
 
       /*
-	   *         +--+--+--+- system.cnf offset relative to 0x1000
+       *         +--+--+--+- system.cnf offset relative to 0x1000
        *         |  |  |  |  +--+--+--+- system.cnf section length in bytes
        *         |  |  |  |  |  |  |  |   +--+--+--+- icon.sys offset relative to 0x1000
        *         |  |  |  |  |  |  |  |   |  |  |  |  +--+--+--+- icon.sys length in bytes
@@ -295,7 +295,7 @@ prepare_main (const hdl_game_t *details,
       set_u32 (tmp++, 0x0800);
       set_u32 (tmp++, icon_length);
 	  
-	  /*  
+      /*  
        *  1030: 00 00 11 00 58 81 00 00  00 00 00 00 00 00 00 00
        *         ^  ^  ^  ^  ^  ^  ^  ^
        *         |  |  |  |  +--+--+--+- BE, PATINFO.KELF length in bytes
@@ -352,9 +352,9 @@ prepare_main (const hdl_game_t *details,
        *	 +- DVD9 layer break offset
        *	 |           +- media type? 0x14 for DVD, 0x12 for CD, 0x10 for PSX CD (w/o audio)?
        *	 |           |           +- number of partitions
- 	   *     v           v           v
-   *1010e4: xx xx xx xx 14 00 00 00 05 00 00 00
-       *    00 00 00 00 00 20 50 00 00 00 c0 1f	;; 0x00500000, 512MB
+       *         v           v           v
+       *1010e4: xx xx xx xx 14 00 00 00 05 00 00 00
+       *        00 00 00 00 00 20 50 00 00 00 c0 1f	;; 0x00500000, 512MB
        *	00 f8 03 00 00 08 60 00 00 00 f0 1f	;; 0x00600000, 512MB
        *	00 f6 07 00 00 08 70 00 00 00 f0 1f	;; 0x00700000, 512MB
        *	00 f4 0b 00 00 08 44 00 00 00 f0 07	;; 0x00440000, 128MB
