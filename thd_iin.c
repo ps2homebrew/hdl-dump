@@ -26,7 +26,11 @@
 #  include "sema.h" /* POSIX semaphores for win32 */
 #else
 #  include <pthread.h>
+#if defined (__MACH__)
+#  include <dispatch/dispatch.h>
+#else
 #  include <semaphore.h>
+#endif
 #endif
 #include <stdio.h>
 #include <string.h>
@@ -63,7 +67,11 @@ typedef struct threaded_decorator_type
   job_t job;
 
   /* both are exclusive => at any moment only one is acquirable */
+#if defined (__MACH__)
+  dispatch_semaphore_t worker_lock, master_lock;
+#else
   sem_t worker_lock, master_lock;
+#endif
 
   buffer_t buf[2];
   size_t active_buf; /* <= % 2 == index of the current buffer */
@@ -85,7 +93,11 @@ thd_loop (void *p)
 
   do
     {
+#if defined(__MACH__)
+      int result = dispatch_semaphore_wait (thd->worker_lock, DISPATCH_TIME_FOREVER);
+#else
       int result = sem_wait (&thd->worker_lock);
+#endif
       if (result == 0 && !thd->done)
 	{
 	  job_t *job = &thd->job;
@@ -104,13 +116,21 @@ thd_loop (void *p)
 	  dest->num_sectors = job->num_sectors;
 
 	  /* unlock master */
+#if defined(__MACH__)
+    dispatch_semaphore_signal (thd->master_lock);
+#else
 	  sem_post (&thd->master_lock);
+#endif
 	}
     }
   while (!thd->done);
 
   /* notify master */
+#if defined(__MACH__)
+  dispatch_semaphore_signal (thd->master_lock);
+#else
   sem_post (&thd->master_lock);
+#endif
   return (0);
 }
 
@@ -128,7 +148,11 @@ thd_read (iin_t *iin,
 
   do
     {
+#if defined(__MACH__)
+      result = dispatch_semaphore_wait (thd->master_lock, DISPATCH_TIME_FOREVER);
+#else
       result = sem_wait (&thd->master_lock);
+#endif
       if (result == 0)
 	{ /* worker is idle */
 	  const buffer_t *buf = thd->buf + (thd->active_buf % 2);
@@ -145,7 +169,11 @@ thd_read (iin_t *iin,
 	      thd->job.start_sector = start_sector;
 	      thd->job.num_sectors = num_sectors;
 	      thd->job.dest = thd->buf + (thd->active_buf % 2);
+#if defined(__MACH__)
+        dispatch_semaphore_signal (thd->worker_lock);
+#else
 	      sem_post (&thd->worker_lock);
+#endif
 	    }
 	}
     }
@@ -158,12 +186,20 @@ thd_read (iin_t *iin,
       thd->job.start_sector = start_sector + num_sectors;
       thd->job.num_sectors = IIN_NUM_SECTORS;
       thd->job.dest = thd->buf + (++thd->active_buf % 2);
-      sem_post (&thd->worker_lock);
+#if defined(__MACH__)
+        dispatch_semaphore_signal (thd->worker_lock);
+#else
+        sem_post (&thd->worker_lock);
+#endif
     }
   else
     /* since there is no pre-fetch scheduled,
        unlock master or the next read call would block forever */
+#if defined(__MACH__)
+    dispatch_semaphore_signal (thd->master_lock);
+#else
     sem_post (&thd->master_lock);
+#endif
 
   return (result);
 }
@@ -190,14 +226,28 @@ thd_close (iin_t *iin)
   int result;
 
   /* wait for worker to finish... */
+#if defined(__MACH__)
+  dispatch_semaphore_wait (thd->master_lock, DISPATCH_TIME_FOREVER);
+#else
   sem_wait (&thd->master_lock);
+#endif
   thd->done = 1;
+#if defined(__MACH__)
+  dispatch_semaphore_signal (thd->worker_lock);
+  dispatch_semaphore_wait (thd->master_lock, DISPATCH_TIME_FOREVER);
+#else
   sem_post (&thd->worker_lock);
   sem_wait (&thd->master_lock);
+#endif
 
   /* clean-up */
+#if defined(__MACH__)
+  dispatch_release (thd->worker_lock);
+  dispatch_release (thd->master_lock);
+#else
   sem_destroy (&thd->worker_lock);
   sem_destroy (&thd->master_lock);
+#endif
   result = thd->worker->close (thd->worker);
   thd->worker = NULL;
 
@@ -253,9 +303,19 @@ thd_create (iin_t *worker)
       thd->done = 0;
 
       /* master is unlocked, worker is locked; would run on 1st need */
+#if defined(__MACH__)
+      thd->worker_lock = dispatch_semaphore_create(0);
+      if (thd->worker_lock != NULL)
+#else
       if (sem_init (&thd->worker_lock, 0, 0) == 0)
+#endif
 	{
+#if defined(__MACH__)
+    thd->master_lock = dispatch_semaphore_create(1);
+    if (thd->master_lock != NULL)
+#else
 	  if (sem_init (&thd->master_lock, 0, 1) == 0)
+#endif
 	    {
 #if defined (_BUILD_WIN32)
 	      DWORD thread_id = 0;
@@ -269,9 +329,17 @@ thd_create (iin_t *worker)
 		return ((iin_t*) thd); /* unix: success */
 #endif
 
+#if defined(__MACH__)
+        dispatch_release (thd->master_lock);
+#else
 	      (void) sem_destroy (&thd->master_lock);
+#endif
 	    }
+#if defined(__MACH__)
+    dispatch_release (thd->worker_lock);
+#else
 	  (void) sem_destroy (&thd->worker_lock);
+#endif
 	}
       osal_free (thd), thd = NULL;
     }
