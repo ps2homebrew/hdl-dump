@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+        
+    steps:       
+    - uses: actions/checkout@v2
+        
+    - name: Install Ubuntu version
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get -y install gcc-mingw-w64-i686
+        make RELEASE=yes
+        make XC=win RELEASE=yes
+        make -C gui XC=win RELEASE=yes
+
+    - name: Install Mac version
+      if: matrix.os == 'macOS-latest'
+      run: |
+        brew update
+        brew install mingw-w64
+        make
+
+    - uses: actions/upload-artifact@v2
+      with:
+        name: rel/hdl_*
+        path: hdl-${{matrix.os}}.zip
+
