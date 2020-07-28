@@ -9,7 +9,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macOS-latest, ubuntu-latest]
+        os: [macos-latest, ubuntu-latest]
         
     steps:       
     - uses: actions/checkout@v2
@@ -24,7 +24,7 @@ jobs:
         make -C gui XC=win RELEASE=yes
 
     - name: Install Mac version
-      if: matrix.os == 'macOS-latest'
+      if: matrix.os == 'macos-latest'
       run: |
         brew update
         brew install gcc make texinfo bison flex ucl
