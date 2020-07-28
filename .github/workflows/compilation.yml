@@ -9,7 +9,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-latest, ubuntu-latest]
+        os: [macOS-latest, ubuntu-latest]
         
     steps:       
     - uses: actions/checkout@v2
@@ -27,7 +27,7 @@ jobs:
       if: matrix.os == 'macOS-latest'
       run: |
         brew update
-        brew install mingw-w64 gcc make
+        brew install gcc make texinfo bison flex ucl
         make
 
     - uses: actions/upload-artifact@v2
