@@ -17,11 +17,11 @@ jobs:
     - name: Install Ubuntu version
       if: ${{ matrix.os == 'ubuntu-latest' && always() }}
       run: |
+        make RELEASE=yes
         sudo apt-get update
         sudo apt-get -y install gcc-mingw-w64-i686 gcc make patch texinfo git 
         make XC=win RELEASE=yes
         make -C gui XC=win RELEASE=yes
-        make RELEASE=yes
 
     - name: Install Mac version
       if: ${{ matrix.os == 'macos-latest' && always() }}
