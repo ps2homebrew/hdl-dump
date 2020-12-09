@@ -111,7 +111,7 @@ static const compat_flags_t COMPAT_FLAGS_INVALID = (compat_flags_t) -1;
 #define CONFIG_LAST_IP                    "last_ip"
 #define CONFIG_TARGET_KBPS                "target_kbps"
 #define CONFIG_AUTO_THROTTLE              "auto_throttle"
-
+#define CONFIG_DEFAULT_DMA                "default_dma"
 
 #if defined (__cplusplus)
 #  define C_START extern "C" {

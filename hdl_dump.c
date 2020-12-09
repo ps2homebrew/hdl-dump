@@ -2005,6 +2005,14 @@ main (int argc, char *argv[])
 			startup = argv[i];
 	    }
 
+	  if ( dma == 0 )
+	  {
+		  const char *df_dma = dict_lookup (config, CONFIG_DEFAULT_DMA);
+		  if ( df_dma == NULL )
+			  df_dma = "*u4";
+		  dma = parse_dma(df_dma);
+	  }
+
 	  if (compat_flags == COMPAT_FLAGS_INVALID ||
 	      !(slice_index >= -1 && slice_index <= 1) || (dma == 0))
 		  {
