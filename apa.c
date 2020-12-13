@@ -572,7 +572,7 @@ setup_main_part (/*@out@*/ ps2_partition_header_t *part,
   set_ps2fs_datetime (&part->created, time (NULL));
   set_u32 (&part->main, 0);
   set_u32 (&part->number, 0);
-  set_u16 (&part->unknown2, 513);
+  set_u32 (&part->modver, 0x201);
   for (i=1; i<partitions_used; ++i)
     {
       set_u32 (&part->subs [i - 1].start, partitions [i].sector);
@@ -600,7 +600,7 @@ setup_sub_part (ps2_partition_header_t *part,
   set_ps2fs_datetime (&part->created, time (NULL));
   set_u32 (&part->main, partitions [0].sector);
   set_u32 (&part->number, index);
-  set_u16 (&part->unknown2, 513);
+  set_u32 (&part->modver, 0x201);
   set_u32 (&part->checksum, apa_partition_checksum (part));
 }
 
@@ -1284,12 +1284,13 @@ apa_initialize_ex (hio_t *hio)
 	set_u32 (&header.length, 128 * 1024 * 2);
 	set_u16 (&header.type, 0x0001);
 	set_ps2fs_datetime (&header.created, time (NULL));
-	memcpy (header.mbr.magic, "Sony Computer Entertainment Inc.", 32);
-	header.mbr.unknown_0x02 = 0x02;
+	memcpy (header.mbr.magic, PS2_MBR_MAGIC, 32);
+	header.mbr.version = PS2_MBR_VERSION;
+	header.mbr.nsector = 0;
 	set_ps2fs_datetime (&header.mbr.created, time (NULL));
 
 	/*fix broken - just injection*/
-	header.unknown2 = 0x201;
+	set_u32 (&header.modver, 0x201);
 	set_u32 (&header.prev, prev);
 	set_u32 (&header.next, next);
 
@@ -1316,4 +1317,38 @@ apa_initialize_ex (hio_t *hio)
   {
     return (result);
   }
+}
+
+/**************************************************************/
+int apa_dump_mbr(const dict_t *config, const char *device, const char *file_name) {
+	/*@out@*/hio_t *hio = NULL;
+	int result = hio_probe(config, device, &hio);
+	ps2_partition_header_t header;
+	u_int32_t szread;
+	char * buffer;
+
+	if (result == RET_OK && hio != NULL) {
+		u_int32_t bytes;
+
+		/* read MBR to auto-detect partition dialect */
+		result = hio->read(hio, 0, 2, &header, &bytes);
+
+		if (result == RET_OK) {
+
+			buffer = malloc (header.mbr.data_len * 512);
+			result = hio->read (hio, header.mbr.data_start, header.mbr.data_len, buffer, &szread);
+			/* won't overwrite */
+			result = write_file (file_name, buffer, szread);
+			free (buffer);
+		}
+	}
+
+	if (result == OSAL_OK) {
+		fprintf(stdout, "MBR data sucessfully dumped\n");
+		result = hio->close(hio);
+	} else
+		(void) hio->close(hio); /* ignore close error in this case */
+	hio = NULL;
+
+	return (result);
 }

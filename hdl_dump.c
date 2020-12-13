@@ -91,6 +91,9 @@
 #if defined (INCLUDE_INITIALIZE_CMD)
 #  define CMD_INITIALIZE "initialize"
 #endif
+#if defined (INCLUDE_DUMP_MBR_CMD)
+#  define CMD_DUMP_MBR "dump_mbr"
+#endif
 #if defined (INCLUDE_BACKUP_TOC_CMD)
 #  define CMD_BACKUP_TOC "backup_toc"
 #endif
@@ -1508,6 +1511,11 @@ show_usage_and_exit (const char *app_path,
 	"All your partitions remain intact!!!" CMD_INITIALIZE " is rewrited by AKuHAK.",
 	"hdd1:", NULL, 1 },
 #endif /* INCLUDE_INITIALIZE_CMD defined? */
+#if defined (INCLUDE_DUMP_MBR_CMD)
+      { CMD_DUMP_MBR, "device output_file",
+	"dump mbr to disc",
+	"hdd1:", NULL, 0 },
+#endif /* INCLUDE_DUMP_MBR_CMD defined? */
 #if defined (INCLUDE_BACKUP_TOC_CMD)
       { CMD_BACKUP_TOC, "device file",
 	"Dumps TOC into a binary file.\n",
@@ -2086,6 +2094,17 @@ main (int argc, char *argv[])
 				  argv[2], NULL);
 	}
 #endif /* INCLUDE_INITIALIZE_CMD defined? */
+
+#if defined (INCLUDE_DUMP_MBR_CMD)
+      else if (caseless_compare (command_name, CMD_DUMP_MBR))
+	{
+	  if (argc != 4)
+	    show_usage_and_exit (argv[0], CMD_DUMP_MBR);
+
+	  handle_result_and_exit (apa_dump_mbr (config, argv[2], argv[3]),
+				  argv[2], NULL);
+	}
+#endif /* INCLUDE_DUMP_MBR_CMD defined? */
 
 #if defined (INCLUDE_BACKUP_TOC_CMD)
       else if (caseless_compare (command_name, CMD_BACKUP_TOC))
