@@ -126,6 +126,9 @@ int apa_initialize (const dict_t *config,
 
 int apa_initialize_ex (hio_t *hio);
 
+int apa_dump_mbr(const dict_t *config,
+			const char *device, const char *file_name);
+
 C_END
 
 #endif /* _APA_H defined? */
