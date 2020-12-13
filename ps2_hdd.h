@@ -19,6 +19,7 @@ C_START
 #define PS2_PART_MAXSUB		64	/* Maximum # of sub-partitions */
 #define PS2_PART_FLAG_SUB	0x0001	/* Is partition a sub-partition? */
 #define PS2_MBR_VERSION		2	/* Current MBR version */
+#define PS2_MBR_MAGIC		"Sony Computer Entertainment Inc."
 
 /* Partition types */
 #define PS2_MBR_PARTITION	0x0001
@@ -55,14 +56,14 @@ typedef struct ps2_partition_header_type
   ps2fs_datetime_t created;
   u_int32_t main;	/* For sub-partitions, main partition sector address */
   u_int32_t number;	/* For sub-partitions, sub-partition number */
-  u_int16_t unknown2;
-  char unknown3 [30];
+  u_int32_t modver;
+  u_int32_t pading1[7];
   char name [PS2_PART_NAMEMAX];
   struct
   {
     char magic [32];	/* Copyright message in MBR */
-    char unknown_0x02;
-    char unknown1 [7];
+    u_int32_t version;
+    u_int32_t nsector;
     ps2fs_datetime_t created; /* Same as for the partition, it seems*/
     u_int32_t data_start;	/* Some sort of MBR data; position in sectors*/
     u_int32_t data_len;	/* Length also in sectors */
