@@ -55,9 +55,6 @@
 #include "dict.h"
 #include "net_io.h"
 
-#define UNBOLD   "\033[0m"
-#define BOLD   "\033[1m"
-#define WARNING_SIGN   "/\033[4m!\033[0m\\"
 
 /* command names */
 #define CMD_QUERY "query"
@@ -1409,65 +1406,65 @@ show_usage_and_exit (const char *app_path,
   {
     const char *command_name;
     const char *command_arguments;
-    const char *description, *details;
+    const char *description;
     const char *example1, *example2;
     int dangerous;
   } help[] =
     {
 #if defined (_BUILD_WIN32)
       { CMD_QUERY, NULL,
-	"display a list of all recognized hard- and optical drives",
-	NULL, NULL, NULL, 0 },
+	"Displays a list of all recognized hard- and optical drives.",
+	NULL, NULL, 0 },
 #endif
 #if defined (INCLUDE_DUMP_CMD)
       { CMD_DUMP, "device file",
-	"make device image (AKA ISO-image)", NULL,
+	"Makes device image (AKA ISO-image).",
 	"cd0: c:\\tekken.iso", "\"Tekken@192.168.0.10\" ./tekken.iso", 0 },
 #endif
 #if defined (INCLUDE_COMPARE_IIN_CMD)
       { CMD_COMPARE_IIN, "iin1 iin2",
-	"compare two ISO inputs", NULL,
+	"Compares two ISO inputs.",
 	"c:\\tekken.cue cd0:", "c:\\gt3.gi GT3@hdd1:", 0 },
 #endif
       { CMD_TOC, "device",
-	"display PlayStation 2 HDD TOC", NULL,
+	"Displays PlayStation 2 HDD TOC.",
 	"hdd1:", "192.168.0.10", 0 },
       { CMD_HDL_TOC, "device",
-	"display a list of all HD Loader games on the PlayStation 2 HDD", NULL,
+	"Displays a list of all HD Loader games on the PlayStation 2 HDD.",
 	"hdd1:", "192.168.0.10", 0 },
 #if defined (INCLUDE_MAP_CMD)
       { CMD_MAP, "device",
-	"display PlayStation 2 HDD usage map", NULL,
+	"Displays PlayStation 2 HDD usage map.",
 	"hdd1:", NULL, 0 },
 #endif
 #if defined (INCLUDE_HIDE_CMD)
       { CMD_HIDE, "device partition/game",
-	"hide PlayStation 2 HDD partition", "First attempts to locate partition\n"
+	"Hides PlayStation 2 HDD partition. First attempts to locate partition\n"
 	"by name, then by game name. It is better to use another tool for removing.",
 	"hdd1: \"PP.HDL.Tekken Tag Tournament\"", "192.168.0.10 \"Tekken\"", 1 },
 #endif
 #if defined (INCLUDE_ZERO_CMD)
       { CMD_ZERO, "device",
-	"fill HDD with zeroes. All information on the HDD will be lost", NULL,
+	"Fills HDD with zeroes. All information on the HDD will be lost.",
 	"hdd1:", NULL, 1 },
 #endif
 #if defined (INCLUDE_CUTOUT_CMD)
       { CMD_CUTOUT, "device size_in_MB [@slice_index]",
-	"display partition table as if a new partition has been created",
+	"Displays partition table as if a new partition has been created.\n"
 	"slice_index is the index of the slice to attempt to allocate in first\n"
 	"-- 1 or 2.",
 	"hdd1: 2560", "192.168.0.10 640", 0 },
 #endif
 #if defined (INCLUDE_INFO_CMD)
       { CMD_HDL_INFO, "device partition",
-	"display information about HD Loader partition", NULL,
+	"Displays information about HD Loader partition.",
 	"hdd1: \"tekken tag tournament\"", "192.168.0.10 Tekken", 0 },
 #endif
       { CMD_HDL_EXTRACT, "device name output_file",
-	"extract application image from HD Loader partition", NULL,
+	"Extracts application image from HD Loader partition.",
 	"hdd1: \"tekken tag tournament\" c:\\tekken.iso", NULL, 0 },
       { CMD_HDL_INJECT_CD, "target name source [startup] [flags] dma [@slice_index]",
-	"create a new HDLoader partition from a CD",
+	"Creates a new HDLoader partition from a CD.\n"
 	"You can use boot.elf,list.cio, icon.sys. Check Readme\n"
 	"Supported inputs: plain ISO files, CDRWIN cuesheets, Nero images and tracks,\n"
 	"RecordNow! Global images, HD Loader partitions (PP.HDL.Xenosaga@hdd1:) and\n"
@@ -1478,7 +1475,7 @@ show_usage_and_exit (const char *app_path,
 	"192.168.0.10 \"Tekken Tag Tournament\" cd0: SCES_xxx.xx *u4",
 	"hdd1: \"Tekken\" c:\\tekken.iso SCES_xxx.xx +1+2 *u4", 1 },
       { CMD_HDL_INJECT_DVD, "target name source [startup] [flags] dma [@slice_index]",
-	"create a new HDLoader partition from a DVD",
+	"Creates a new HDLoader partition from a DVD.\n"
 	"You can use boot.elf,list.cio, icon.sys. Check Readme\n"
 	"DVD-9 supports only ISO or IML.\n"
 	"Supported inputs: plain ISO files, CDRWIN cuesheets, Nero images and tracks,\n"
@@ -1490,48 +1487,50 @@ show_usage_and_exit (const char *app_path,
 	"192.168.0.10 \"Gran Turismo 3\" cd0: *u4",
 	"hdd1: \"Gran Turismo 3\" c:\\gt3.iso SCES_xxx.xx +2+3 *u4", 1 },
       { CMD_HDL_INSTALL, "target source [@slice_index]",
-	"create a new HDLoader partition from a source, that has an entry in compatibility list",
+	"Creates a new HD Loader partition from a source, that has an entry\n"
+	"in compatibility list.\n"
 	"You need boot.elf for installing the game. More info in Readme",
 	"192.168.0.10 cd0:", "hdd1: c:\\gt3.iso", 1 },
       { CMD_CDVD_INFO, "iin_input",
-	"display signature (startup file), volume label and data size for a CD-/DVD-drive or image file", NULL,
+	"Displays signature (startup file), volume label and data size\n"
+	"for a CD-/DVD-drive or image file.",
 	"c:\\gt3.gi", "\"hdd2:Gran Turismo 3\"", 0 },
       { CMD_CDVD_INFO2, "iin_input",
-	"display media type, startup ELF, volume label and data size for a CD-/DVD-drive or image file", NULL,
+	"Displays media type, startup ELF, volume label and data size\n"
+	"for a CD-/DVD-drive or image file.",
 	"c:\\gt3.gi", "\"hdd2:Gran Turismo 3\"", 0 },
       { CMD_POWER_OFF, "ip",
-	"power off Playstation 2", NULL,
+	"Powers-off Playstation 2.",
 	"192.168.0.10", NULL, 0 },
 #if defined (INCLUDE_INITIALIZE_CMD)
       { CMD_INITIALIZE, "device",
-	"inject MBR.KELF into MBR",
+	"This version requires MBR.KELF in the same folder. It will inject it into MBR.\n"
 	"All your partitions remain intact!!!" CMD_INITIALIZE " is rewrited by AKuHAK.",
 	"hdd1:", NULL, 1 },
 #endif /* INCLUDE_INITIALIZE_CMD defined? */
 #if defined (INCLUDE_BACKUP_TOC_CMD)
       { CMD_BACKUP_TOC, "device file",
-	"dump TOC into a binary file",  NULL,
+	"Dumps TOC into a binary file.\n",
 	"hdd1: toc.bak", NULL, 0 },
 #endif /* INCLUDE_BACKUP_TOC_CMD defined? */
 #if defined (INCLUDE_RESTORE_TOC_CMD)
       { CMD_RESTORE_TOC, "device file",
-	"restore TOC from a binary file",  NULL,
+	"Restores TOC from a binary file.\n",
 	"hdd1: toc.bak", NULL, 1 },
 #endif /* INCLUDE_RESTORE_TOC_CMD defined? */
 #if defined (INCLUDE_DIAG_CMD)
       { CMD_DIAG, "device",
-	"scan PS2 HDD for partition errors",  NULL,
+	"Scans PS2 HDD for partition errors.\n",
 	"hdd1:", "192.168.0.10", 0 },
 #endif /* INCLUDE_DIAG_CMD defined? */
 #if defined (INCLUDE_MODIFY_CMD)
       { CMD_MODIFY, "device game [new_name] [new_flags] [dma]",
-	"rename a game and/or change compatibility flags",  NULL,
+	"Rename a game and/or change compatibility flags.\n",
 	"hdd1: DDS \"Digital Devil Saga\"",
 	"192.168.0.100 \"FF X-2\" +3", 1 },
 #endif /* INCLUDE_MODIFY_CMD defined? */
 #if defined (INCLUDE_COPY_HDD_CMD)
       { CMD_COPY_HDD, "source_device destination_device [flags]",
-    "copy file between two device",
 	"You need boot.elf and list.ico for installing the game. More info in Readme\n"
 	"Be careful all games will use one list.ico and boot.elf.\n"
 	"Copy games from one device to another. Flags is a sequence of `y' or `n'\n"
@@ -1542,7 +1541,7 @@ show_usage_and_exit (const char *app_path,
 	"hdd1: hdd2: ynyn # to copy all games but 2nd and 4th", 1 },
 #endif /* INCLUDE_COPY_HDD_CMD defined? */
       { CMD_MODIFY_HEADER, "device partition_name",
-	"inject attributes into partition header for using with HDD OSD or BB Navigator",
+	"Inject attributes into partition header for using with HDD OSD or BB Navigator.\n"
 	"system.cnf,\n"
 	"icon.sys,\n"
 	"list.ico,\n"
@@ -1567,71 +1566,85 @@ show_usage_and_exit (const char *app_path,
   else
     app = app_path;
 
-  fprintf (stderr,
-		  "hdl_dump-" VERSION " by The W1zard 0f 0z (AKA b...), revisited by AKuHAK\n"
-		  "https://github.com/AKuHAK/hdl-dump w1zard0f07@yahoo.com\n"
-		  "\n");
+  fprintf (stdout,
+		"hdl_dump-" VERSION " by The W1zard 0f 0z (AKA b...) w1zard0f07@yahoo.com\n"
+		"revisited by AKuHAK\nhttps://github.com/ps2homebrew/hdl-dump\n"
+		"\n");
 
   command_found = 0;
   if (command != NULL)
     { /* display particular command help */
       const struct help_entry_t *h = help;
       while (h->command_name != NULL)
-      {
-    	  if (strcmp(command, h->command_name) == 0) {
-    		  fprintf(stderr, "Usage:\t%s %s\n"
-    				  "\n"
-    				  "%s\n", h->command_name, h->command_arguments,
-					  h->description);
-    		  if (h->details != NULL)
-    			  fprintf(stderr, "\n%s", h->details);
-    		  if (h->example1 != NULL)
-    			  fprintf(stderr, "\n"
-    					  "Example:\n"
-    					  "%s %s %s\n", app, h->command_name, h->example1);
-    		  if (h->example2 != NULL)
-    			  fprintf(stderr, "\tor\n"
-    					  "%s %s %s\n", app, h->command_name, h->example2);
-    		  if (h->dangerous != 0)
-    			  fprintf(stderr,
-    					  "\n"
-    					  "Warning: This command does write on the HDD\n"
-    					  "         and could cause corruption. Use with care.\n");
-    		  command_found = 1;
-    		  break;
-    	  }
-    	  ++h;
-      }
+	{
+	  if (strcmp (command, h->command_name) == 0)
+	    {
+	      fprintf (stdout,
+		       "Usage:\t%s %s\n"
+		       "\n"
+		       "%s\n",
+		       h->command_name, h->command_arguments,
+		       h->description);
+	      if (h->example1 != NULL)
+		fprintf (stdout,
+			 "\n"
+			 "Example:\n"
+			 "%s %s %s\n",
+			 app, h->command_name, h->example1);
+	      if (h->example2 != NULL)
+		fprintf (stdout,
+			 "\tor\n"
+			 "%s %s %s\n",
+			 app, h->command_name, h->example2);
+	      if (h->dangerous != 0)
+		fprintf (stdout,
+			 "\n"
+			 "Warning: This command does write on the HDD\n"
+			 "         and could cause corruption. Use with care.\n");
+	      command_found = 1;
+	      break;
+	    }
+	  ++h;
 	}
+    }
 
   if (command == NULL || command_found == 0)
     { /* display all commands only */
       const struct help_entry_t *h = help;
+      int is_first = 1, count = 0;
 
-	  fprintf(stderr, BOLD
-				"Usage: "
-			  	UNBOLD
-				"%s command arguments\n"
-				"\n"
-				BOLD
-				"Commands list:"
-				UNBOLD
-				, app);
+      fprintf (stdout,
+	       "Usage:\n"
+	       "%s command arguments\n"
+	       "\n"
+	       "Where command is one of:\n",
+	       app);
+
       while (h->command_name != NULL)
 	{
-	  fprintf (stderr, "\n  %-15s%s ", h->command_name, h->description);
+	  if (is_first == 0)
+	    {
+	      if ((count % 5) == 0)
+		fprintf (stdout, ",\n");
+	      else
+		fprintf (stdout, ", ");
+	    }
+	  else
+	    is_first = 0;
+	  fprintf (stdout, "%s", h->command_name);
 	  if (h->dangerous != 0)
-	    fprintf (stderr, WARNING_SIGN);
+	    fprintf (stdout, "*");
 	  ++h;
+	  ++count;
 	}
-      fprintf (stderr, "\n");
+      fprintf (stdout, "\n");
 
-      fprintf (stderr,
+      fprintf (stdout,
 	       "\n"
 	       "Use: %s command\n"
 	       "to show \"command\" help.\n"
 	       "\n"
-	       "Warning: Commands, marked with " WARNING_SIGN " does write on the HDD\n"
+	       "Warning: Commands, marked with * (asterisk) does write on the HDD\n"
 	       "         and could cause corruption. Use with care.\n"
 	       "\n"
 	       "License: You are only allowed to use this program with a software\n"
@@ -1640,7 +1653,7 @@ show_usage_and_exit (const char *app_path,
 
       if (command != NULL && command_found == 0)
 	{
-	  fprintf (stderr,
+	  fprintf (stdout,
 		   "\n"
 		   "%s: unrecognized command.\n",
 		   command);
