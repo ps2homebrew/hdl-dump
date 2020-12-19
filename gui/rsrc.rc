@@ -192,9 +192,9 @@ BEGIN
     BEGIN
         BLOCK "040904b0"
         BEGIN
-            VALUE "Comments", "hdl_dumb - Windows-based game installer for HD Loader\r\nWizard of 0z (AKA b...)\r\nhttps://github.com/AKuHAK/hdl-dump\r\nw1zard0f07@yahoo.com\0"
-            VALUE "CompanyName", "Wizard of 0z (AKA b...)\r\nhttps://bitbucket.org/AKuHAK/hdl-dump\r\nw1zard0f07@yahoo.com\0"
-            VALUE "FileDescription", "hdl_dumb - Windows-based game installer for HD Loader\0"
+            VALUE "Comments", "hdl_dumb - Windows-based game installer for Open PS2 Loader\r\nWizard of 0z (AKA b...)\r\nhttps://github.com/ps2homebrew/hdl-dump\r\nw1zard0f07@yahoo.com\0"
+            VALUE "CompanyName", "Wizard of 0z (AKA b...)\r\nhttps://github.com/ps2homebrew/hdl-dump\r\nw1zard0f07@yahoo.com\0"
+            VALUE "FileDescription", "hdl_dumb - Windows-based game installer for open PS2 Loader\0"
             VALUE "FileVersion", "0, 9, 2, 0\0"
             VALUE "InternalName", "hdl_dumb\0"
             VALUE "LegalCopyright", "© 2004, 2005, 2006, 2007 Wizard of 0z, 2012, 2013 AKuHAK\0"
@@ -244,13 +244,13 @@ BEGIN
     IDS_DATA_RATE_UNKNOWN   "-"
     IDS_CONFIRM_DELETE      "Are you sure you wish to delete currently selected game(s)?"
     IDS_CONFIRM_DELETE_TITLE "Confirm operation"
-    IDS_INCOMPATIBLE_GAME   "The game you've just selected is marked as incompatible.\n\nYou're free to continue, but there is a high chance, that you'll not be able to complete the game using HD Loader."
+    IDS_INCOMPATIBLE_GAME   "The game you've just selected is marked as incompatible.\n\nYou're free to continue, but there is a high chance, that you'll not be able to complete the game."
     IDS_INCOMPATIBLE_GAME_TITLE "Incompatible game"
 
     IDS_ERROR_TITLE         "Unexpected problem"
     IDS_NO_PS2_HDD_ERR      "No formatted Playstation 2 HDD found.\nPlease, attach the hard-disk and run the application again."
     IDS_NOT_APA_ERR         "Not an APA partition."
-    IDS_NOT_HDL_PART_ERR    "Not a HD Loader partition."
+    IDS_NOT_HDL_PART_ERR    "Not a HDL partition."
     IDS_NOT_FOUND_ERR       "Not found."
     IDS_BAD_FORMAT_ERR      "Bad device id format."
     IDS_BAD_DEVICE_ERR      "Bad device."
