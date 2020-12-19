@@ -12,7 +12,7 @@
 
 ## Intro
 
-The latest version, as well as documentation can be found on the new official repository, <https://github.com/AKuHAK/hdl-dump/>
+The latest version, as well as documentation can be found on the new official repository, <https://github.com/ps2homebrew/hdl-dump/>
 
 Me reads <w1zard0f07@yahoo.com> and psx-scene forums every now and then.
 
