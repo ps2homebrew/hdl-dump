@@ -1567,9 +1567,9 @@ show_usage_and_exit (const char *app_path,
     app = app_path;
 
   fprintf (stdout,
-	   "hdl_dump-" VERSION " by The W1zard 0f 0z (AKA b...), revisited by AKuHAK\n"
-	   "https://github.com/AKuHAK/hdl-dump w1zard0f07@yahoo.com\n"
-	   "\n");
+		"hdl_dump-" VERSION " by The W1zard 0f 0z (AKA b...) w1zard0f07@yahoo.com\n"
+		"revisited by AKuHAK\nhttps://github.com/ps2homebrew/hdl-dump\n"
+		"\n");
 
   command_found = 0;
   if (command != NULL)
@@ -1713,7 +1713,7 @@ handle_result_and_exit (int result,
       exit (100 + RET_NOT_APA);
 
     case RET_NOT_HDL_PART:
-      fprintf (stderr, "%s: not a HD Loader partition", device);
+      fprintf (stderr, "%s: not a HDL partition", device);
       if (partition != NULL)
 	fprintf (stderr, ": \"%s\".\n", partition);
       else
@@ -1908,7 +1908,7 @@ main (int argc, char *argv[])
 	}
 
       else if (caseless_compare (command_name, CMD_HDL_TOC))
-	{ /* show a TOC of HD Loader games only */
+	{ /* show a TOC of installed games only */
 	  if (argc != 3)
 	    show_usage_and_exit (argv[0], CMD_HDL_TOC);
 	  handle_result_and_exit (show_hdl_toc (config, argv[2]),
@@ -1953,7 +1953,7 @@ main (int argc, char *argv[])
 
 #if defined (INCLUDE_INFO_CMD)
       else if (caseless_compare (command_name, CMD_HDL_INFO))
-	{ /* show HD Loader game info */
+	{ /* show installed game info */
 	  if (argc != 4)
 	    show_usage_and_exit (argv[0], CMD_HDL_INFO);
 
@@ -1964,7 +1964,7 @@ main (int argc, char *argv[])
 #endif /* INCLUDE_INFO_CMD defined? */
 
       else if (caseless_compare (command_name, CMD_HDL_EXTRACT))
-	{ /* extract game image from a HD Loader partition */
+	{ /* extract game image from a HDL partition */
 	  if (argc != 5)
 	    show_usage_and_exit (argv[0], CMD_HDL_EXTRACT);
 
@@ -1975,7 +1975,7 @@ main (int argc, char *argv[])
 
       else if (caseless_compare (command_name, CMD_HDL_INJECT_CD) ||
 	       caseless_compare (command_name, CMD_HDL_INJECT_DVD))
-	{ /* inject game image into a new HD Loader partition */
+	{ /* inject game image into a new HDL partition */
 	  int slice_index = -1;
 	  compat_flags_t compat_flags = COMPAT_FLAGS_INVALID;
 	  unsigned short dma = 0;
@@ -2032,7 +2032,7 @@ main (int argc, char *argv[])
 
 #if defined (INCLUDE_CUTOUT_CMD)
       else if (caseless_compare (command_name, CMD_CUTOUT))
-	{ /* calculate and display how to arrange a new HD Loader partition */
+	{ /* calculate and display how to arrange a new HDL partition */
 	  int slice_index = -1;
 	  if ((argc != 4 && argc != 5) || (argc == 5 && argv[4][0] != '@'))
 	    show_usage_and_exit (argv[0], CMD_CUTOUT);
@@ -2078,7 +2078,7 @@ main (int argc, char *argv[])
 
 #if defined (INCLUDE_INITIALIZE_CMD)
       else if (caseless_compare (command_name, CMD_INITIALIZE))
-	{ /* prepare a HDD for HD Loader usage */
+	{ /* prepare a HDD for HDL usage */
 	  if (argc != 3)
 	    show_usage_and_exit (argv[0], CMD_INITIALIZE);
 
