@@ -1469,25 +1469,27 @@ show_usage_and_exit (const char *app_path,
       { CMD_HDL_EXTRACT, "device name output_file",
 	"extract application image from HDL partition", NULL,
 	"hdd1: \"tekken tag tournament\" c:\\tekken.iso", NULL, 0 },
-      { CMD_HDL_INJECT_CD, "target name source [startup] [flags] dma [@slice_index]",
+      { CMD_HDL_INJECT_CD, "target name source [startup] [+flags] [*dma] [@slice_index]",
 	"create a new HDL partition from a CD",
-	"You can use boot.elf,list.cio, icon.sys. Check Readme\n"
+	"You can use boot.elf, list.cio, icon.sys. Check Readme\n"
 	"Supported inputs: plain ISO files, CDRWIN cuesheets, Nero images and tracks,\n"
 	"RecordNow! Global images, HDL partitions (PP.HDL.Xenosaga@hdd1:) and\n"
 	"Sony CD/DVD generator IML files (with full paths).\n"
-	"Startup file and compatibility flags are optional. Flags syntax is\n"
-	"`+#[+#[+#]]' or `0xNN', for example `+1', `+2+3', `0x00', `0x03', etc.",
+	"Startup file, dma and compatibility flags are optional.\n"
+	"Flags syntax is `+#[+#[+#]]' or `0xNN', for example `+1', `+2+3', `0x00', `0x03' etc.\n"
+	"DMA syntax is `*u4` for UDMA4 (default one).",
 	"192.168.0.10 \"Tekken Tag Tournament\" cd0: SCES_xxx.xx *u4",
 	"hdd1: \"Tekken\" c:\\tekken.iso SCES_xxx.xx +1+2 *u4", 1 },
-      { CMD_HDL_INJECT_DVD, "target name source [startup] [flags] dma [@slice_index]",
+      { CMD_HDL_INJECT_DVD, "target name source [startup] [+flags] [*dma] [@slice_index]",
 	"create a new HDL partition from a DVD",
-	"You can use boot.elf,list.cio, icon.sys. Check Readme\n"
+	"You can use boot.elf, list.cio, icon.sys. Check Readme\n"
 	"DVD-9 supports only ISO or IML.\n"
 	"Supported inputs: plain ISO files, CDRWIN cuesheets, Nero images and tracks,\n"
 	"RecordNow! Global images, HDL partitions (PP.HDL.Xenosaga@192....) and\n"
 	"Sony CD/DVD generator IML files (with full paths).\n"
-	"Startup file and compatibility flags are optional. Flags syntax is\n"
-	"`+#[+#[+#]]' or `0xNN',for example `+1', `+2+3', `0x00', `0x03', etc.",
+	"Startup file, dma and compatibility flags are optional.\n"
+	"Flags syntax is `+#[+#[+#]]' or `0xNN', for example `+1', `+2+3', `0x00', `0x03', etc.\n"
+	"DMA syntax is `*u4` for UDMA4 (default one).",
 	"192.168.0.10 \"Gran Turismo 3\" cd0: *u4",
 	"hdd1: \"Gran Turismo 3\" c:\\gt3.iso SCES_xxx.xx +2+3 *u4", 1 },
       { CMD_HDL_INSTALL, "target source [@slice_index]",
@@ -1585,15 +1587,21 @@ show_usage_and_exit (const char *app_path,
       while (h->command_name != NULL)
       {
     	  if (strcmp(command, h->command_name) == 0) {
-    		  fprintf(stderr, "Usage:\t%s %s\n"
+    		  fprintf(stderr,
+    				  BOLD
+    				  "Usage:"
+    				  UNBOLD
+					  "\t%s %s\n"
     				  "\n"
     				  "%s\n", h->command_name, h->command_arguments,
 					  h->description);
     		  if (h->details != NULL)
     			  fprintf(stderr, "\n%s", h->details);
     		  if (h->example1 != NULL)
-    			  fprintf(stderr, "\n"
-    					  "Example:\n"
+    			  fprintf(stderr, "\n\n"
+    					  BOLD
+    					  "Example:\n\n"
+						  UNBOLD
     					  "%s %s %s\n", app, h->command_name, h->example1);
     		  if (h->example2 != NULL)
     			  fprintf(stderr, "\tor\n"
@@ -1601,8 +1609,11 @@ show_usage_and_exit (const char *app_path,
     		  if (h->dangerous != 0)
     			  fprintf(stderr,
     					  "\n"
-    					  "Warning: This command does write on the HDD\n"
-    					  "         and could cause corruption. Use with care.\n");
+    					  BOLD
+    					  "Warning:\n\n"
+						  UNBOLD
+						  "This command does write on the HDD\n"
+    					  "and could cause corruption. Use with care.\n");
     		  command_found = 1;
     		  break;
     	  }
