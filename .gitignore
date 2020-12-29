@@ -1,0 +1,7 @@
+*.d
+*.o
+*.exe
+*_irx.c
+*.elf
+open-ps2-loader
+hdl_dump

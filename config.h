@@ -97,6 +97,7 @@ static const compat_flags_t COMPAT_FLAGS_INVALID = (compat_flags_t) -1;
 #define INCLUDE_ZERO_CMD
 #define INCLUDE_CUTOUT_CMD
 #define INCLUDE_INITIALIZE_CMD
+#define INCLUDE_DUMP_MBR_CMD
 #define INCLUDE_DELETE_CMD
 #define INCLUDE_BACKUP_TOC_CMD
 #define INCLUDE_RESTORE_TOC_CMD
@@ -111,7 +112,7 @@ static const compat_flags_t COMPAT_FLAGS_INVALID = (compat_flags_t) -1;
 #define CONFIG_LAST_IP                    "last_ip"
 #define CONFIG_TARGET_KBPS                "target_kbps"
 #define CONFIG_AUTO_THROTTLE              "auto_throttle"
-
+#define CONFIG_DEFAULT_DMA                "default_dma"
 
 #if defined (__cplusplus)
 #  define C_START extern "C" {
