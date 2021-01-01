@@ -761,6 +761,7 @@ hdl_pname (const char *startup_name, const char *name,
 {
   u_int32_t game_name_len = 0;
   char *p;
+  p = 0;
 
   game_name_len = strlen (name) < game_name_len ? strlen (name) : game_name_len;
   if (name[0] != '_' && name[1] != '_')

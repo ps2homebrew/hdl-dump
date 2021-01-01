@@ -475,8 +475,8 @@ dlg_refresh_hdd_info (HWND dlg)
 			dma_dummy = ((unsigned short)game->dma - 32)/256;
 			if (dma_dummy < 3)
 			{
-			  char tmp[5];
-			  sprintf (tmp, "%s","  MDMA");
+			  char tmp[6];
+			  sprintf (tmp, "%s"," MDMA");
 			  strcat (details, tmp);
 			  sprintf(tmp, "%u",(unsigned int) dma_dummy);
 			  strcat (details, tmp);
@@ -488,8 +488,8 @@ dlg_refresh_hdd_info (HWND dlg)
 			dma_dummy = ((unsigned short)game->dma - 64)/256;
 			if (dma_dummy < 5)
 			{
-			  char tmp[5];
-			  sprintf (tmp, "%s","  UDMA");
+			  char tmp[6];
+			  sprintf (tmp, "%s"," UDMA");
 			  strcat (details, tmp);
 			  sprintf(tmp, "%u",(unsigned int) dma_dummy);
 			  strcat (details, tmp);

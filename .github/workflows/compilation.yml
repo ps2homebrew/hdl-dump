@@ -18,17 +18,18 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
       run: |
         sudo apt-get update
-        sudo apt-get -y install gcc-mingw-w64-i686 gcc
-        make RELEASE=yes
-        make XC=win RELEASE=yes
-        make -C gui XC=win RELEASE=yes
+        make DEBUG=yes
+        # sudo apt-get -y install gcc-mingw-w64-i686 gcc
+        # make XC=win DEBUG=yes
+        # make -C gui XC=win DEBUG=yes
 
     - name: Install Mac version
       if: matrix.os == 'macOS-latest'
       run: |
-        brew update
-        brew install mingw-w64 gcc make
-        make
+        make USE_THREADED_IIN=no DEBUG=yes
+        # brew install mingw-w64 gcc make
+        # make XC=win DEBUG=yes
+        # make -C gui XC=win DEBUG=yes
 
     - uses: actions/upload-artifact@v2
       with:
