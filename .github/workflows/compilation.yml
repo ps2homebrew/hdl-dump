@@ -15,24 +15,101 @@ jobs:
     - uses: actions/checkout@v2
         
     - name: Install Ubuntu version
-      if: matrix.os == 'ubuntu-latest'
+      if: ${{ matrix.os == 'ubuntu-latest' && always() }}
       run: |
-        sudo apt-get update
-        make DEBUG=yes
-        # sudo apt-get -y install gcc-mingw-w64-i686 gcc
-        # make XC=win DEBUG=yes
-        # make -C gui XC=win DEBUG=yes
-
+        make --trace DEBUG=yes
+        
     - name: Install Mac version
-      if: matrix.os == 'macOS-latest'
+      if: ${{ matrix.os == 'macos-latest' && always() }}
       run: |
-        make USE_THREADED_IIN=no DEBUG=yes
-        # brew install mingw-w64 gcc make
-        # make XC=win DEBUG=yes
-        # make -C gui XC=win DEBUG=yes
+        make --debug USE_THREADED_IIN=no IIN_OPTICAL_MMAP=no DEBUG=yes
 
     - uses: actions/upload-artifact@v2
       with:
-        name: rel/hdl_*
-        path: hdl-${{matrix.os}}.zip
+        name: hdl-${{matrix.os}}
+        path: hdl_dump
 
+  build-win:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+        
+    steps:       
+    - uses: actions/checkout@v2
+        
+    - name: Install Win version from Ubuntu
+      if: ${{ matrix.os == 'ubuntu-latest' && always() }}
+      run: |
+        sudo apt-get -y install gcc-mingw-w64 gcc
+        make --trace XC=win DEBUG=yes
+        mkdir -p rel
+        mv hdl_dump.exe rel/
+        make clean
+        make --trace -C gui XC=win DEBUG=yes
+        mv gui/hdl_dumb.exe rel/
+        
+    - name: Install Win version from Mac
+      if: ${{ matrix.os == 'macos-latest' && always() }}
+      run: |
+        brew install mingw-w64 make
+        make --debug XC=win DEBUG=yes
+        mkdir -p rel
+        mv hdl_dump.exe rel/
+        make clean
+        make --debug -C gui XC=win DEBUG=yes
+        mv gui/hdl_dumb.exe rel/
+
+    - uses: actions/upload-artifact@v2
+      with:
+        name: hdl-WIN-${{matrix.os}}
+        path: |
+          rel/*.exe
+
+  release:
+    needs: [build, build-win]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/master'
+    steps:
+    - name: git checkout
+      uses: actions/checkout@v2
+    - run: |
+        git fetch --prune --unshallow
+      
+    - name: Download Mac artifact
+      uses: actions/download-artifact@v1
+      with:
+        name: hdl-macos-latest
+
+    - name: Download Ubuntu artifact
+      uses: actions/download-artifact@v1
+      with:
+        name: hdl-ubuntu-latest
+
+    - name: Download Win version from Mac artifact
+      uses: actions/download-artifact@v1
+      with:
+        name: hdl-WIN-macos-latest
+
+    - name: Download Win version from Ubuntu artifact
+      uses: actions/download-artifact@v1
+      with:
+        name: hdl-WIN-ubuntu-latest
+
+    - name: Prepare artifacts for release
+      run: |
+        7z a -t7z hdl-macos-latest.7z hdl-macos-latest/*
+        7z a -t7z hdl-ubuntu-latest.7z hdl-ubuntu-latest/*
+        7z a -t7z hdl-WIN-macos-latest.7z hdl-WIN-macos-latest/*
+        7z a -t7z hdl-WIN-ubuntu-latest.7z hdl-WIN-ubuntu-latest/*
+
+    - name: Create prerelease
+      if: github.ref == 'refs/heads/master'
+      uses: marvinpinto/action-automatic-releases@latest
+      with:
+        repo_token: "${{ secrets.GITHUB_TOKEN }}"
+        prerelease: true
+        automatic_release_tag: "latest"
+        title: "${{ steps.version.outputs.version }}"
+        files: |
+          hdl-*.7z
