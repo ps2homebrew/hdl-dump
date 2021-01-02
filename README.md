@@ -80,8 +80,6 @@ All new stuff can be used from HDDOSD or BB Navigator or XMB from PSX DVR.
 
 This command will install games onto the hard disk.
 
-_**Warning**: You need to specify a DMA mode (like `*u4`, `*m2`) or `hdl_dump` crashes._
-
 _**Warning**: Be careful with `copy_hdd` - every HDLoader game will be given the same icon._
 
 Optionally, you can place `boot.elf` (which is actually `miniopl.elf`) in the folder where `hdl_dump` is launched from.
