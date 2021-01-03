@@ -34,51 +34,49 @@
 #include "dict.h"
 #include "config.h"
 #include "retcodes.h"
-#if defined (USE_THREADED_IIN)
-#  include "thd_iin.h"
+#if defined(USE_THREADED_IIN)
+#include "thd_iin.h"
 #endif
 
 
-int
-iin_probe (const dict_t *config,
-	   const char *path,
-	   iin_t **iin)
+int iin_probe(const dict_t *config,
+              const char *path,
+              iin_t **iin)
 {
-  int result = RET_NOT_COMPAT;
+    int result = RET_NOT_COMPAT;
 
-  /* prefix-driven inputs first */
-  if (result == RET_NOT_COMPAT)
-    result = iin_hio_probe_path (config, path, iin);
-  if (result == RET_NOT_COMPAT)
-    result = iin_optical_probe_path (path, iin);
-#if defined (_BUILD_WIN32)
-  if (result == RET_NOT_COMPAT)
-    result = iin_spti_probe_path (path, iin);
-  /* assume ASPI support enabled */
-  if (result == RET_NOT_COMPAT)
-    result = iin_aspi_probe_path (path, iin);
+    /* prefix-driven inputs first */
+    if (result == RET_NOT_COMPAT)
+        result = iin_hio_probe_path(config, path, iin);
+    if (result == RET_NOT_COMPAT)
+        result = iin_optical_probe_path(path, iin);
+#if defined(_BUILD_WIN32)
+    if (result == RET_NOT_COMPAT)
+        result = iin_spti_probe_path(path, iin);
+    /* assume ASPI support enabled */
+    if (result == RET_NOT_COMPAT)
+        result = iin_aspi_probe_path(path, iin);
 #endif
 
-  /* file-driven inputs next, ordered by accuracy */
-  if (result == RET_NOT_COMPAT)
-    result = iin_nero_probe_path (path, iin);
-  if (result == RET_NOT_COMPAT)
-    result = iin_cdrwin_probe_path (path, iin);
-  if (result == RET_NOT_COMPAT)
-    result = iin_gi_probe_path (path, iin);
-  if (result == RET_NOT_COMPAT)
-    result = iin_iso_probe_path (path, iin);
-  if (result == RET_NOT_COMPAT)
-    result = iin_iml_probe_path (path, iin);
+    /* file-driven inputs next, ordered by accuracy */
+    if (result == RET_NOT_COMPAT)
+        result = iin_nero_probe_path(path, iin);
+    if (result == RET_NOT_COMPAT)
+        result = iin_cdrwin_probe_path(path, iin);
+    if (result == RET_NOT_COMPAT)
+        result = iin_gi_probe_path(path, iin);
+    if (result == RET_NOT_COMPAT)
+        result = iin_iso_probe_path(path, iin);
+    if (result == RET_NOT_COMPAT)
+        result = iin_iml_probe_path(path, iin);
 
-#if defined (USE_THREADED_IIN)
-  if (result == RET_OK)
-    { /* wrap in threaded delegate */
-      iin_t *tmp = thd_create (*iin);
-      if (tmp != NULL)
-	*iin = tmp;
+#if defined(USE_THREADED_IIN)
+    if (result == RET_OK) { /* wrap in threaded delegate */
+        iin_t *tmp = thd_create(*iin);
+        if (tmp != NULL)
+            *iin = tmp;
     }
 #endif /* _BUILD_WIN32 defined? */
 
-  return (result);
+    return (result);
 }

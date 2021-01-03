@@ -21,7 +21,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#if !defined (_IIN_HIO_H)
+#if !defined(_IIN_HIO_H)
 #define _IIN_HIO_H
 
 #include "config.h"
@@ -30,9 +30,9 @@
 C_START
 
 /* would accept "partition@device" */
-int iin_hio_probe_path (const dict_t *config,
-			const char *path,
-			/*@special@*/ iin_p_t *iin) /*@allocates *iin@*/ /*@defines *iin@*/;
+int iin_hio_probe_path(const dict_t *config,
+                       const char *path,
+                       /*@special@*/ iin_p_t *iin) /*@allocates *iin@*/ /*@defines *iin@*/;
 
 C_END
 

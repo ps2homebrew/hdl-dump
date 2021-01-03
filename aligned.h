@@ -21,7 +21,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#if !defined (_ALIGNED_H)
+#if !defined(_ALIGNED_H)
 #define _ALIGNED_H
 
 #include "config.h"
@@ -38,20 +38,18 @@ C_START
  */
 typedef struct aligned_type aligned_t;
 
-aligned_t*
-al_alloc (osal_handle_t in,
-	  u_int32_t sector_size, /* device sector size - each file I/O should be aligned */
-	  u_int32_t buffer_size_in_sectors); /* 32 is good enough */
+aligned_t *
+al_alloc(osal_handle_t in,
+         u_int32_t sector_size,             /* device sector size - each file I/O should be aligned */
+         u_int32_t buffer_size_in_sectors); /* 32 is good enough */
 
-int
-al_read (aligned_t *al,
-	 u_int64_t offset,
-	 const char **data, /* internal buffer, managed by aligned I/O */
-	 u_int32_t dest_size,
-	 u_int32_t *length);
+int al_read(aligned_t *al,
+            u_int64_t offset,
+            const char **data, /* internal buffer, managed by aligned I/O */
+            u_int32_t dest_size,
+            u_int32_t *length);
 
-void
-al_free (aligned_t *al);
+void al_free(aligned_t *al);
 
 C_END
 

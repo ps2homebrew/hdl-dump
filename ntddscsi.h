@@ -49,51 +49,51 @@
 extern "C" {
 #endif
 
-  /* Define enough to talk IOCTL_SCSI_PASS_THROUGH. */
+/* Define enough to talk IOCTL_SCSI_PASS_THROUGH. */
 
-#define IOCTL_SCSI_PASS_THROUGH		0x4D004
+#define IOCTL_SCSI_PASS_THROUGH 0x4D004
 
-#define SCSI_IOCTL_DATA_OUT		0
-#define SCSI_IOCTL_DATA_IN		1
-#define SCSI_IOCTL_DATA_UNSPECIFIED	2
+#define SCSI_IOCTL_DATA_OUT 0
+#define SCSI_IOCTL_DATA_IN 1
+#define SCSI_IOCTL_DATA_UNSPECIFIED 2
 
-  typedef struct ScsiPassThrough
-  {
-    unsigned short	Length;			/* [x00] */
-    unsigned char	ScsiStatus;		/* [x01] */
-    unsigned char	PathId;			/* [x02] */
-    unsigned char	TargetId;		/* [x03] */
-    unsigned char	Lun;			/* [x04] */
-    unsigned char	CdbLength;		/* [x05] */
-    unsigned char	SenseInfoLength;	/* [x06] */
-    unsigned char	DataIn;			/* [x07] */
-    unsigned int	DataTransferLength;	/* [x0B:0A:09:08] */
-    unsigned int	TimeOutValue;		/* [x0F:0E:0D:0C] */
-    unsigned int	DataBufferOffset;	/* [x13:12:11:10] */
-    unsigned int	SenseInfoOffset;	/* [x17:16:15:14] */
-    unsigned char	Cdb [16];		/* [x18...x27] */
-  } SCSI_PASS_THROUGH;
+typedef struct ScsiPassThrough
+{
+    unsigned short Length;           /* [x00] */
+    unsigned char ScsiStatus;        /* [x01] */
+    unsigned char PathId;            /* [x02] */
+    unsigned char TargetId;          /* [x03] */
+    unsigned char Lun;               /* [x04] */
+    unsigned char CdbLength;         /* [x05] */
+    unsigned char SenseInfoLength;   /* [x06] */
+    unsigned char DataIn;            /* [x07] */
+    unsigned int DataTransferLength; /* [x0B:0A:09:08] */
+    unsigned int TimeOutValue;       /* [x0F:0E:0D:0C] */
+    unsigned int DataBufferOffset;   /* [x13:12:11:10] */
+    unsigned int SenseInfoOffset;    /* [x17:16:15:14] */
+    unsigned char Cdb[16];           /* [x18...x27] */
+} SCSI_PASS_THROUGH;
 
-  /* Define enough more to talk IOCTL_SCSI_PASS_THROUGH_DIRECT. */
+/* Define enough more to talk IOCTL_SCSI_PASS_THROUGH_DIRECT. */
 
-#define IOCTL_SCSI_PASS_THROUGH_DIRECT	0x4D014
+#define IOCTL_SCSI_PASS_THROUGH_DIRECT 0x4D014
 
-  typedef struct ScsiPassThroughDirect
-  {
-    unsigned short	Length;
-    unsigned char	ScsiStatus;
-    unsigned char	PathId;
-    unsigned char	TargetId;
-    unsigned char	Lun;
-    unsigned char	CdbLength;
-    unsigned char	SenseInfoLength;
-    unsigned char	DataIn;
-    unsigned int	DataTransferLength;
-    unsigned int	TimeOutValue;
-    void                *DataBuffer;	/* [x13:12:11:10] */
-    unsigned int	SenseInfoOffset;
-    unsigned char	Cdb [16];
-  } SCSI_PASS_THROUGH_DIRECT;
+typedef struct ScsiPassThroughDirect
+{
+    unsigned short Length;
+    unsigned char ScsiStatus;
+    unsigned char PathId;
+    unsigned char TargetId;
+    unsigned char Lun;
+    unsigned char CdbLength;
+    unsigned char SenseInfoLength;
+    unsigned char DataIn;
+    unsigned int DataTransferLength;
+    unsigned int TimeOutValue;
+    void *DataBuffer; /* [x13:12:11:10] */
+    unsigned int SenseInfoOffset;
+    unsigned char Cdb[16];
+} SCSI_PASS_THROUGH_DIRECT;
 
 #ifdef __cplusplus
 }

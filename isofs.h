@@ -21,7 +21,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#if !defined (_ISOFS_H)
+#if !defined(_ISOFS_H)
 #define _ISOFS_H
 
 #include "config.h"
@@ -31,19 +31,18 @@ C_START
 
 typedef struct ps2_cdvd_info_type
 {
-  enum
-    {
-      mt_unknown,
-      mt_cd,
-      mt_dvd
+    enum {
+        mt_unknown,
+        mt_cd,
+        mt_dvd
     } media_type;
-  char volume_id[32 + 1];
-  char startup_elf[12 + 1];
-  u_int64_t layer_pvd;
+    char volume_id[32 + 1];
+    char startup_elf[12 + 1];
+    u_int64_t layer_pvd;
 } ps2_cdvd_info_t;
 
-int isofs_get_ps2_cdvd_info (iin_t *iin,
-			     /*@out@*/ ps2_cdvd_info_t *info);
+int isofs_get_ps2_cdvd_info(iin_t *iin,
+                            /*@out@*/ ps2_cdvd_info_t *info);
 
 C_END
 

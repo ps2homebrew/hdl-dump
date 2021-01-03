@@ -21,21 +21,21 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#if !defined (_BYTESEQ_H)
+#if !defined(_BYTESEQ_H)
 #define _BYTESEQ_H
 
 #include "config.h"
 
 C_START
 
-u_int32_t get_u32 (const void *buffer);
-void set_u32 (/*@out@*/ void *buffer, u_int32_t val);
+u_int32_t get_u32(const void *buffer);
+void set_u32(/*@out@*/ void *buffer, u_int32_t val);
 
-u_int16_t get_u16 (const void *buffer);
-void set_u16 (/*@out@*/ void *buffer, u_int16_t val);
+u_int16_t get_u16(const void *buffer);
+void set_u16(/*@out@*/ void *buffer, u_int16_t val);
 
-u_int8_t get_u8 (const void *buffer);
-void set_u8 (/*@out@*/ void *buffer, u_int8_t val);
+u_int8_t get_u8(const void *buffer);
+void set_u8(/*@out@*/ void *buffer, u_int8_t val);
 
 C_END
 

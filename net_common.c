@@ -21,21 +21,21 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#if defined (_BUILD_WIN32)
-#  if defined (_MSC_VER) && defined (_WIN32)
-#    include <winsock2.h> /* Microsoft Visual C/C++ compiler */
-#  else
-#    include <winsock.h> /* GNU C/C++ compiler */
-#  endif
-#  include <windows.h>
-#  include <sys/types.h>
-#elif defined (_BUILD_UNIX)
-#  include <errno.h>
-#  include <unistd.h>
-#  include <sys/types.h>
-#  include <sys/socket.h>
-#  include <netinet/in.h>
-#  include <netinet/tcp.h>
+#if defined(_BUILD_WIN32)
+#if defined(_MSC_VER) && defined(_WIN32)
+#include <winsock2.h> /* Microsoft Visual C/C++ compiler */
+#else
+#include <winsock.h> /* GNU C/C++ compiler */
+#endif
+#include <windows.h>
+#include <sys/types.h>
+#elif defined(_BUILD_UNIX)
+#include <errno.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
 #endif
 #include <string.h>
 #include "byteseq.h"
@@ -44,44 +44,38 @@
 
 
 /**************************************************************/
-int
-recv_exact (int s,
-	    void *buf,
-	    u_int32_t bytes,
-	    int flags)
+int recv_exact(int s,
+               void *buf,
+               u_int32_t bytes,
+               int flags)
 {
-  ssize_t total = 0, result = 1;
-  while (bytes > 0 && result > 0)
-    {
-      result = recv (s, buf, bytes, flags);
-      if (result > 0)
-	{
-	  buf = (char*) buf + result;
-	  total += result;
-	  bytes -= result;
-	}
+    ssize_t total = 0, result = 1;
+    while (bytes > 0 && result > 0) {
+        result = recv(s, buf, bytes, flags);
+        if (result > 0) {
+            buf = (char *)buf + result;
+            total += result;
+            bytes -= result;
+        }
     }
-  return ((int) (result >= 0 ? total : result));
+    return ((int)(result >= 0 ? total : result));
 }
 
 
 /**************************************************************/
-int
-send_exact (int s,
-	    const void *buf,
-	    u_int32_t bytes,
-	    int flags)
+int send_exact(int s,
+               const void *buf,
+               u_int32_t bytes,
+               int flags)
 {
-  ssize_t total = 0, result = 1;
-  while (bytes > 0 && result > 0)
-    {
-      result = send (s, buf, bytes, flags);
-      if (result > 0)
-	{
-	  buf = (char*) buf + result;
-	  total += result;
-	  bytes -= result;
-	}
+    ssize_t total = 0, result = 1;
+    while (bytes > 0 && result > 0) {
+        result = send(s, buf, bytes, flags);
+        if (result > 0) {
+            buf = (char *)buf + result;
+            total += result;
+            bytes -= result;
+        }
     }
-  return ((int) (result >= 0 ? total : result));
+    return ((int)(result >= 0 ? total : result));
 }

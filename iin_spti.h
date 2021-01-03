@@ -21,7 +21,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#if !defined (_IIN_SPTI_H)
+#if !defined(_IIN_SPTI_H)
 #define _IIN_SPTI_H
 
 #include "config.h"
@@ -29,15 +29,15 @@
 
 C_START
 
-unsigned long spti_get_last_error_code (void);
+unsigned long spti_get_last_error_code(void);
 
-const char* spti_get_last_error_msg (void);
+const char *spti_get_last_error_msg(void);
 
-const char* spti_get_error_msg (unsigned long spti_error_code);
+const char *spti_get_error_msg(unsigned long spti_error_code);
 
 /* would accept a drive letter ("d:", "e:",...) of an optical drive */
-int iin_spti_probe_path (const char *path,
-			 /*@special@*/ iin_p_t *iin) /*@allocates *iin@*/ /*@defines *iin@*/;
+int iin_spti_probe_path(const char *path,
+                        /*@special@*/ iin_p_t *iin) /*@allocates *iin@*/ /*@defines *iin@*/;
 
 C_END
 

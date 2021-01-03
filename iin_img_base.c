@@ -36,328 +36,297 @@
 
 typedef struct part_type
 {
-  u_int32_t offset_s, length_s; /* in IIN_SECTOR_SIZE-based sectors */
-  u_int64_t skip; /* number of bytes to skip at the begining of the input (header?) */
-  char *input_path;
-  u_int32_t device_sector_size; /* sector size of the device where the input is located */
+    u_int32_t offset_s, length_s; /* in IIN_SECTOR_SIZE-based sectors */
+    u_int64_t skip;               /* number of bytes to skip at the begining of the input (header?) */
+    char *input_path;
+    u_int32_t device_sector_size; /* sector size of the device where the input is located */
 } part_t;
 
 struct iin_img_base_type
 {
-  iin_t iin;
+    iin_t iin;
 
-  part_t *current; /* where "file" and "al" currently are */
-  osal_handle_t file;
-  aligned_t *al;
+    part_t *current; /* where "file" and "al" currently are */
+    osal_handle_t file;
+    aligned_t *al;
 
-  char *unaligned, *buffer;
-  u_int32_t raw_sector_size, raw_skip_offset;
-  u_int32_t offset_s;
+    char *unaligned, *buffer;
+    u_int32_t raw_sector_size, raw_skip_offset;
+    u_int32_t offset_s;
 
-  u_int32_t num_parts, alloc_parts;
-  part_t *parts;
+    u_int32_t num_parts, alloc_parts;
+    part_t *parts;
 
-  unsigned long error_code; /* against osal_... */
+    unsigned long error_code; /* against osal_... */
 };
 
 
 /**************************************************************/
 static void
-close_current (iin_img_base_t *img_base)
+close_current(iin_img_base_t *img_base)
 {
-  if (img_base->current != NULL)
-    { /* close the old input */
-      al_free (img_base->al);
-      osal_close (&img_base->file);
-      img_base->current = NULL;
+    if (img_base->current != NULL) { /* close the old input */
+        al_free(img_base->al);
+        osal_close(&img_base->file);
+        img_base->current = NULL;
     }
 }
 
 
 /**************************************************************/
-int
-img_base_add_part (iin_img_base_t *img_base,
-		   const char *input_path,
-		   u_int32_t length_s,
-		   u_int64_t skip,
-		   u_int32_t device_sector_size)
+int img_base_add_part(iin_img_base_t *img_base,
+                      const char *input_path,
+                      u_int32_t length_s,
+                      u_int64_t skip,
+                      u_int32_t device_sector_size)
 {
-  part_t *dest;
-  part_t *prev;
-  u_int32_t len;
-  if (img_base->num_parts == img_base->alloc_parts)
-  { /* (re)alloc memory */
-	u_int32_t bytes = (img_base->alloc_parts + PARTS_GROW) * sizeof (part_t);
-	part_t *tmp = (part_t*) osal_alloc (bytes);
-	if (tmp != NULL)
-	{
-	  memset (tmp, 0, bytes);
-	  if (img_base->parts != NULL)
-	  { /* move old data and release old buffer */
-		memcpy (tmp, img_base->parts, img_base->num_parts * sizeof (part_t));
-		osal_free (img_base->parts);
-	  }
-	  img_base->parts = tmp;
-	  img_base->alloc_parts += PARTS_GROW;
-	}
-      else
-		return (RET_NO_MEM);
-  }
-
-  prev = img_base->num_parts > 0 ? img_base->parts + img_base->num_parts - 1 : NULL;
-  dest = img_base->parts + img_base->num_parts;
-  dest->offset_s = img_base->offset_s;
-  dest->length_s = length_s;
-  dest->skip = skip;
-  len = strlen (input_path);
-  dest->input_path = osal_alloc (len + 1);
-  if (dest->input_path != NULL)
-    strcpy (dest->input_path, input_path);
-  else
-    return (RET_NO_MEM);
-  dest->device_sector_size = device_sector_size;
-  img_base->offset_s += length_s;
-  ++img_base->num_parts;
-  return (RET_OK);
-}
-
-
-/**************************************************************/
-void
-img_base_add_gap (iin_img_base_t *img_base,
-		  u_int32_t length_s)
-{
-  img_base->offset_s += length_s;
-}
-
-
-/**************************************************************/
-static int
-img_base_stat (iin_t *iin,
-	       /*@out@*/ u_int32_t *sector_size,
-	       /*@out@*/ u_int32_t *num_sectors)
-{
-  iin_img_base_t *img_base = (iin_img_base_t*) iin;
-  *sector_size = IIN_SECTOR_SIZE;
-  if (img_base->num_parts > 0)
-    *num_sectors = (img_base->parts [img_base->num_parts - 1].offset_s +
-		    img_base->parts [img_base->num_parts - 1].length_s);
-  else
-    *num_sectors = 0; /* no parts set up */
-  return (OSAL_OK);
-}
-
-
-/**************************************************************/
-static int
-img_base_read (iin_t *iin,
-	       u_int32_t start_sector,
-	       u_int32_t num_sectors,
-	       /*@out@*/ const char **data,
-	       /*@out@*/ u_int32_t *length)
-{
-  iin_img_base_t *img_base = (iin_img_base_t*) iin;
-  int result = OSAL_OK;
-
-  if (img_base->current != NULL &&
-      img_base->current->offset_s <= start_sector &&
-      start_sector < img_base->current->offset_s + img_base->current->length_s)
-    ; /* current part contains (at least part of) the requested data */
-  else
-    { /* locate the part containing the requested data */
-      part_t *prev = NULL, *part;
-      int found = 0, gap = 0;
-      u_int32_t i;
-      for (i=0; i<img_base->num_parts; ++i)
-	{
-	  part = img_base->parts + i;
-	  if (part->offset_s <= start_sector &&
-	      start_sector < part->offset_s + part->length_s)
-	    { /* part found */
-	      found = 1; break;
-	    }
-	  else if (start_sector < part->offset_s)
-	    { /* a gap found */
-	      gap = 1; break;
-	    }
-	  prev = part;
-	}
-      if (found)
-	{
-	  if (img_base->current != NULL &&
-	      caseless_compare (img_base->current->input_path, part->input_path))
-	    img_base->current = part; /* do not reopen if new input is the same */
-	  else
-	    { /* open the new input */
-	      osal_handle_t in;
-	      u_int32_t cache_size =
-		((img_base->raw_sector_size * IIN_NUM_SECTORS + img_base->raw_sector_size - 1) /
-		 part->device_sector_size);
-	      result = osal_open (part->input_path, &in, 1); /* with no cache */
-	      if (result == OSAL_OK)
-		{
-		  aligned_t *al = al_alloc (in, part->device_sector_size, cache_size);
-		  if (al != NULL)
-		    { /* switch the old input with the new one */
-		      close_current (img_base);
-		      img_base->al = al;
-		      img_base->file = in;
-		      img_base->current = part;
-		    }
-		  else
-		    result = RET_NO_MEM;
-		  if (result != OSAL_OK)
-		    osal_close (&in); /* al allocation failed? */
-		}
-	    }
-	}
-      else if (gap == 1)
-	{ /* a gap between "prev" and "part" */
-	  u_int32_t gap_start_s = prev != NULL ? prev->offset_s + prev->length_s : 0;
-	  u_int32_t gap_length_s = part->offset_s - gap_start_s;
-	  u_int32_t til_end_s = gap_start_s + gap_length_s - start_sector;
-
-	  *length = (num_sectors > til_end_s ? til_end_s : num_sectors) * IIN_SECTOR_SIZE;
-	  if (*length > IIN_NUM_SECTORS * IIN_SECTOR_SIZE)
-	    *length = IIN_NUM_SECTORS * IIN_SECTOR_SIZE;
-	  memset (img_base->buffer, 0, *length);
-	  *data = img_base->buffer;
-	  return (OSAL_OK);
-	}
-      else
-	{ /* behind the end-of-file */
-	  *length = 0;
-	  return (OSAL_OK);
-	}
+    part_t *dest;
+    part_t *prev;
+    u_int32_t len;
+    if (img_base->num_parts == img_base->alloc_parts) { /* (re)alloc memory */
+        u_int32_t bytes = (img_base->alloc_parts + PARTS_GROW) * sizeof(part_t);
+        part_t *tmp = (part_t *)osal_alloc(bytes);
+        if (tmp != NULL) {
+            memset(tmp, 0, bytes);
+            if (img_base->parts != NULL) { /* move old data and release old buffer */
+                memcpy(tmp, img_base->parts, img_base->num_parts * sizeof(part_t));
+                osal_free(img_base->parts);
+            }
+            img_base->parts = tmp;
+            img_base->alloc_parts += PARTS_GROW;
+        } else
+            return (RET_NO_MEM);
     }
 
-  if (result == OSAL_OK)
-    {
-      u_int64_t offset =
-	img_base->current->skip +
-	(u_int64_t) (start_sector - img_base->current->offset_s) * img_base->raw_sector_size;
-      u_int32_t len;
-      const char *raw_data;
-      int result = al_read (img_base->al, offset, &raw_data,
-			    num_sectors * img_base->raw_sector_size, &len);
-      if (result == OSAL_OK)
-	{
-	  u_int32_t num_sect = (len + img_base->raw_sector_size - 1) / img_base->raw_sector_size;
-	  u_int32_t uncomplete =
-	    (img_base->raw_sector_size - len % img_base->raw_sector_size) %
-	    img_base->raw_sector_size;
+    prev = img_base->num_parts > 0 ? img_base->parts + img_base->num_parts - 1 : NULL;
+    dest = img_base->parts + img_base->num_parts;
+    dest->offset_s = img_base->offset_s;
+    dest->length_s = length_s;
+    dest->skip = skip;
+    len = strlen(input_path);
+    dest->input_path = osal_alloc(len + 1);
+    if (dest->input_path != NULL)
+        strcpy(dest->input_path, input_path);
+    else
+        return (RET_NO_MEM);
+    dest->device_sector_size = device_sector_size;
+    img_base->offset_s += length_s;
+    ++img_base->num_parts;
+    return (RET_OK);
+}
 
-	  if (start_sector + num_sectors > img_base->current->length_s)
-	    { /* check if read after the end has not been tried */
-	      u_int32_t sectors_til_end =
-		img_base->current->offset_s + img_base->current->length_s - start_sector;
-	      if (num_sect > sectors_til_end)
-		num_sect = sectors_til_end;
-	    }
 
-	  /* do not copy data if structure is 2048/plain (would safe some CPU) */
-	  if (img_base->raw_sector_size == IIN_SECTOR_SIZE &&
-	      img_base->raw_skip_offset == 0)
-	    *data = raw_data;
-	  else
-	    {
-	      u_int32_t i;
-	      for (i=0; i<num_sect; ++i)
-		memcpy (img_base->buffer + i * IIN_SECTOR_SIZE,
-			raw_data + i * img_base->raw_sector_size + img_base->raw_skip_offset,
-			IIN_SECTOR_SIZE);
-	      *data = img_base->buffer;
-	    }
-	  *length = num_sect * IIN_SECTOR_SIZE;
-
-	  if (uncomplete == 0)
-	    ;
-	  else
-	    { /* fill last sector with zeroes */
-	      if (uncomplete > img_base->raw_skip_offset)
-		{ /* last sector is incomplete */
-		  u_int32_t len_to_zero = uncomplete + img_base->raw_skip_offset;
-		  memset ((char*) *data + *length - len_to_zero, 0, len_to_zero);
-		}
-	      else
-		/* remove last sector at all; only header has been readen */
-		--(*length);
-	    }
-	}
-      else
-	img_base->error_code = osal_get_last_error_code ();
-    }
-  return (result);
+/**************************************************************/
+void img_base_add_gap(iin_img_base_t *img_base,
+                      u_int32_t length_s)
+{
+    img_base->offset_s += length_s;
 }
 
 
 /**************************************************************/
 static int
-img_base_close (/*@special@*/ /*@only@*/ iin_t *iin) /*@releases iin@*/
+img_base_stat(iin_t *iin,
+              /*@out@*/ u_int32_t *sector_size,
+              /*@out@*/ u_int32_t *num_sectors)
 {
-  iin_img_base_t *img_base = (iin_img_base_t*) iin;
-  u_int32_t i;
-  close_current (img_base);
-  osal_free (img_base->unaligned);
-  for (i=0; i<img_base->num_parts; ++i)
-    osal_free (img_base->parts [i].input_path);
-  osal_free (img_base->parts);
-  osal_free (iin);
-  return (OSAL_OK);
+    iin_img_base_t *img_base = (iin_img_base_t *)iin;
+    *sector_size = IIN_SECTOR_SIZE;
+    if (img_base->num_parts > 0)
+        *num_sectors = (img_base->parts[img_base->num_parts - 1].offset_s +
+                        img_base->parts[img_base->num_parts - 1].length_s);
+    else
+        *num_sectors = 0; /* no parts set up */
+    return (OSAL_OK);
 }
 
 
 /**************************************************************/
-static char*
-img_base_last_error (iin_t *iin)
+static int
+img_base_read(iin_t *iin,
+              u_int32_t start_sector,
+              u_int32_t num_sectors,
+              /*@out@*/ const char **data,
+              /*@out@*/ u_int32_t *length)
 {
-  iin_img_base_t *img_base = (iin_img_base_t*) iin;
-  return (osal_get_error_msg (img_base->error_code));
+    iin_img_base_t *img_base = (iin_img_base_t *)iin;
+    int result = OSAL_OK;
+
+    if (img_base->current != NULL &&
+        img_base->current->offset_s <= start_sector &&
+        start_sector < img_base->current->offset_s + img_base->current->length_s)
+        ;  /* current part contains (at least part of) the requested data */
+    else { /* locate the part containing the requested data */
+        part_t *prev = NULL, *part;
+        int found = 0, gap = 0;
+        u_int32_t i;
+        for (i = 0; i < img_base->num_parts; ++i) {
+            part = img_base->parts + i;
+            if (part->offset_s <= start_sector &&
+                start_sector < part->offset_s + part->length_s) { /* part found */
+                found = 1;
+                break;
+            } else if (start_sector < part->offset_s) { /* a gap found */
+                gap = 1;
+                break;
+            }
+            prev = part;
+        }
+        if (found) {
+            if (img_base->current != NULL &&
+                caseless_compare(img_base->current->input_path, part->input_path))
+                img_base->current = part; /* do not reopen if new input is the same */
+            else {                        /* open the new input */
+                osal_handle_t in;
+                u_int32_t cache_size =
+                    ((img_base->raw_sector_size * IIN_NUM_SECTORS + img_base->raw_sector_size - 1) /
+                     part->device_sector_size);
+                result = osal_open(part->input_path, &in, 1); /* with no cache */
+                if (result == OSAL_OK) {
+                    aligned_t *al = al_alloc(in, part->device_sector_size, cache_size);
+                    if (al != NULL) { /* switch the old input with the new one */
+                        close_current(img_base);
+                        img_base->al = al;
+                        img_base->file = in;
+                        img_base->current = part;
+                    } else
+                        result = RET_NO_MEM;
+                    if (result != OSAL_OK)
+                        osal_close(&in); /* al allocation failed? */
+                }
+            }
+        } else if (gap == 1) { /* a gap between "prev" and "part" */
+            u_int32_t gap_start_s = prev != NULL ? prev->offset_s + prev->length_s : 0;
+            u_int32_t gap_length_s = part->offset_s - gap_start_s;
+            u_int32_t til_end_s = gap_start_s + gap_length_s - start_sector;
+
+            *length = (num_sectors > til_end_s ? til_end_s : num_sectors) * IIN_SECTOR_SIZE;
+            if (*length > IIN_NUM_SECTORS * IIN_SECTOR_SIZE)
+                *length = IIN_NUM_SECTORS * IIN_SECTOR_SIZE;
+            memset(img_base->buffer, 0, *length);
+            *data = img_base->buffer;
+            return (OSAL_OK);
+        } else { /* behind the end-of-file */
+            *length = 0;
+            return (OSAL_OK);
+        }
+    }
+
+    if (result == OSAL_OK) {
+        u_int64_t offset =
+            img_base->current->skip +
+            (u_int64_t)(start_sector - img_base->current->offset_s) * img_base->raw_sector_size;
+        u_int32_t len;
+        const char *raw_data;
+        int result = al_read(img_base->al, offset, &raw_data,
+                             num_sectors * img_base->raw_sector_size, &len);
+        if (result == OSAL_OK) {
+            u_int32_t num_sect = (len + img_base->raw_sector_size - 1) / img_base->raw_sector_size;
+            u_int32_t uncomplete =
+                (img_base->raw_sector_size - len % img_base->raw_sector_size) %
+                img_base->raw_sector_size;
+
+            if (start_sector + num_sectors > img_base->current->length_s) { /* check if read after the end has not been tried */
+                u_int32_t sectors_til_end =
+                    img_base->current->offset_s + img_base->current->length_s - start_sector;
+                if (num_sect > sectors_til_end)
+                    num_sect = sectors_til_end;
+            }
+
+            /* do not copy data if structure is 2048/plain (would safe some CPU) */
+            if (img_base->raw_sector_size == IIN_SECTOR_SIZE &&
+                img_base->raw_skip_offset == 0)
+                *data = raw_data;
+            else {
+                u_int32_t i;
+                for (i = 0; i < num_sect; ++i)
+                    memcpy(img_base->buffer + i * IIN_SECTOR_SIZE,
+                           raw_data + i * img_base->raw_sector_size + img_base->raw_skip_offset,
+                           IIN_SECTOR_SIZE);
+                *data = img_base->buffer;
+            }
+            *length = num_sect * IIN_SECTOR_SIZE;
+
+            if (uncomplete == 0)
+                ;
+            else {                                            /* fill last sector with zeroes */
+                if (uncomplete > img_base->raw_skip_offset) { /* last sector is incomplete */
+                    u_int32_t len_to_zero = uncomplete + img_base->raw_skip_offset;
+                    memset((char *)*data + *length - len_to_zero, 0, len_to_zero);
+                } else
+                    /* remove last sector at all; only header has been readen */
+                    --(*length);
+            }
+        } else
+            img_base->error_code = osal_get_last_error_code();
+    }
+    return (result);
+}
+
+
+/**************************************************************/
+static int
+img_base_close(/*@special@*/ /*@only@*/ iin_t *iin) /*@releases iin@*/
+{
+    iin_img_base_t *img_base = (iin_img_base_t *)iin;
+    u_int32_t i;
+    close_current(img_base);
+    osal_free(img_base->unaligned);
+    for (i = 0; i < img_base->num_parts; ++i)
+        osal_free(img_base->parts[i].input_path);
+    osal_free(img_base->parts);
+    osal_free(iin);
+    return (OSAL_OK);
+}
+
+
+/**************************************************************/
+static char *
+img_base_last_error(iin_t *iin)
+{
+    iin_img_base_t *img_base = (iin_img_base_t *)iin;
+    return (osal_get_error_msg(img_base->error_code));
 }
 
 
 /**************************************************************/
 static void
-img_base_dispose_error (iin_t *iin,
-			/*@only@*/ char* error)
+img_base_dispose_error(iin_t *iin,
+                       /*@only@*/ char *error)
 {
-  osal_dispose_error_msg (error);
+    osal_dispose_error_msg(error);
 }
 
 
 /**************************************************************/
-iin_img_base_t*
-img_base_alloc (u_int32_t raw_sector_size,
-		u_int32_t raw_skip_offset)
+iin_img_base_t *
+img_base_alloc(u_int32_t raw_sector_size,
+               u_int32_t raw_skip_offset)
 {
-  iin_img_base_t *img_base =
-    (iin_img_base_t*) osal_alloc (sizeof (iin_img_base_t));
-  if (img_base != NULL)
-    {
-      iin_t *iin = &img_base->iin;
-      u_int32_t buffer_size = (IIN_NUM_SECTORS + 1) * IIN_SECTOR_SIZE;
-      char *buffer = osal_alloc (buffer_size);
-      if (buffer != NULL)
-	{ /* success */
-	  memset (img_base, 0, sizeof (iin_img_base_t));
-	  iin->stat = &img_base_stat;
-	  iin->read = &img_base_read;
-	  iin->close = &img_base_close;
-	  iin->last_error = &img_base_last_error;
-	  iin->dispose_error = &img_base_dispose_error;
-	  img_base->unaligned = buffer;
-	  img_base->buffer =
-	    (void*) (((unsigned long) buffer + IIN_SECTOR_SIZE - 1) &
-		     ~((unsigned long) IIN_SECTOR_SIZE - 1));
-	  assert (img_base->buffer >= img_base->unaligned);
-	  img_base->raw_sector_size = raw_sector_size;
-	  img_base->raw_skip_offset = raw_skip_offset;
-	}
-      else
-	{ /* failed */
-	  osal_free (img_base);
-	  img_base = NULL;
-	}
+    iin_img_base_t *img_base =
+        (iin_img_base_t *)osal_alloc(sizeof(iin_img_base_t));
+    if (img_base != NULL) {
+        iin_t *iin = &img_base->iin;
+        u_int32_t buffer_size = (IIN_NUM_SECTORS + 1) * IIN_SECTOR_SIZE;
+        char *buffer = osal_alloc(buffer_size);
+        if (buffer != NULL) { /* success */
+            memset(img_base, 0, sizeof(iin_img_base_t));
+            iin->stat = &img_base_stat;
+            iin->read = &img_base_read;
+            iin->close = &img_base_close;
+            iin->last_error = &img_base_last_error;
+            iin->dispose_error = &img_base_dispose_error;
+            img_base->unaligned = buffer;
+            img_base->buffer =
+                (void *)(((unsigned long)buffer + IIN_SECTOR_SIZE - 1) &
+                         ~((unsigned long)IIN_SECTOR_SIZE - 1));
+            assert(img_base->buffer >= img_base->unaligned);
+            img_base->raw_sector_size = raw_sector_size;
+            img_base->raw_skip_offset = raw_skip_offset;
+        } else { /* failed */
+            osal_free(img_base);
+            img_base = NULL;
+        }
     }
-  return (img_base);
+    return (img_base);
 }

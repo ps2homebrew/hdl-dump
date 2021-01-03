@@ -21,7 +21,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#if !defined (_IIN_CDRWIN_H)
+#if !defined(_IIN_CDRWIN_H)
 #define _IIN_CDRWIN_H
 
 #include "config.h"
@@ -31,8 +31,8 @@ C_START
 
 /* would accept CDRWIN cuesheet file (.CUE) with a single track
    and a single binary data file */
-int iin_cdrwin_probe_path (const char *path,
-			   /*@special@*/ iin_p_t *iin) /*@allocates *iin@*/ /*@defines *iin@*/;
+int iin_cdrwin_probe_path(const char *path,
+                          /*@special@*/ iin_p_t *iin) /*@allocates *iin@*/ /*@defines *iin@*/;
 
 C_END
 

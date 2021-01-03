@@ -21,7 +21,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#if !defined (_DICT_H)
+#if !defined(_DICT_H)
 #define _DICT_H
 
 #include "config.h"
@@ -31,46 +31,46 @@ C_START
 typedef struct dict_type dict_t;
 
 /* returns NULL when out of memory */
-/*@special@*/ /*@only@*/ dict_t*
-dict_alloc (void) /*@allocates result@*/ /*@defines result@*/;
+/*@special@*/ /*@only@*/ dict_t *
+dict_alloc(void) /*@allocates result@*/ /*@defines result@*/;
 
-void dict_free (/*@special@*/ /*@only@*/ dict_t *dict) /*@releases dict@*/;
+void dict_free(/*@special@*/ /*@only@*/ dict_t *dict) /*@releases dict@*/;
 
 /* set or replace; returns non-zero on success */
-int dict_put (dict_t *dict,
-	      const char *key,
-	      const char *value);
+int dict_put(dict_t *dict,
+             const char *key,
+             const char *value);
 
 /* query; returns NULL if not found */
-/*@observer@*/ const char* dict_lookup (const dict_t *dict,
-					const char *key);
+/*@observer@*/ const char *dict_lookup(const dict_t *dict,
+                                       const char *key);
 
-int dict_put_flag (dict_t *dict,
-		   const char *key,
-		   int value);
+int dict_put_flag(dict_t *dict,
+                  const char *key,
+                  int value);
 
-int dict_get_flag (const dict_t *dict,
-		   const char *key,
-		   int default_value);
+int dict_get_flag(const dict_t *dict,
+                  const char *key,
+                  int default_value);
 
-int dict_get_numeric (const dict_t *dict,
-		      const char *key,
-		      int default_value);
+int dict_get_numeric(const dict_t *dict,
+                     const char *key,
+                     int default_value);
 
-int dict_store (const dict_t *dict,
-		const char *filename);
+int dict_store(const dict_t *dict,
+               const char *filename);
 
 /* returns NULL on error or bad file format; src might be NULL */
-/*@special@*/ /*@only@*/ dict_t*
-dict_restore (dict_t *src,
-	      const char *filename) /*@allocates result@*/ /*@defines result@*/;
+/*@special@*/ /*@only@*/ dict_t *
+dict_restore(dict_t *src,
+             const char *filename) /*@allocates result@*/ /*@defines result@*/;
 
 /* returns non-zero on success */
-int dict_merge (dict_t *dst,
-		const dict_t *src);
+int dict_merge(dict_t *dst,
+               const dict_t *src);
 
-#if defined (_DEBUG)
-void dict_dump (const dict_t *dict);
+#if defined(_DEBUG)
+void dict_dump(const dict_t *dict);
 #endif
 
 C_END

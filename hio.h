@@ -21,7 +21,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#if !defined (_HIO_H)
+#if !defined(_HIO_H)
 #define _HIO_H
 
 #include "config.h"
@@ -35,52 +35,52 @@ C_START
  */
 
 typedef struct hio_type hio_t;
-typedef /*@only@*/ /*@out@*/ /*@null@*/ hio_t* hio_p_t;
+typedef /*@only@*/ /*@out@*/ /*@null@*/ hio_t *hio_p_t;
 
 
-typedef int (*hio_stat_t) (hio_t *hio,
-			   /*@out@*/ u_int32_t *size_in_kb);
+typedef int (*hio_stat_t)(hio_t *hio,
+                          /*@out@*/ u_int32_t *size_in_kb);
 
-typedef int (*hio_read_t) (hio_t *hio,
-			   u_int32_t start_sector,
-			   u_int32_t num_sectors,
-			   /*@out@*/ void *output,
-			   /*@out@*/ u_int32_t *bytes);
+typedef int (*hio_read_t)(hio_t *hio,
+                          u_int32_t start_sector,
+                          u_int32_t num_sectors,
+                          /*@out@*/ void *output,
+                          /*@out@*/ u_int32_t *bytes);
 
-typedef int (*hio_write_t) (hio_t *hio,
-			    u_int32_t start_sector,
-			    u_int32_t num_sectors,
-			    const void *input,
-			    /*@out@*/ u_int32_t *bytes);
+typedef int (*hio_write_t)(hio_t *hio,
+                           u_int32_t start_sector,
+                           u_int32_t num_sectors,
+                           const void *input,
+                           /*@out@*/ u_int32_t *bytes);
 
-typedef int (*hio_flush_t) (hio_t *hio);
+typedef int (*hio_flush_t)(hio_t *hio);
 
-typedef int (*hio_poweroff_t) (hio_t *hio);
+typedef int (*hio_poweroff_t)(hio_t *hio);
 
-typedef int (*hio_close_t) (/*@special@*/ /*@only@*/ hio_t *hio) /*@releases hio@*/;
+typedef int (*hio_close_t)(/*@special@*/ /*@only@*/ hio_t *hio) /*@releases hio@*/;
 
 /* return last error text in a memory buffer, that would be freed by calling hio_dispose_error_t */
-typedef /*@only@*/ char* (*hio_last_error_t) (hio_t *hio);
-typedef void (*hio_dispose_error_t) (hio_t *hio,
-				     /*@only@*/ char* error);
+typedef /*@only@*/ char *(*hio_last_error_t)(hio_t *hio);
+typedef void (*hio_dispose_error_t)(hio_t *hio,
+                                    /*@only@*/ char *error);
 
 
 struct hio_type
 {
-  hio_stat_t stat;
-  hio_read_t read;
-  hio_write_t write;
-  hio_flush_t flush;
-  hio_close_t close;
-  hio_poweroff_t poweroff;
-  hio_last_error_t last_error;
-  hio_dispose_error_t dispose_error;
+    hio_stat_t stat;
+    hio_read_t read;
+    hio_write_t write;
+    hio_flush_t flush;
+    hio_close_t close;
+    hio_poweroff_t poweroff;
+    hio_last_error_t last_error;
+    hio_dispose_error_t dispose_error;
 };
 
 
-int hio_probe (const dict_t *config,
-	       const char *path,
-	       /*@special@*/ hio_p_t *hio) /*@allocates *hio@*/ /*@defines *hio@*/;
+int hio_probe(const dict_t *config,
+              const char *path,
+              /*@special@*/ hio_p_t *hio) /*@allocates *hio@*/ /*@defines *hio@*/;
 
 C_END
 

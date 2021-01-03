@@ -21,7 +21,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#if !defined (_HIO_TRACE_H)
+#if !defined(_HIO_TRACE_H)
 #define _HIO_TRACE_H
 
 #include "config.h"
@@ -32,9 +32,9 @@ C_START
 
 /* accepts paths of the following form:
    "trace:<real hio path>" */
-int hio_trace_probe (const dict_t *config,
-		     const char *path,
-		     /*@special@*/ hio_p_t *hio) /*@allocates *hio@*/ /*@defines *hio@*/;
+int hio_trace_probe(const dict_t *config,
+                    const char *path,
+                    /*@special@*/ hio_p_t *hio) /*@allocates *hio@*/ /*@defines *hio@*/;
 
 C_END
 

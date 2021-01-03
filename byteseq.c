@@ -26,63 +26,60 @@
 
 /**************************************************************/
 u_int32_t
-get_u32 (const void *buffer)
+get_u32(const void *buffer)
 {
-  const u_int8_t *p = buffer;
-  return ((u_int32_t) p [3] << 24 |
-	  (u_int32_t) p [2] << 16 |
-	  (u_int32_t) p [1] <<  8 |
-	  (u_int32_t) p [0] <<  0);
+    const u_int8_t *p = buffer;
+    return ((u_int32_t)p[3] << 24 |
+            (u_int32_t)p[2] << 16 |
+            (u_int32_t)p[1] << 8 |
+            (u_int32_t)p[0] << 0);
 }
 
 
 /**************************************************************/
-void
-set_u32 (void *buffer,
-	 u_int32_t val)
+void set_u32(void *buffer,
+             u_int32_t val)
 {
-  u_int8_t *p = buffer;
-  p [3] = (u_int8_t) (val >> 24);
-  p [2] = (u_int8_t) (val >> 16);
-  p [1] = (u_int8_t) (val >>  8);
-  p [0] = (u_int8_t) (val >>  0);
+    u_int8_t *p = buffer;
+    p[3] = (u_int8_t)(val >> 24);
+    p[2] = (u_int8_t)(val >> 16);
+    p[1] = (u_int8_t)(val >> 8);
+    p[0] = (u_int8_t)(val >> 0);
 }
 
 
 /**************************************************************/
 u_int16_t
-get_u16 (const void *buffer)
+get_u16(const void *buffer)
 {
-  const u_int8_t *p = buffer;
-  return ((u_int16_t) p [1] << 8 |
-	  (u_int16_t) p [0] << 0);
+    const u_int8_t *p = buffer;
+    return ((u_int16_t)p[1] << 8 |
+            (u_int16_t)p[0] << 0);
 }
 
 
 /**************************************************************/
-void
-set_u16 (void *buffer,
-	 u_int16_t val)
+void set_u16(void *buffer,
+             u_int16_t val)
 {
-  u_int8_t *p = buffer;
-  p [1] = (u_int8_t) (val >> 8);
-  p [0] = (u_int8_t) (val >> 0);
+    u_int8_t *p = buffer;
+    p[1] = (u_int8_t)(val >> 8);
+    p[0] = (u_int8_t)(val >> 0);
 }
 
 /**************************************************************/
 u_int8_t
-get_u8 (const void *buffer)
+get_u8(const void *buffer)
 {
-  const u_int8_t *p = buffer;
-  return ((u_int8_t) p [0] << 0);
+    const u_int8_t *p = buffer;
+    return ((u_int8_t)p[0] << 0);
 }
 
 
 /**************************************************************/
-void
-set_u8 (void *buffer,
-	 u_int8_t val)
+void set_u8(void *buffer,
+            u_int8_t val)
 {
-  u_int8_t *p = buffer;
-  p [0] = (u_int8_t) (val >> 0);
+    u_int8_t *p = buffer;
+    p[0] = (u_int8_t)(val >> 0);
 }

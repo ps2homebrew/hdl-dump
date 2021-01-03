@@ -21,7 +21,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#if !defined (_IIN_NERO_H)
+#if !defined(_IIN_NERO_H)
 #define _IIN_NERO_H
 
 #include "config.h"
@@ -31,8 +31,8 @@ C_START
 
 /* would accept Nero image or Nero track;
    tested with mode1 plain & RAW and mode2 plain & RAW */
-int iin_nero_probe_path (const char *path,
-			 /*@special@*/ iin_p_t *iin) /*@allocates *iin@*/ /*@defines *iin@*/;
+int iin_nero_probe_path(const char *path,
+                        /*@special@*/ iin_p_t *iin) /*@allocates *iin@*/ /*@defines *iin@*/;
 
 C_END
 

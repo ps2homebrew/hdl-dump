@@ -21,7 +21,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#if !defined (_IIN_GI_H)
+#if !defined(_IIN_GI_H)
 #define _IIN_GI_H
 
 #include "config.h"
@@ -30,8 +30,8 @@
 C_START
 
 /* would accept GI (Global Image) file one or multiple parts, mode1 or mode2 */
-int iin_gi_probe_path (const char *path,
-		       /*@special@*/ iin_p_t *iin) /*@allocates *iin@*/ /*@defines *iin@*/;
+int iin_gi_probe_path(const char *path,
+                      /*@special@*/ iin_p_t *iin) /*@allocates *iin@*/ /*@defines *iin@*/;
 
 C_END
 

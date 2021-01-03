@@ -21,19 +21,19 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#if !defined (_NET_COMMON_H)
+#if !defined(_NET_COMMON_H)
 #define _NET_COMMON_H
 
 #include "config.h"
 
-int recv_exact (int s,
-		void *outp,
-		u_int32_t bytes,
-		int flags);
+int recv_exact(int s,
+               void *outp,
+               u_int32_t bytes,
+               int flags);
 
-int send_exact (int s,
-		const void *inp,
-		u_int32_t bytes,
-		int flags);
+int send_exact(int s,
+               const void *inp,
+               u_int32_t bytes,
+               int flags);
 
 #endif /* _NET_COMMON_H defined? */

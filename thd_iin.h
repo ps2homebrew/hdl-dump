@@ -21,11 +21,11 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#if !defined (_THD_IIN_H)
-#  define _THD_IIN_H
+#if !defined(_THD_IIN_H)
+#define _THD_IIN_H
 
 /* returns a new iin which is tuned for "streaming" (sequential reading);
  * current implementation pre-reads sectors in a separate thread */
-iin_t* thd_create (iin_t *worker);
+iin_t *thd_create(iin_t *worker);
 
 #endif /* _THD_IIN_H defined? */

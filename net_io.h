@@ -21,7 +21,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#if !defined (_NET_IO_H)
+#if !defined(_NET_IO_H)
 #define _NET_IO_H
 
 #include "config.h"
@@ -29,20 +29,20 @@
 
 C_START
 
-#define NET_HIO_SERVER_PORT 12345  /* port where server would listen */
+#define NET_HIO_SERVER_PORT 12345 /* port where server would listen */
 
 /* commands */
-#define CMD_HIO_STAT          0x73746174 /* 'stat'; get HDD size in sectors */
-#define CMD_HIO_READ          0x72656164 /* 'read'; read sectors from HDD */
-#define CMD_HIO_WRITE         0x77726974 /* 'writ'; write sectors to HDD */
-#define CMD_HIO_WRITE_STAT    0x77726973 /* 'wris'; get last write status */
-#define CMD_HIO_FLUSH         0x666c7368 /* 'flsh'; flush write buff */
-#define CMD_HIO_POWEROFF      0x706f7778 /* 'powx'; poweroff system */
+#define CMD_HIO_STAT 0x73746174       /* 'stat'; get HDD size in sectors */
+#define CMD_HIO_READ 0x72656164       /* 'read'; read sectors from HDD */
+#define CMD_HIO_WRITE 0x77726974      /* 'writ'; write sectors to HDD */
+#define CMD_HIO_WRITE_STAT 0x77726973 /* 'wris'; get last write status */
+#define CMD_HIO_FLUSH 0x666c7368      /* 'flsh'; flush write buff */
+#define CMD_HIO_POWEROFF 0x706f7778   /* 'powx'; poweroff system */
 
-#define HDD_SECTOR_SIZE  512 /* HDD sector size in bytes */
-#define HDD_NUM_SECTORS   32 /* number of sectors to write at once */
+#define HDD_SECTOR_SIZE 512  /* HDD sector size in bytes */
+#define HDD_NUM_SECTORS 32   /* number of sectors to write at once */
 #define NET_NUM_SECTORS 2048 /* max # of sectors to move via network */
-#define NET_IO_CMD_LEN    16 /* command length in bytes in networking I/O */
+#define NET_IO_CMD_LEN 16    /* command length in bytes in networking I/O */
 
 C_END
 
