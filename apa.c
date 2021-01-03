@@ -286,7 +286,7 @@ apa_slice_read(hio_t *hio,
                 }
 
                 /* TODO: check whether next partition is not loaded already --
-	       * do not deadlock; that is a quick-and-dirty hack */
+                 * do not deadlock; that is a quick-and-dirty hack */
                 if (slice->part_count > 10000)
                     result = RET_BAD_APA;
             } else

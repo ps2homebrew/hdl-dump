@@ -566,7 +566,7 @@ int hio_udpnet2_probe(const dict_t *config,
                 if (d >= 0 && d <= 255 && *endp == '\0') {
                     SOCKET udp = socket(PF_INET, SOCK_DGRAM, 0);
                     if (udp != INVALID_SOCKET) { /* generally there ain't clean-up below, but that is
-		       * not really fatal for such class application */
+                                                  * not really fatal for such class application */
                         struct sockaddr_in sa;
                         memset(&sa, 0, sizeof(sa));
                         sa.sin_family = AF_INET;

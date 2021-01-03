@@ -293,9 +293,9 @@ int iin_spti_probe_path(const char *path,
                 if (DeviceIoControl(dev, IOCTL_SCSI_GET_ADDRESS, NULL, 0,
                                     sa, sizeof(SCSI_ADDRESS), &retv, NULL)) {
 #if 0
-		  printf ("%c: @ %d:%d:%d using SPTI\n",
-			  path[0], sa->PortNumber,
-			  sa->TargetId, sa->Lun);
+                    printf ("%c: @ %d:%d:%d using SPTI\n",
+                    path[0], sa->PortNumber,
+                    sa->TargetId, sa->Lun);
 #endif
                     *iin = (iin_t *)spti_alloc(dev, sa->PortNumber,
                                                sa->TargetId, sa->Lun);

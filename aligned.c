@@ -108,8 +108,8 @@ int al_read(aligned_t *al,
                                al->buffer_size - correction, &al->data_length);
             al->data_length += correction;
 #if 0
-	  printf ("osal_read (%d, %luKB, %d, -> %d) = %d\n",
-		  al->in, (long) (aligned_offset / 1024), al->buffer_size, al->data_length, result);
+            printf ("osal_read (%d, %luKB, %d, -> %d) = %d\n",
+            al->in, (long) (aligned_offset / 1024), al->buffer_size, al->data_length, result);
 #endif
         }
         if (result == OSAL_OK) { /* success */

@@ -109,8 +109,10 @@ int main(int argc, char *argv[])
 
     /* Do as many things as possible while the IOP slowly resets itself. */
     if (argc == 2) { /* Argument 1 will contain the name of the partition containing the game. */
-        /*	Unfortunately, it'll mean that some homebrew loader was most likely used to launch this program... and it might already have IOMANX loaded. That thing can't register devices that are added via IOMAN after it gets loaded.
-			Reset the IOP to clear out all these stupid homebrew modules... */
+        /* Unfortunately, it'll mean that some homebrew loader was most likely used to launch this program...
+         * and it might already have IOMANX loaded. That thing can't register devices that are added via IOMAN after it gets loaded.
+         * Reset the IOP to clear out all these stupid homebrew modules... 
+         */
         while (!SifIopReset(NULL, 0)) {
         };
 

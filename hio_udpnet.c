@@ -170,8 +170,8 @@ send_for_write(hio_net_t *net,
                 double seconds; /* curr time relative to start */
                 double next;    /* the time when the next packet should be sent */
                 do {            /* what's the time, how many seconds have gone and
-		   * what is the ratio of job that _has_ to be done
-		   * against the job that _is_ done */
+                                 * what is the ratio of job that _has_ to be done
+                                 * against the job that _is_ done */
                     highres_time_t now;
 
                     highres_time(&now);
@@ -309,8 +309,8 @@ net_read(hio_t *hio,
     *bytes = 0;
     do { /* TODO: test the maximum read size? */
 #if 0
-      u_int32_t at_once_s = (num_sectors > NET_NUM_SECTORS ?
-			     NET_NUM_SECTORS : num_sectors);
+        u_int32_t at_once_s = (num_sectors > NET_NUM_SECTORS ?
+                               NET_NUM_SECTORS : num_sectors);
 #else
         u_int32_t at_once_s = (num_sectors > 32 ? 32 : num_sectors);
 #endif
@@ -503,7 +503,7 @@ int hio_udpnet_probe(const dict_t *config,
                 if (d >= 0 && d <= 255 && *endp == '\0') {
                     SOCKET s = socket(PF_INET, SOCK_STREAM, 0);
                     if (s != INVALID_SOCKET) { /* generally there ain't clean-up below, but that is
-		       * not really fatal for such class application */
+                                                * not really fatal for such class application */
                         struct sockaddr_in sa;
                         memset(&sa, 0, sizeof(sa));
                         sa.sin_family = AF_INET;

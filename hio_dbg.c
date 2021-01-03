@@ -42,29 +42,29 @@ typedef struct hio_dbg_type
 /**************************************************************/
 /*static int
 clone_file (const char *fn,
-	    char *copy_name)
+            char *copy_name)
 {
-  FILE *in;
-  int result = RET_ERR;
+    FILE *in;
+    int result = RET_ERR;
 
-  strcpy (copy_name, fn);
-  strcat (copy_name, ".bak");
-  in = fopen (fn, "rb");
-  if (in != NULL)
+    strcpy (copy_name, fn);
+    strcat (copy_name, ".bak");
+    in = fopen (fn, "rb");
+    if (in != NULL)
     {
-      FILE *out = fopen (copy_name, "wb");
-      if (out != NULL)
-	{
-	  char buf[1024];
-	  size_t bytes;
-	  while ((bytes = fread (buf, 1, sizeof (buf), in)) > 0)
-	    (void) fwrite (buf, 1, bytes, out);
-	  result = RET_OK;
-	  fclose (out);
-	}
-      fclose (in);
+        FILE *out = fopen (copy_name, "wb");
+        if (out != NULL)
+        {
+            char buf[1024];
+            size_t bytes;
+            while ((bytes = fread (buf, 1, sizeof (buf), in)) > 0)
+            (void) fwrite (buf, 1, bytes, out);
+            result = RET_OK;
+            fclose (out);
+        }
+        fclose (in);
     }
-  return (result);
+    return (result);
 }
 */
 
@@ -233,7 +233,7 @@ dbg_alloc(const char *dump_path)
 
         dbg->out = fopen(dump_path, "r+b");
         if (dbg->out != NULL) {
-            /*	  dbg->out = fopen (dump_path, "r+b");*/
+            /*  dbg->out = fopen (dump_path, "r+b");*/
             if (fseek(dbg->out, 0, SEEK_END) == 0) {
                 long size = ftell(dbg->out);
                 if (size != -1) { /* debug dump includes 2KB for each 128MB */

@@ -5,28 +5,28 @@
  *
  * This source file for Win 2K/XP exists to make:
  *
- *	#include "ntddscsi.h"
+ *  #include "ntddscsi.h"
  *
  * work, with both Microsoft Visual C++, and
  * also in the gcc of:
  *
- *	http://www.mingw.org/
+ *  http://www.mingw.org/
  *
  * Most of the names and the values equated here
  * match those you can find in the version of
  * Microsoft's "ntddk/inc/ntddscsi.h" that is tagged:
  *
- *	BUILD Version: 0001
- *	Copyright (c) 1990-1999  Microsoft Corporation
+ *  BUILD Version: 0001
+ *  Copyright (c) 1990-1999  Microsoft Corporation
  *
  * That version in turn matches what you can view
  * in such places as:
  *
- *	Windows DDK: System Support for Buses: DeviceIoControl struct SCSI_PASS_THROUGH
- *	http://msdn.microsoft.com/library/en-us/buses/hh/buses/scsi_struct_34tu.asp
+ *  Windows DDK: System Support for Buses: DeviceIoControl struct SCSI_PASS_THROUGH
+ *  http://msdn.microsoft.com/library/en-us/buses/hh/buses/scsi_struct_34tu.asp
  *
- *	Windows DDK: System Support for Buses: DeviceIoControl struct SCSI_PASS_THROUGH_DIRECT
- *	http://msdn.microsoft.com/library/en-us/buses/hh/buses/scsi_struct_3qnm.asp
+ *  Windows DDK: System Support for Buses: DeviceIoControl struct SCSI_PASS_THROUGH_DIRECT
+ *  http://msdn.microsoft.com/library/en-us/buses/hh/buses/scsi_struct_3qnm.asp
  *
  * Microsoft's ntddk/ version is more complete.  This
  * version contains just enough names to make
@@ -35,7 +35,7 @@
  *
  * Microsoft's version also implicitly depends on:
  *
- *	#include <devioctl.h>
+ *  #include <devioctl.h>
  *
  * We did try the alternative: -I /ntddk/inc/
  * but we saw an explosion of gcc -Wall complaints

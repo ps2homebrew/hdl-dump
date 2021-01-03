@@ -267,12 +267,12 @@ int svr_request(const udp_frame_t *uf)
 
 /* static inline int unlockDrive(unsigned int device)
 {
-	static unsigned char id[32];
-	int err=0;
+    static unsigned char id[32];
+    int err=0;
 
-	if(sceCdRI(id, &err)) printf("Error reading i.Link ID: %d\n", err);
+    if(sceCdRI(id, &err)) printf("Error reading i.Link ID: %d\n", err);
 
-	return ata_device_sec_unlock(device, id);
+    return ata_device_sec_unlock(device, id);
 } */
 
 /* returns 0 on success */

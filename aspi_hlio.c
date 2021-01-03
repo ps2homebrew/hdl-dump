@@ -95,9 +95,9 @@ int aspi_load(void)
     }
 
 #if 0
-  /* try loading both sequentially */
-  aspi_lib = LoadLibrary ("WNASPINT.DLL");
-  if (aspi_lib == NULL)
+    /* try loading both sequentially */
+    aspi_lib = LoadLibrary ("WNASPINT.DLL");
+    if (aspi_lib == NULL)
 #endif
     aspi_lib = LoadLibrary("WNASPI32.DLL");
     if (aspi_lib != NULL) {
@@ -134,7 +134,7 @@ int aspi_unload(void)
         --aspi_initialized;
         if (aspi_initialized == 0) {
             /* the old ASPI could crash if freed imediately after init;
-	     borrowed from don't remember where */
+             * borrowed from don't remember where */
             Sleep(200);
 
             /* unload and clean-up */
@@ -156,28 +156,28 @@ int aspi_unload(void)
 #if 0
 static int
 aspi_reset_device (int host,
-		   int scsi_id,
-		   int lun)
+                   int scsi_id,
+                   int lun)
 {
-  SRB_BusDeviceReset reset;
-  int result;
+    SRB_BusDeviceReset reset;
+    int result;
 
-  memset (&reset, 0, sizeof (SRB_BusDeviceReset));
+    memset (&reset, 0, sizeof (SRB_BusDeviceReset));
 
-  reset.SRB_Cmd = SC_RESET_DEV;
-  reset.SRB_HaId = host;
-  reset.SRB_Target = scsi_id;
-  reset.SRB_Lun = lun;
+    reset.SRB_Cmd = SC_RESET_DEV;
+    reset.SRB_HaId = host;
+    reset.SRB_Target = scsi_id;
+    reset.SRB_Lun = lun;
 
-  result = aspi_send_cmd ((LPSRB) &reset);
-  while (reset.SRB_Status == SS_PENDING)
-    Sleep (1);
-  if (reset.SRB_Status == SS_COMP)
-    return (RET_OK);
-  else
+    result = aspi_send_cmd ((LPSRB) &reset);
+    while (reset.SRB_Status == SS_PENDING)
+        Sleep (1);
+    if (reset.SRB_Status == SS_COMP)
+        return (RET_OK);
+    else
     {
-      aspi_set_last_error (reset.SRB_Status, 0, 0, 0);
-      return (RET_ERR);
+        aspi_set_last_error (reset.SRB_Status, 0, 0, 0);
+        return (RET_ERR);
     }
 }
 #endif
@@ -188,18 +188,18 @@ aspi_reset_device (int host,
 static int
 aspi_rescan_host (int host)
 {
-  SRB_RescanPort rescan;
-  memset (&rescan, 0, sizeof (SRB_RescanPort));
-  rescan.SRB_Cmd = SC_RESCAN_SCSI_BUS;
-  rescan.SRB_HaId = host;
-  aspi_send_cmd ((LPSRB) &rescan);
-  if (rescan.SRB_Status == SS_COMP ||
-      rescan.SRB_Status == SS_NO_DEVICE)
+    SRB_RescanPort rescan;
+    memset (&rescan, 0, sizeof (SRB_RescanPort));
+    rescan.SRB_Cmd = SC_RESCAN_SCSI_BUS;
+    rescan.SRB_HaId = host;
+    aspi_send_cmd ((LPSRB) &rescan);
+    if (rescan.SRB_Status == SS_COMP ||
+        rescan.SRB_Status == SS_NO_DEVICE)
     return (RET_OK);
-  else
+    else
     {
-      aspi_set_last_error (rescan.SRB_Status, 0, 0, 0);
-      return (RET_ERR);
+        aspi_set_last_error (rescan.SRB_Status, 0, 0, 0);
+        return (RET_ERR);
     }
 }
 #endif
@@ -210,33 +210,33 @@ aspi_rescan_host (int host)
 static int
 aspi_exec (SRB_ExecSCSICmd *exec)
 {
-  HANDLE event = CreateEvent (NULL, TRUE, FALSE, NULL);
-  if (event != NULL)
+    HANDLE event = CreateEvent (NULL, TRUE, FALSE, NULL);
+    if (event != NULL)
     { /* wait for event */
-      exec->SRB_Flags |= SRB_EVENT_NOTIFY;
-      exec->SRB_PostProc = (LPVOID) event;
-      aspi_send_cmd ((LPSRB) exec);
+        exec->SRB_Flags |= SRB_EVENT_NOTIFY;
+        exec->SRB_PostProc = (LPVOID) event;
+        aspi_send_cmd ((LPSRB) exec);
 
-      if (exec->SRB_Status == SS_PENDING)
-	WaitForSingleObject (event, INFINITE);
-      CloseHandle (event);
+        if (exec->SRB_Status == SS_PENDING)
+           WaitForSingleObject (event, INFINITE);
+        CloseHandle (event);
     }
-  else
+    else
     { /* poll */
-      aspi_send_cmd ((LPSRB) exec);
-      while (exec->SRB_Status == SS_PENDING)
-	Sleep (1); /* don't 100% CPU, but Sleep (1) usually == Sleep (10) */
+        aspi_send_cmd ((LPSRB) exec);
+        while (exec->SRB_Status == SS_PENDING)
+            Sleep (1); /* don't 100% CPU, but Sleep (1) usually == Sleep (10) */
     }
-  /* process the result code */
-  if (exec->SRB_Status == SS_COMP)
-    return (RET_OK);
-  else
+    /* process the result code */
+    if (exec->SRB_Status == SS_COMP)
+        return (RET_OK);
+    else
     { /* keep error details */
-      int sense = exec->SenseArea [2] & 0x0f;
-      int asc = exec->SenseArea [12];
-      int ascq = exec->SenseArea [13];
-      aspi_set_last_error (exec->SRB_Status, sense, asc, ascq);
-      return (RET_ERR);
+        int sense = exec->SenseArea [2] & 0x0f;
+        int asc = exec->SenseArea [12];
+        int ascq = exec->SenseArea [13];
+        aspi_set_last_error (exec->SRB_Status, sense, asc, ascq);
+        return (RET_ERR);
     }
 }
 #endif
@@ -385,7 +385,7 @@ aspi_prepare_inquiry(int host,
 
     /* SPC-R11A.PDF, 7.5 INQUIRY command; mandatory */
     cmd->CDBByte[0] = SCSI_INQUIRY;
-    cmd->CDBByte[4] = sizeof(buffer) - 1;
+    cmd->CDBByte[4] = sizeof(cmd->SRB_BufPointer) - 1;
 
     return (cmd);
 }
@@ -429,8 +429,8 @@ int aspi_scan_scsi_bus(scsi_devices_list_t **list)
         int host_adapter, host_adapters_cnt = inq.HA_Count;
         for (host_adapter = 0; result == RET_OK && host_adapter < host_adapters_cnt; ++host_adapter) {
             /*
-	  aspi_rescan_host (host_adapter);
-	  */
+             * aspi_rescan_host (host_adapter);
+             */
 
             memset(&inq, 0, sizeof(SRB_HAInquiry));
             inq.SRB_Cmd = SC_HA_INQUIRY;
@@ -490,34 +490,34 @@ int aspi_scan_scsi_bus(scsi_devices_list_t **list)
                                                     aspi_get_last_error_code());
 
 #if 0 /* left to see how it is done */
-			  const char *type;
-			  /*char device_name [42];*/
-			  switch (dtype.SRB_DeviceType)
-			    {
-			    case DTYPE_DASD:
-			      type = "Direct access storage device"; break;
-			    case DTYPE_SEQD:
-			      type = "Sequential access storage device"; break;
-			    case DTYPE_PRNT:  type = "Printer device"; break;
-			    case DTYPE_PROC:  type = "Processor device"; break;
-			    case DTYPE_WORM:  type = "WORM device"; break;
-			    case DTYPE_CDROM: type = "CD-ROM device"; break;
-			    case DTYPE_SCAN:  type = "Scanner device"; break;
-			    case DTYPE_OPTI:
-			      type = "Optical memory device"; break;
-			    case DTYPE_JUKE:
-			      type = "Medium changer device"; break;
-			    case DTYPE_COMM:
-			      type = "Communication device"; break;
-			    default: type = "Unknown type";
-			    }
-			  printf ("%d:%d:%d ",
-				  host_adapter, scsi_id, lun);
-			  if (aspi_inquiry (host_adapter, scsi_id, lun,
-					    device_name) == RET_OK)
-			    printf ("\t%s: %s\n", device_name, type);
-			  else
-			    printf ("\t???: %s\n", type);
+                            const char *type;
+                            /*char device_name [42];*/
+                            switch (dtype.SRB_DeviceType)
+                            {
+                                case DTYPE_DASD:
+                                    type = "Direct access storage device"; break;
+                                case DTYPE_SEQD:
+                                    type = "Sequential access storage device"; break;
+                                case DTYPE_PRNT:  type = "Printer device"; break;
+                                case DTYPE_PROC:  type = "Processor device"; break;
+                                case DTYPE_WORM:  type = "WORM device"; break;
+                                case DTYPE_CDROM: type = "CD-ROM device"; break;
+                                case DTYPE_SCAN:  type = "Scanner device"; break;
+                                case DTYPE_OPTI:
+                                    type = "Optical memory device"; break;
+                                case DTYPE_JUKE:
+                                    type = "Medium changer device"; break;
+                                case DTYPE_COMM:
+                                    type = "Communication device"; break;
+                                default: type = "Unknown type";
+                            }
+                            printf ("%d:%d:%d ",
+                            host_adapter, scsi_id, lun);
+                            if (aspi_inquiry (host_adapter, scsi_id, lun,
+                                              device_name) == RET_OK)
+                                printf ("\t%s: %s\n", device_name, type);
+                            else
+                                printf ("\t???: %s\n", type);
 #endif
                         }
                     } /* LUN loop */

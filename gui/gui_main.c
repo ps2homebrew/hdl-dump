@@ -304,8 +304,8 @@ dlg_switch_operation(HWND dlg)
     ShowWindow(GetDlgItem(dlg, IDC_DMA_LBL), inject_show);
     ShowWindow(GetDlgItem(dlg, IDC_DMA_TYPE), inject_show);
 #if 0
-  SetWindowText (GetDlgItem (dlg, IDC_ACTION),
-		 get_string (inject_show ? IDS_INSTALL_LBL : IDS_DELETE_LBL, 0));
+    SetWindowText (GetDlgItem (dlg, IDC_ACTION),
+    get_string (inject_show ? IDS_INSTALL_LBL : IDS_DELETE_LBL, 0));
 #endif
     ShowWindow(GetDlgItem(dlg, IDC_CONTENTS), examine_show);
 }
@@ -838,46 +838,45 @@ delete (HWND dlg)
   char device [MAX_PATH] = { '\0' };
   dlg_get_target (dlg, device);
   if (device [0] != '\0')
-    {
+  {
       apa_toc_t *toc;
       int result = apa_toc_read_ex (hio_, &toc);
       if (result == RET_OK)
-	{
-	  /* TODO: re-read games_ */
-	  HWND lvw = GetDlgItem (dlg, IDC_CONTENTS);
-	  if (ListView_GetSelectedCount (lvw) > 0 &&
-	      MessageBox (dlg, get_string (IDS_CONFIRM_DELETE, 0),
-			  get_string (IDS_CONFIRM_DELETE_TITLE, 1),
-			  MB_YESNO | MB_ICONWARNING | MB_DEFBUTTON2) == IDYES)
-	    {
-	      int i, count = ListView_GetItemCount (lvw);
-	      for (i=0; result == RET_OK && i<count; ++i)
-		{
-		  int state = ListView_GetItemState (lvw, i, LVIS_SELECTED);
-		  if (state == LVIS_SELECTED)
-		    { /* lookup by game name */
-		      char buffer [100];
-		      int j;
-		      ListView_GetItemText (lvw, i, 0, buffer, sizeof (buffer));
-		      for (j=0; j<games_->count; ++j)
-			if (strcmp (buffer, games_->games [j].name) == 0)
-			  {
-			    result = apa_delete_partition (toc,
-							   games_->games [j].partition_name);
-			    break;
-			  }
-		    }
-		}
-	      if (result == RET_OK)
-		result = apa_commit_ex (hio_, toc);
-	    } /* confirmation */
-	  apa_toc_free (toc);
-	} /* ptable_read */
+      {
+      /* TODO: re-read games_ */
+          HWND lvw = GetDlgItem (dlg, IDC_CONTENTS);
+          if (ListView_GetSelectedCount (lvw) > 0 &&
+              MessageBox (dlg, get_string (IDS_CONFIRM_DELETE, 0),
+                          get_string (IDS_CONFIRM_DELETE_TITLE, 1),
+                          MB_YESNO | MB_ICONWARNING | MB_DEFBUTTON2) == IDYES)
+          {
+              int i, count = ListView_GetItemCount (lvw);
+              for (i=0; result == RET_OK && i<count; ++i)
+              {
+                  int state = ListView_GetItemState (lvw, i, LVIS_SELECTED);
+                  if (state == LVIS_SELECTED)
+                  { /* lookup by game name */
+                      char buffer [100];
+                      int j;
+                      ListView_GetItemText (lvw, i, 0, buffer, sizeof (buffer));
+                      for (j=0; j<games_->count; ++j)
+                          if (strcmp (buffer, games_->games [j].name) == 0)
+                          {
+                              result = apa_delete_partition (toc, games_->games [j].partition_name);
+                              break;
+                          }
+                  }
+              }
+              if (result == RET_OK)
+                  result = apa_commit_ex (hio_, toc);
+          } /* confirmation */
+          apa_toc_free (toc);
+      } /* ptable_read */
 
       if (result != RET_OK)
-	show_error_2 (dlg, result);
+          show_error_2 (dlg, result);
       dlg_refresh_hdd_info (dlg); /* always reload HDD info */
-    }
+  }
 }
 #endif
 
@@ -1061,7 +1060,7 @@ main_dlg_proc(HWND dlg,
 
                 case IDC_CONTENTS:
                     /* to enable rename append LVS_EDITLABELS to IDC_CONTENTS'
-	     * window styles (in rsrc.rc) */
+                     * window styles (in rsrc.rc) */
                     switch (nmh->code) {
                         case LVN_BEGINLABELEDIT:
                             return (TRUE); /* label edit allowed */

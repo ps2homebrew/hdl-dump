@@ -254,33 +254,33 @@ opt_alloc(osal_handle_t device,
         /* don't treat files as devices */
         return (RET_NOT_COMPAT);
 #if 0
-      /* FreeBSD patch to support device nodes */
-      char device_name [MAX_PATH];
-      int result = osal_map_device_name (path, device_name);
-      if (result == OSAL_OK)
-	{
-	  osal_handle_t device;
-	  result = osal_open (device_name, &device, 1);
-	  if (result == OSAL_OK)
-	    {
-	      u_int32_t sector_size;
-	      result = osal_get_device_sect_size (device, &sector_size);
-	      if (result == OSAL_OK)
-		{
-		  *iin = (iin_t*) opt_alloc (device, sector_size);
-		  if (*iin != NULL)
-		    ; /* success */
-		  else
-		    { /* opt_alloc failed */
-		      osal_close (&device);
-		      result = RET_NO_MEM;
-		    }
-		}
-	    }
-	}
-      else
-	result = RET_NOT_COMPAT;
-      return (result);
+            /* FreeBSD patch to support device nodes */
+            char device_name [MAX_PATH];
+            int result = osal_map_device_name (path, device_name);
+            if (result == OSAL_OK)
+            {
+                osal_handle_t device;
+                result = osal_open (device_name, &device, 1);
+                if (result == OSAL_OK)
+                {
+                    u_int32_t sector_size;
+                    result = osal_get_device_sect_size (device, &sector_size);
+                    if (result == OSAL_OK)
+                    {
+                        *iin = (iin_t*) opt_alloc (device, sector_size);
+                        if (*iin != NULL)
+                            ; /* success */
+                        else
+                        { /* opt_alloc failed */
+                            osal_close (&device);
+                            result = RET_NO_MEM;
+                        }
+                    }
+                }
+            }
+            else
+                result = RET_NOT_COMPAT;
+            return (result);
 #endif
 #endif
         }

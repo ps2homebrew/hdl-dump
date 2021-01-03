@@ -399,8 +399,8 @@ show_hdl_game_info(const dict_t *config,
                         u_int64_t total_size = 0;
 
 #if 0
-		      /* save main partition header for debug purposes */
-		      write_file (signature, buffer, 0x0200);
+                    /* save main partition header for debug purposes */
+                    write_file (signature, buffer, 0x0200);
 #endif
 
                         fprintf(stdout, "%s: [%s], %s\n",
@@ -1189,8 +1189,8 @@ copy_hdd(const dict_t *config,
     }
 
     if (result == RET_OK && count > 0) {
-        printf("%ldMB in %ld game(s) remaining...\n",
-               chunks_needed * 128, count);
+        printf("%ludMB in %lu game(s) remaining...\n",
+               (long unsigned int)chunks_needed * 128, (long unsigned int)count);
         for (i = 0; result == RET_OK && i < in_list->count; ++i)
             if (i >= flags_count || tolower(flags[i]) == 'y') { /* copy that game */
                 char in[1024];
