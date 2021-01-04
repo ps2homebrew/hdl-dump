@@ -95,7 +95,7 @@ int /* OSAL_OK, OSAL_ERR */
 osal_open_device_for_writing(const char *device_name,
                              osal_handle_t *handle)
 {
-    handle->desc = open(device_name, O_RDWR | O_LARGEFILE, S_IRUSR | S_IWUSR);
+    handle->desc = open(device_name, O_RDWR | O_LARGEFILE | O_DSYNC, S_IRUSR | S_IWUSR);
     return (handle->desc == -1 ? OSAL_ERR : OSAL_OK);
 }
 
