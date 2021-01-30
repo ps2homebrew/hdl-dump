@@ -56,7 +56,7 @@ LDFLAGS =
 
 VPATH = ./:../
 
-# iin_hdloader.c iin_net.c 
+# iin_hdloader.c iin_net.c
 SOURCES = gui_main.c \
 	apa.c common.c progress.c hdl.c isofs.c aligned.c \
 	iin_img_base.c iin_optical.c iin_iso.c iin_cdrwin.c \
@@ -93,7 +93,7 @@ ifeq ($(WINDOWS), yes)
   CFLAGS += -D_WITH_ASPI
   CFLAGS += -ansi -pedantic
 
-  SOURCES += 
+  SOURCES +=
   OBJECTS += rsrc.o
   EXESUF = .exe
 
@@ -104,7 +104,7 @@ else
   CFLAGS += -D_BUILD_WINE
 
   OBJECTS += rsrc.res
-  EXESUF = 
+  EXESUF =
 
   CC = winegcc
   RC = wrc

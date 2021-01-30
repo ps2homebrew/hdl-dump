@@ -219,7 +219,7 @@ prepare_main(const hdl_game_t *details,
         /* read icon.sys in memory card format
         * or in hdd format
         * if in another format or skipped used
-        * default data for HDLoader icon 
+        * default data for HDLoader icon
         */
         result = read_file("./icon.sys", &iconsys, &iconsys_length);
         if ((result == OSAL_OK) && (!strncmp(iconsys, "PS2D", 4))) {
@@ -286,7 +286,7 @@ prepare_main(const hdl_game_t *details,
         set_u32(tmp++, 0x0800);
         set_u32(tmp++, icon_length);
 
-        /*  
+        /*
          *  1030: 00 00 11 00 58 81 00 00  00 00 00 00 00 00 00 00
          *         ^  ^  ^  ^  ^  ^  ^  ^
          *         |  |  |  |  +--+--+--+- BE, PATINFO.KELF length in bytes
@@ -309,7 +309,7 @@ prepare_main(const hdl_game_t *details,
         /*
          *  1400: 50 53 32 58 0a 74 69 74  6c 65 30 20 3d 20 48 44  PS2X.title0 = HD
          *  1410: 20 4c 6f 61 64 65 72 0a  74 69 74 6c 65 31 20 3d   Loader.title1 =
-         *  1420: 20 54 77 69 73 74 65 64  20 4d 65 74 61 6c 3a 20   Twisted Metal: 
+         *  1420: 20 54 77 69 73 74 65 64  20 4d 65 74 61 6c 3a 20   Twisted Metal:
          *        ...
          */
         memcpy(buffer_4m + 0x001400, icon_props, strlen(icon_props));
@@ -322,7 +322,7 @@ prepare_main(const hdl_game_t *details,
         memcpy(buffer_4m + 0x001800, icon, icon_length);
 
         /*
-         *101000: ed fe ad de 00 00 01 00  54 77 69 73 74 65 64 20  ........Twisted 
+         *101000: ed fe ad de 00 00 01 00  54 77 69 73 74 65 64 20  ........Twisted
          *101010: 4d 65 74 61 6c 3a 20 42  6c 61 63 6b 00 00 00 00  Metal: Black....
          */
         set_u32(buffer_4m + 0x101000, 0xdeadfeed);
@@ -363,9 +363,9 @@ prepare_main(const hdl_game_t *details,
         tmp = (u_int32_t *)(buffer_4m + 0x1010f5);
 
         /*
-         *111000: 01 00 00 01 00 03 00 4a  00 01 02 19 00 00 00 56 
+         *111000: 01 00 00 01 00 03 00 4a  00 01 02 19 00 00 00 56
          *        ... PATINFO.KELF ...
-         *179640: 7e bd 13 b2 4e 1f 26 08  29 53 97 37 13 c3 71 1c 
+         *179640: 7e bd 13 b2 4e 1f 26 08  29 53 97 37 13 c3 71 1c
          */
         if (patinfo_length != 0) {
             memcpy(buffer_4m + 0x111000, patinfo_header, patinfo_header_length);
@@ -495,7 +495,7 @@ int hdd_inject_header(hio_t *hio,
          *         ^  ^  ^  ^  ^  ^  ^  ^   ^  ^  ^  ^  ^  ^  ^  ^
          *         |  |  |  |  |  |  |  |   |  |  |  |  +--+--+--+- PATINFO.KIRX length in bytes
          *         |  |  |  |  |  |  |  |   +--+--+--+- PATINFO.KIRX offset relative to 0x1000 (optional)
-         *         |  |  |  |  |  |  |  |   
+         *         |  |  |  |  |  |  |  |
          *         |  |  |  |  +--+--+--+- PATINFO.KELF length in bytes
          *         +--+--+--+- PATINFO.KELF offset relative to 0x1000 (optional)
          */
@@ -527,7 +527,7 @@ int hdd_inject_header(hio_t *hio,
         /* icon.sys (HDD format) auto converted from MC format
          *  1400: 50 53 32 58 0a 74 69 74  6c 65 30 20 3d 20 48 44  PS2X.title0 = HD
          *  1410: 20 4c 6f 61 64 65 72 0a  74 69 74 6c 65 31 20 3d   Loader.title1 =
-         *  1420: 20 54 77 69 73 74 65 64  20 4d 65 74 61 6c 3a 20   Twisted Metal: 
+         *  1420: 20 54 77 69 73 74 65 64  20 4d 65 74 61 6c 3a 20   Twisted Metal:
          *        ...
          */
 
@@ -623,11 +623,11 @@ int hdd_inject_header(hio_t *hio,
             osal_free(del);
 
         /*
-         *  111000: 01 00 00 01 00 03 00 4a  00 01 02 19 00 00 00 56 
+         *  111000: 01 00 00 01 00 03 00 4a  00 01 02 19 00 00 00 56
          *        ... PATINFO.KELF ...
-         *  179640: 7e bd 13 b2 4e 1f 26 08  29 53 97 37 13 c3 71 1c 
+         *  179640: 7e bd 13 b2 4e 1f 26 08  29 53 97 37 13 c3 71 1c
          *
-         * read kelf or elf 
+         * read kelf or elf
          */
 
         fprintf(stdout, "Skipped boot.kelf. Trying to inject boot.elf\n");
@@ -663,9 +663,9 @@ int hdd_inject_header(hio_t *hio,
                     memcpy(buffer_4m + 0x111000, patinfo, patinfo_length);
                     fprintf(stdout, "Succesfully read boot.kelf\n");
                 } else {
-                    /* if want to completely remove kelf - we need zero-sized boot.kelf 
+                    /* if want to completely remove kelf - we need zero-sized boot.kelf
                      * For some reason HDD Browser 2.00 ignores system.cnf boot2
-                     * and loads boot.kelf if it is not zerosized 
+                     * and loads boot.kelf if it is not zerosized
                      */
                     set_u32(buffer_4m + 0x001030, 0x000000);
                     set_u32(buffer_4m + 0x001034, patinfo_length);
@@ -677,7 +677,7 @@ int hdd_inject_header(hio_t *hio,
             osal_free(patinfo);
 
         /*
-         *  301000: 
+         *  301000:
          *        ... PATINFO.KIRX ...
          *  400000:
          */

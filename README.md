@@ -4,7 +4,7 @@
 
 * Intro
 * Networking server
-* Compilation 
+* Compilation
 * Configuration and list file location
 * Configuration
 * New features
@@ -34,35 +34,35 @@ Next: you have to run `diskload.sh` to get the latest version of MiniOPL.
 
 Finally: You just can run shell script in the project folder: `mkrel.sh`. It will compile both gui and normal version for Windows.
 
-* **Linux**: Build and copy executable into a directory of your choice.  
-	`make RELEASE=yes`  
-  Advanced Linux build commands:  
-	`make XC=win          # for Windows cross-compilation using mingw32`  
-	`make -C gui          # for WineLib compilation (for now doesn't work)`  
+* **Linux**: Build and copy executable into a directory of your choice.
+	`make RELEASE=yes`
+  Advanced Linux build commands:
+	`make XC=win          # for Windows cross-compilation using mingw32`
+	`make -C gui          # for WineLib compilation (for now doesn't work)`
 	`make -C gui XC=win   # for GUI cross-compilation using mingw32`
 
-* **Mac OS X** or **FreeBSD**: You'll need to have GNU make installed, then  
-	`gmake RELEASE=yes IIN_OPTICAL_MMAP=no`  
-  or  
+* **Mac OS X** or **FreeBSD**: You'll need to have GNU make installed, then
+	`gmake RELEASE=yes IIN_OPTICAL_MMAP=no`
+  or
 	`make RELEASE=yes IIN_OPTICAL_MMAP=no`
 
-* **Windows**: You need to have [CYGWIN](http://www.cygwin.com/) installed;  
-  then use  
-	`make RELEASE=yes`  
-	`make -C gui RELEASE=yes`  
-  to compile command-line or GUI version.  
+* **Windows**: You need to have [CYGWIN](http://www.cygwin.com/) installed;
+  then use
+	`make RELEASE=yes`
+	`make -C gui RELEASE=yes`
+  to compile command-line or GUI version.
   You can use [this guide](http://psx-scene.com/forums/f150/compiling-windows-118947/#post1124987) for preparing sdk for Windows.
 
 ## Configuration and list file location
 
 You can place this files in folder where is installed hdl_dump for making it portable.
 
-* **Windows**: (cited names are for English version of Windows)  
-  `C:\Documents and Settings\<login name>\Application Data\hdl_dump.conf`  
+* **Windows**: (cited names are for English version of Windows)
+  `C:\Documents and Settings\<login name>\Application Data\hdl_dump.conf`
   `C:\Documents and Settings\<login name>\Application Data\hdl_dump.list`
 
-* **Linux**, **Mac OS X** and **FreeBSD**: (`~` is your home dir)  
-  `~/.hdl_dump.conf`  
+* **Linux**, **Mac OS X** and **FreeBSD**: (`~` is your home dir)
+  `~/.hdl_dump.conf`
   `~/.hdl_dump.list`
 
 
@@ -161,7 +161,7 @@ There are also some undocumented features like this:
   This is used for HDL games for example.
   If you need to erase `boot.elf` from PATINFO you have to place zero-sized `boot.kelf` or elf in program folder.
 
-* If you want to launch KELF from PFS partition you have to change `BOOT2` in `system.cnf` 
+* If you want to launch KELF from PFS partition you have to change `BOOT2` in `system.cnf`
 
   ```
   BOOT2 = pfs:/EXECUTE.KELF
@@ -169,7 +169,7 @@ There are also some undocumented features like this:
 
   where `EXECUTE.KELF` - is path to KELF which is placed into partition. Can be changed.
 
-* If you want to inject kirx into partition you have to add a line into `system.cnf` 
+* If you want to inject kirx into partition you have to add a line into `system.cnf`
 
   ```
   IOPRP = PATINFO
@@ -177,7 +177,7 @@ There are also some undocumented features like this:
 
   Don't ask me about kirx - I don't know where it can be used.
 
-* If you don't want to boot from HDD OSD you have to add such a line into system.cnf 
+* If you don't want to boot from HDD OSD you have to add such a line into system.cnf
 
   ```
   BOOT2 = NOBOOT

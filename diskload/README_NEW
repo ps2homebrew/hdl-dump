@@ -1,10 +1,10 @@
-This source is a EXTREMELY "trimmed down" version of Open PS2 Loader (OpenUsbLd) 
+This source is a EXTREMELY "trimmed down" version of Open PS2 Loader (OpenUsbLd)
 which contains only the emulator core and support for SONY DEV9 based harddrives.
 
 It uses argv[] as parameter for information on which partition it's expected to boot.
 
-This software is meant to be embeded on a KELF file and then installed on a 
-HDL format (0x1337 partition type) partition, making it bootable through 
+This software is meant to be embeded on a KELF file and then installed on a
+HDL format (0x1337 partition type) partition, making it bootable through
 the PlayStation 2 HDD OSD.
 
 

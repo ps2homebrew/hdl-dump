@@ -4,7 +4,7 @@
 	+ clear some warnings
 
 0.9.2prerelease
-	+ New function "modify_header", it will inject corresponding 
+	+ New function "modify_header", it will inject corresponding
 	  files into partition header. More info in README.
 	+ New version, by default al functions now are enabled.
 	+ More documentation.
@@ -64,7 +64,7 @@
  	~ better FreeBSD (and maybe MacOS X) compatibility
 	~ major UDP server bug fixup
 	~ overall code cleanup
- 
+
 0.8.3
 	+ new server, better network transfer speeds
 	+ proper SIGINT handling

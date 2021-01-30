@@ -275,7 +275,7 @@ int dict_store(const dict_t *dict,
 
 
 /**************************************************************/
-/* 
+/*
  * reads a string from an input stream
  * string might be quoted (if first non-white input character is \")
  * otherwise string is `term' terminated; `term' is put back in stream;

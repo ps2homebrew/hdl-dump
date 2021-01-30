@@ -27,7 +27,7 @@ all:
 	echo "Building Open PS2 Loader..."
 	echo "    * Interface"
 	$(MAKE) $(EE_BIN)
-	
+
 	echo "Stripping..."
 	ee-strip $(EE_BIN)
 

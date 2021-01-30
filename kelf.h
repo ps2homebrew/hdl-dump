@@ -1,5 +1,5 @@
 /*
- * 
+ *
  *
  * KELF.h
  * $Id: KELF.h

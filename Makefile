@@ -99,7 +99,7 @@ else
   CFLAGS += -D_GNU_SOURCE -D_BUILD_UNIX
   CXXFLAGS += -D_GNU_SOURCE -D_BUILD_UNIX
   LDFLAGS += -lpthread
-  EXESUF = 
+  EXESUF =
 endif
 
 

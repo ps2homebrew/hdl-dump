@@ -1,0 +1,33 @@
+name: CI-compile-ps2-side
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: akuhak/ps2dev:v1.0
+    steps:
+    - name: Install dependencies
+      run: |
+        apk add build-base git zip
+        
+    - uses: actions/checkout@v2
+    - run: |
+        git fetch --prune --unshallow
+    - name: Compile project
+      run: |
+        cd svr/
+        make
+    
+    - name: Get short SHA
+      id: slug
+      run: echo "::set-output name=sha8::$(echo ${GITHUB_SHA} | cut -c1-8)"
+
+    - name: Upload artifacts
+      if: ${{ success() }}
+      uses: actions/upload-artifact@v2
+      with:
+        name: IOP_PKTDRV-${{ steps.slug.outputs.sha8 }}
+        path: svr/IOP_PKTDRV.elf
