@@ -43,8 +43,8 @@ VER_MAJOR = 0
 VER_MINOR = 9
 VER_PATCH = 1
 
-#WINMINGWPREFIX ?= i586-mingw32msvc
-WINMINGWPREFIX ?= i686-w64-mingw32
+# https://mxe.cc/
+MXE_TARGETS ?= i686-w64-mingw32.static
 
 # configuration end
 ###############################################################################
@@ -80,8 +80,8 @@ endif
 WINDRES = windres
 ifeq ($(XC), win)
   WINDOWS = yes
-  CC = $(WINMINGWPREFIX)-gcc
-  WINDRES = $(WINMINGWPREFIX)-windres
+  CC = $(MXE_TARGETS)-gcc
+  WINDRES = $(MXE_TARGETS)-windres
 endif
 
 

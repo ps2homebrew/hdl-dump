@@ -1,4 +1,4 @@
-name: CI
+name: CI-compile
 
 on:
   push:
@@ -17,99 +17,97 @@ jobs:
     - name: Install Ubuntu version
       if: ${{ matrix.os == 'ubuntu-latest' && always() }}
       run: |
-        make --trace DEBUG=yes
+        make --trace RELEASE=yes
         
     - name: Install Mac version
       if: ${{ matrix.os == 'macos-latest' && always() }}
       run: |
-        make --debug USE_THREADED_IIN=no IIN_OPTICAL_MMAP=no DEBUG=yes
+        make --debug USE_THREADED_IIN=no IIN_OPTICAL_MMAP=no RELEASE=yes
+    - name: Get short SHA
+      id: slug
+      run: echo "::set-output name=sha8::$(echo ${GITHUB_SHA} | cut -c1-8)"
 
+    - name: Create tar archive (keep executable bit)
+      run: tar -zcvf hdl-dump-${{ steps.slug.outputs.sha8 }}-${{matrix.os}}.tar.gz hdl_dump
+        
     - uses: actions/upload-artifact@v2
       with:
-        name: hdl-${{matrix.os}}
-        path: hdl_dump
-
+        name: hdl-dump-${{ steps.slug.outputs.sha8 }}-${{matrix.os}}
+        path: |
+          *tar.gz
+          
   build-win:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [macos-latest, ubuntu-latest]
-        
+    runs-on: ubuntu-latest
+    container: dockcross/windows-static-x86:latest
+    
     steps:       
     - uses: actions/checkout@v2
-        
-    - name: Install Win version from Ubuntu
-      if: ${{ matrix.os == 'ubuntu-latest' && always() }}
-      run: |
-        sudo apt-get -y install gcc-mingw-w64 gcc
-        make --trace XC=win DEBUG=yes
-        mkdir -p rel
-        mv hdl_dump.exe rel/
-        make clean
-        make --trace -C gui XC=win DEBUG=yes
-        mv gui/hdl_dumb.exe rel/
-        
-    - name: Install Win version from Mac
-      if: ${{ matrix.os == 'macos-latest' && always() }}
-      run: |
-        brew install mingw-w64 make
-        make --debug XC=win DEBUG=yes
-        mkdir -p rel
-        mv hdl_dump.exe rel/
-        make clean
-        make --debug -C gui XC=win DEBUG=yes
-        mv gui/hdl_dumb.exe rel/
 
+    - name: Compile windows version with cross-compilator
+      run: |
+        make --trace XC=win RELEASE=yes
+        mkdir -p rel
+        mv hdl_dump.exe rel/
+        make clean
+        make --trace -C gui XC=win RELEASE=yes
+        mv gui/hdl_dumb.exe rel/        
+                
+    - name: Get short SHA
+      id: slug
+      run: echo "::set-output name=sha8::$(echo ${GITHUB_SHA} | cut -c1-8)"
+
+    - name: Create tar archive
+      run: tar -zcvf hdl-dump-${{ steps.slug.outputs.sha8 }}-windows-latest.tar.gz rel
+        
     - uses: actions/upload-artifact@v2
       with:
-        name: hdl-WIN-${{matrix.os}}
+        name: hdl-dump-${{ steps.slug.outputs.sha8 }}-windows-latest
         path: |
-          rel/*.exe
-
+          *tar.gz
+          
   release:
     needs: [build, build-win]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/master'
     steps:
-    - name: git checkout
-      uses: actions/checkout@v2
-    - run: |
-        git fetch --prune --unshallow
+    - uses: actions/checkout@v2
+    
+    - name: Get short SHA
+      id: slug
+      run: echo "::set-output name=sha8::$(echo ${GITHUB_SHA} | cut -c1-8)"
       
     - name: Download Mac artifact
-      uses: actions/download-artifact@v1
+      uses: actions/download-artifact@v2
       with:
-        name: hdl-macos-latest
+        name: hdl-dump-${{ steps.slug.outputs.sha8 }}-macos-latest
 
     - name: Download Ubuntu artifact
-      uses: actions/download-artifact@v1
+      uses: actions/download-artifact@v2
       with:
-        name: hdl-ubuntu-latest
+        name: hdl-dump-${{ steps.slug.outputs.sha8 }}-ubuntu-latest
 
-    - name: Download Win version from Mac artifact
-      uses: actions/download-artifact@v1
+    - name: Download Windows artifact
+      uses: actions/download-artifact@v2
       with:
-        name: hdl-WIN-macos-latest
+        name: hdl-dump-${{ steps.slug.outputs.sha8 }}-windows-latest
 
-    - name: Download Win version from Ubuntu artifact
-      uses: actions/download-artifact@v1
-      with:
-        name: hdl-WIN-ubuntu-latest
-
-    - name: Prepare artifacts for release
-      run: |
-        7z a -t7z hdl-macos-latest.7z hdl-macos-latest/*
-        7z a -t7z hdl-ubuntu-latest.7z hdl-ubuntu-latest/*
-        7z a -t7z hdl-WIN-macos-latest.7z hdl-WIN-macos-latest/*
-        7z a -t7z hdl-WIN-ubuntu-latest.7z hdl-WIN-ubuntu-latest/*
-
-    - name: Create prerelease
+    - name: Create pre-release
       if: github.ref == 'refs/heads/master'
       uses: marvinpinto/action-automatic-releases@latest
       with:
         repo_token: "${{ secrets.GITHUB_TOKEN }}"
         prerelease: true
         automatic_release_tag: "latest"
-        title: "${{ steps.version.outputs.version }}"
+        title: "Development build"
         files: |
-          hdl-*.7z
+          *tar.gz
+          
+    - name: Create Tagged Release Draft
+      if: startsWith(github.ref, 'refs/tags/v')
+      uses: marvinpinto/action-automatic-releases@latest
+      with:
+        repo_token: "${{ secrets.GITHUB_TOKEN }}"
+        prerelease: false
+        draft: true
+        files: |
+          *tar.gz

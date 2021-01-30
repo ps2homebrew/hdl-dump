@@ -44,8 +44,8 @@ VER_MAJOR = 0
 VER_MINOR = 9
 VER_PATCH = 2
 
-#WINMINGWPREFIX ?= i586-mingw32msvc
-WINMINGWPREFIX ?= i686-w64-mingw32
+# https://mxe.cc/
+MXE_TARGETS ?= i686-w64-mingw32.static
 
 # configuration end
 ###############################################################################
@@ -74,8 +74,8 @@ endif
 WINDRES = windres
 ifeq ($(XC), win)
   WINDOWS = yes
-  CC = $(WINMINGWPREFIX)-gcc
-  WINDRES = $(WINMINGWPREFIX)-windres
+  CC = $(MXE_TARGETS)-gcc
+  WINDRES = $(MXE_TARGETS)-windres
 endif
 
 
@@ -155,7 +155,7 @@ all: $(BINARY)
 clean:
 	@rm -f $(BINARY) $(OBJECTS)
 	@rm -f $(DEPENDS)
-	rm -f *.d *.o *.exe
+	@rm -f *.d *.o *.exe
 
 rmdeps:
 	@rm -f $(DEPENDS)
@@ -166,7 +166,7 @@ LINT_OFF = +posixlib +unixlib \
 	+matchanyintegral
 lint:
 	for src in $(SOURCES:osal_unix.c=); do \
-		splint -D_LINT -D_BUILD_UNIX -DVERSION="" $(LINT_OFF) $$src; \
+		@splint -D_LINT -D_BUILD_UNIX -DVERSION="" $(LINT_OFF) $$src; \
 	done
 
 lint2:
@@ -184,10 +184,6 @@ rsrc.o: rsrc.rc
 $(BINARY): $(OBJECTS)
 	@echo -e "\tLNK $@"
 	@$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
-ifeq ($(RELEASE), yes)
-	-@upx -q -9 $@ > /dev/null
-endif
-
 
 %.o : %.c
 	@echo -e "\tCC  $<"
