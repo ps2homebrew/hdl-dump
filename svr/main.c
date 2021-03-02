@@ -115,6 +115,7 @@ int main(int argc, char *argv[])
                 strcpy(ip_address_str, "192.168.0.10");
                 strcpy(subnet_mask_str, "255.255.255.0");
                 strcpy(gateway_str, "192.168.0.1");
+            }
         }
     }
 
