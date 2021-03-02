@@ -111,9 +111,10 @@ int main(int argc, char *argv[])
 
     if (ParseConfig("mc0:/SYS-CONF/IPCONFIG.DAT", ip_address_str, subnet_mask_str, gateway_str) != 0) {
         if (ParseConfig("mc1:/SYS-CONF/IPCONFIG.DAT", ip_address_str, subnet_mask_str, gateway_str) != 0) {
-            strcpy(ip_address_str, "192.168.0.10");
-            strcpy(subnet_mask_str, "255.255.255.0");
-            strcpy(gateway_str, "192.168.0.1");
+            if (ParseConfig("hdd0:/__sysconf/FMCB/IPCONFIG.DAT", ip_address_str, subnet_mask_str, gateway_str) != 0) {
+                strcpy(ip_address_str, "192.168.0.10");
+                strcpy(subnet_mask_str, "255.255.255.0");
+                strcpy(gateway_str, "192.168.0.1");
         }
     }
 
