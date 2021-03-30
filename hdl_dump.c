@@ -284,14 +284,20 @@ show_hdl_toc(const dict_t *config,
                 char compat_flags[MAX_FLAGS * 2 + 1];
                 char dma[4];
                 /*unsigned short dma_dummy = 0;*/
-                compat_flags[0] = compat_flags[1] = '\0';
                 dma[0] = dma[1] = '\0';
+                compat_flags[0] = '\0';
                 for (j = 0; j < MAX_FLAGS; ++j)
                     if (((int)game->compat_flags & (1 << j)) != 0) {
                         char buffer[5];
                         sprintf(buffer, "+%u", (unsigned int)(j + 1));
                         strcat(compat_flags, buffer);
                     }
+                if (compat_flags[0] == '+')
+                    compat_flags[0] = ' '; /* trim leading + */
+                else {
+                    compat_flags[0] = '0';
+                    compat_flags[1] = '\0';
+                }
                 /*dma_dummy = game->dma;*/
                 if ((unsigned short)game->dma % 256 == 32) {
                     int dma_dummy = 0;
@@ -318,7 +324,7 @@ show_hdl_toc(const dict_t *config,
                 printf("%3s %7luKB %*s %-3s %-12s %s\n",
                        game->is_dvd != 0 ? "DVD" : "CD ",
                        (unsigned long)game->raw_size_in_kb,
-                       MAX_FLAGS * 2 - 1, compat_flags + 1, /* trim leading + */
+                       MAX_FLAGS * 2 - 1, compat_flags,
                        dma,
                        game->startup,
                        game->name);
