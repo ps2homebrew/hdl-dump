@@ -32,6 +32,8 @@
 
 C_START
 
+#define MAX_MBR_KELF_SIZE 883200
+
 /* chunks_map */
 static const char MAP_AVAIL = '.';
 static const char MAP_MAIN = 'M';

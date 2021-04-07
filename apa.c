@@ -1136,7 +1136,7 @@ int apa_initialize(const dict_t *config,
     if (result == RET_OK && hio != NULL) {
         result = apa_initialize_ex(hio,file_name);
         if (result == RET_OK) {
-            fprintf(stdout, "MBR data sucessfully injected\n");
+            fprintf(stdout, "MBR data successfully injected\n");
             result = hio->close(hio);
         } else
             (void)hio->close(hio); /* ignore close error in this case */
@@ -1169,6 +1169,17 @@ int apa_initialize_ex(hio_t *hio, const char *file_name)
 
     result = read_file(file_name, &mbrelf, &mbrelf_length);
     if (result == OSAL_OK) {
+    	/* check MBR file */
+    	if (mbrelf_length > MAX_MBR_KELF_SIZE)
+    		result = RET_MBR_KELF_SIZE;
+    	else if (mbrelf[0] != 0x01 || mbrelf[3] != 0x04)
+    		result = RET_INVALID_KELF;
+    	if (result != OSAL_OK)
+    	{
+    		osal_free(mbrelf);
+    		return result;
+    	}
+
         /* prepare MBR */
 
         memset(&header, 0, sizeof(ps2_partition_header_t));
@@ -1235,7 +1246,7 @@ int apa_dump_mbr(const dict_t *config, const char *device, const char *file_name
     }
 
     if (result == OSAL_OK) {
-        fprintf(stdout, "MBR data sucessfully dumped\n");
+        fprintf(stdout, "MBR data successfully dumped\n");
         result = hio->close(hio);
     } else
         (void)hio->close(hio); /* ignore close error in this case */

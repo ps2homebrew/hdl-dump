@@ -1714,6 +1714,14 @@ handle_result_and_exit(int result,
             exit(100 + RET_SPTI_ERROR);
 #endif
 
+        case RET_MBR_KELF_SIZE:
+            fprintf(stderr, "The file size exceeds the %d bytes limit.\n", MAX_MBR_KELF_SIZE);
+            exit(100 + RET_MBR_KELF_SIZE);
+
+        case RET_INVALID_KELF:
+            fprintf(stderr, "Invalid kelf header.\n");
+            exit(100 + RET_INVALID_KELF);
+
         default:
             fprintf(stderr, "%s: don't know what the error is: %d.\n", device, result);
             exit(200);
