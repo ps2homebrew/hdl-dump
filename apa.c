@@ -1128,12 +1128,13 @@ int apa_diag(const dict_t *config,
 
 /**************************************************************/
 int apa_initialize(const dict_t *config,
-                   const char *device)
+                   const char *device,
+				   const char *file_name)
 {
     /*@out@*/ hio_t *hio = NULL;
     int result = hio_probe(config, device, &hio);
     if (result == RET_OK && hio != NULL) {
-        result = apa_initialize_ex(hio);
+        result = apa_initialize_ex(hio,file_name);
         if (result == RET_OK) {
             fprintf(stdout, "MBR data sucessfully injected\n");
             result = hio->close(hio);
@@ -1146,7 +1147,7 @@ int apa_initialize(const dict_t *config,
 
 
 /**************************************************************/
-int apa_initialize_ex(hio_t *hio)
+int apa_initialize_ex(hio_t *hio, const char *file_name)
 {
     ps2_partition_header_t header;
     u_int32_t dummy;
@@ -1166,7 +1167,7 @@ int apa_initialize_ex(hio_t *hio)
     next = (u_int32_t)get_u32(buffer + 8);
     prev = (u_int32_t)get_u32(buffer + 12);
 
-    result = read_file("./MBR.KELF", &mbrelf, &mbrelf_length);
+    result = read_file(file_name, &mbrelf, &mbrelf_length);
     if (result == OSAL_OK) {
         /* prepare MBR */
 
