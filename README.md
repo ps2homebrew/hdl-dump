@@ -96,13 +96,17 @@ If you don't include an `*.ico`, the HDLoader logo is used. If you don't include
 
 ### `initialize`
 
+```
+hdl_dump initialize /dev/sdb MBR.KELF
+```
+
 When you use this command and place the hard drive into your PlayStation 2 phat, it will launch the injected `MBR.KELF`. So it can be used as Free MCBoot replacement (no need for memory card or modchip for lauching homebrews).
 
-All you need to do is place `MBR.KELF` in the corresponding folder. All HDD data will remain intact.
+All HDD data will remain intact.
 
 `MBR.KELF` injection address - `0x404000` (for compatibility with PlayStation BB Navigator)
 
-`MBR.KELF` doesn't have any restrictions by itself.
+`MBR.KELF` size should be maximum 883200 bytes and have valid header.
 
 There is no easy way to make `MBR.KELF`s from a common elf.
 
