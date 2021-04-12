@@ -60,6 +60,7 @@
 #define RET_PROTO_ERR 28        /* network communication protocol error */
 #define RET_INVARIANT 29        /* invalid internal data state; probably a bug */
 #define RET_SPTI_ERROR 30       /* SPTI error */
-
+#define RET_MBR_KELF_SIZE 31    /* file size exceeds MAX_MBR_KELF_SIZE */
+#define RET_INVALID_KELF 32     /* Invalid kelf header */
 
 #endif /* _RETCODES_H defined? */

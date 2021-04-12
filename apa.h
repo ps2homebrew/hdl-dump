@@ -32,6 +32,8 @@
 
 C_START
 
+#define MAX_MBR_KELF_SIZE 883200
+
 /* chunks_map */
 static const char MAP_AVAIL = '.';
 static const char MAP_MAIN = 'M';
@@ -122,9 +124,10 @@ int apa_diag_ex(hio_t *hio,
                 size_t buffer_size);
 
 int apa_initialize(const dict_t *config,
-                   const char *device);
+                   const char *device,
+				   const char *file_name);
 
-int apa_initialize_ex(hio_t *hio);
+int apa_initialize_ex(hio_t *hio, const char *file_name);
 
 int apa_dump_mbr(const dict_t *config,
                  const char *device, const char *file_name);

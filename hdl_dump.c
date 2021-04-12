@@ -1395,15 +1395,15 @@ show_usage_and_exit(const char *app_path,
          "power off Playstation 2", NULL,
          "192.168.0.10", NULL, 0},
 #if defined(INCLUDE_INITIALIZE_CMD)
-        {CMD_INITIALIZE, "device",
-         "inject MBR.KELF into MBR",
+        {CMD_INITIALIZE, "device input_file",
+         "inject input_file into MBR",
          "All your partitions remain intact!!!" CMD_INITIALIZE " is rewrited by AKuHAK.",
-         "hdd1:", NULL, 1},
+         "hdd1: MBR.KELF", NULL, 1},
 #endif /* INCLUDE_INITIALIZE_CMD defined? */
 #if defined(INCLUDE_DUMP_MBR_CMD)
         {CMD_DUMP_MBR, "device output_file",
          "dump mbr to disc", NULL,
-         "hdd1:", NULL, 0},
+         "hdd1: MBR.KELF", NULL, 0},
 #endif /* INCLUDE_DUMP_MBR_CMD defined? */
 #if defined(INCLUDE_BACKUP_TOC_CMD)
         {CMD_BACKUP_TOC, "device file",
@@ -1714,6 +1714,14 @@ handle_result_and_exit(int result,
             exit(100 + RET_SPTI_ERROR);
 #endif
 
+        case RET_MBR_KELF_SIZE:
+            fprintf(stderr, "The file size exceeds the %d bytes limit.\n", MAX_MBR_KELF_SIZE);
+            exit(100 + RET_MBR_KELF_SIZE);
+
+        case RET_INVALID_KELF:
+            fprintf(stderr, "Invalid kelf header.\n");
+            exit(100 + RET_INVALID_KELF);
+
         default:
             fprintf(stderr, "%s: don't know what the error is: %d.\n", device, result);
             exit(200);
@@ -1940,10 +1948,10 @@ int main(int argc, char *argv[])
 
 #if defined(INCLUDE_INITIALIZE_CMD)
         else if (caseless_compare(command_name, CMD_INITIALIZE)) { /* prepare a HDD for HDL usage */
-            if (argc != 3)
+            if (argc != 4)
                 show_usage_and_exit(argv[0], CMD_INITIALIZE);
 
-            handle_result_and_exit(apa_initialize(config, argv[2]),
+            handle_result_and_exit(apa_initialize(config, argv[2], argv[3]),
                                    argv[2], NULL);
         }
 #endif /* INCLUDE_INITIALIZE_CMD defined? */
