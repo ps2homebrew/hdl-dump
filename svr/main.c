@@ -1,4 +1,4 @@
-#include <fileio.h>
+//#include <fileio.h>
 #include <iopcontrol.h>
 #include <iopheap.h>
 #include <kernel.h>
@@ -9,7 +9,7 @@
 #include <sifrpc.h>
 #include <stdio.h>
 #include <string.h>
-#include <fileXio_rpc.h>
+//#include <fileXio_rpc.h>
 #include <debug.h>
 
 #ifdef USING_NETIF_RPC
@@ -23,6 +23,7 @@
 #include "hdldsvr.h"
 #endif
 #endif
+
 
 #include "main.h"
 #include "ipconfig.h"
@@ -95,7 +96,7 @@ int main(int argc, char *argv[])
     SifInitRpc(0);
     SifInitIopHeap();
     SifLoadFileInit();
-    fioInit();
+//    fioInit();
     sbv_patch_enable_lmb();
 
     init_scr();
@@ -106,15 +107,43 @@ int main(int argc, char *argv[])
 
     SifLoadStartModule("rom0:SIO2MAN", 0, NULL, NULL);
     SifLoadStartModule("rom0:MCMAN", 0, NULL, NULL);
+    scr_printf("\t\t# Loading modules...");
+
+    SifExecModuleBuffer(IOMANX_irx, size_IOMANX_irx, 0, NULL, NULL);
+    SifExecModuleBuffer(FILEXIO_irx, size_FILEXIO_irx, 0, NULL, NULL);
+    SifExecModuleBuffer(POWEROFF_irx, size_POWEROFF_irx, 0, NULL, NULL);
+    SifExecModuleBuffer(DEV9_irx, size_DEV9_irx, 0, NULL, NULL);
+    SifExecModuleBuffer(NETMAN_irx, size_NETMAN_irx, 0, NULL, NULL);
+    SifExecModuleBuffer(SMAP_irx, size_SMAP_irx, 0, NULL, NULL);
+    SifExecModuleBuffer(ATAD_irx, size_ATAD_irx, 0, NULL, NULL);
+    SifExecModuleBuffer(HDD_irx, size_HDD_irx, 0, NULL, NULL);
 
     scr_printf("\t\t# Parsing IP configuration...");
 
-    if (ParseConfig("mc0:/SYS-CONF/IPCONFIG.DAT", ip_address_str, subnet_mask_str, gateway_str) != 0) {
-        if (ParseConfig("mc1:/SYS-CONF/IPCONFIG.DAT", ip_address_str, subnet_mask_str, gateway_str) != 0) {
-            strcpy(ip_address_str, "192.168.0.10");
-            strcpy(subnet_mask_str, "255.255.255.0");
-            strcpy(gateway_str, "192.168.0.1");
-        }
+    int result;
+    char * device  = strtok(argv[0], ":");
+    char path[50];
+
+    if (strcmp(device, "hdd0") == 0)
+    {
+    	sprintf(path,"%s:/__sysconf/FMCB/IPCONFIG.DAT",device);
+    }
+    else {
+    	sprintf(path,"%s:/SYS-CONF/IPCONFIG.DAT",device);
+    }
+
+    result = ParseConfig(path, ip_address_str, subnet_mask_str, gateway_str);
+    if (result == 0) {
+    	scr_printf("\n\t%s : OK \n",path);
+    } else {
+    	scr_printf("\n\t%s : NOK : %d\n",path, result);
+        strcpy(ip_address_str, "192.168.1.45");
+        strcpy(subnet_mask_str, "255.255.255.0");
+        strcpy(gateway_str, "192.168.1.254");
+
+//        strcpy(ip_address_str, "192.168.0.10");
+//        strcpy(subnet_mask_str, "255.255.255.0");
+//        strcpy(gateway_str, "192.168.0.1");
     }
 
     ParseNetAddr(ip_address_str, ip_address);
@@ -127,16 +156,7 @@ int main(int argc, char *argv[])
                "\t\tGateway:\t\t%u.%u.%u.%u\n",
                ip_address[0], ip_address[1], ip_address[2], ip_address[3], subnet_mask[0], subnet_mask[1], subnet_mask[2], subnet_mask[3], gateway[0], gateway[1], gateway[2], gateway[3]);
 
-    scr_printf("\t\t# Loading modules...");
 
-    SifExecModuleBuffer(IOMANX_irx, size_IOMANX_irx, 0, NULL, NULL);
-    SifExecModuleBuffer(FILEXIO_irx, size_FILEXIO_irx, 0, NULL, NULL);
-    SifExecModuleBuffer(POWEROFF_irx, size_POWEROFF_irx, 0, NULL, NULL);
-    SifExecModuleBuffer(DEV9_irx, size_DEV9_irx, 0, NULL, NULL);
-    SifExecModuleBuffer(NETMAN_irx, size_NETMAN_irx, 0, NULL, NULL);
-    SifExecModuleBuffer(SMAP_irx, size_SMAP_irx, 0, NULL, NULL);
-    SifExecModuleBuffer(ATAD_irx, size_ATAD_irx, 0, NULL, NULL);
-    SifExecModuleBuffer(HDD_irx, size_HDD_irx, 0, NULL, NULL);
 #ifndef USING_NETIF_RPC
     char module_args[128];
     unsigned int args_offset = 0;
@@ -162,7 +182,7 @@ int main(int argc, char *argv[])
 
     SifLoadFileExit();
     SifExitIopHeap();
-    fileXioInit();
+//    fileXioInit();
 
     scr_printf("\t\t# System initialized.\n"
                "\t\t# Initializing network protocol stack...");
@@ -176,6 +196,7 @@ int main(int argc, char *argv[])
     InitPS2IP(&IP, &NM, &GW);
 
     StartServer();
+    CacaBoudin();
 #else
     InitPS2IP(ip_address, subnet_mask, gateway);
 #endif
@@ -192,7 +213,7 @@ int main(int argc, char *argv[])
     DeinitPS2IP();
 #endif
 
-    fioExit();
+//    fioExit();
     SifExitRpc();
     return 0;
 }

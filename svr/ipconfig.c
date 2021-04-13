@@ -2,7 +2,10 @@
 #include <string.h>
 #include <malloc.h>
 #include <stdlib.h>
-#include <fileio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #include "ipconfig.h"
 
@@ -71,11 +74,11 @@ int ParseConfig(const char *path, char *ip_address, char *subnet_mask, char *gat
     char *FileBuffer, *line, *field;
     unsigned int i;
 
-    if ((fd = fioOpen(path, O_RDONLY)) >= 0) {
-        size = fioLseek(fd, 0, SEEK_END);
-        fioLseek(fd, 0, SEEK_SET);
+    if ((fd = open(path, O_RDONLY)) >= 0) {
+        size = lseek(fd, 0, SEEK_END);
+        lseek(fd, 0, SEEK_SET);
         if ((FileBuffer = malloc(size)) != NULL) {
-            if (fioRead(fd, FileBuffer, size) == size) {
+            if (read(fd, FileBuffer, size) == size) {
                 if ((line = strtok(FileBuffer, "\r\n")) != NULL) {
                     result = EINVAL;
                     do {
@@ -108,7 +111,7 @@ int ParseConfig(const char *path, char *ip_address, char *subnet_mask, char *gat
         } else
             result = ENOMEM;
 
-        fioClose(fd);
+        close(fd);
     } else
         result = fd;
 

@@ -17,9 +17,17 @@
 
 IRX_ID("PKTDRV_stack", 0x00, 0x80);
 
+struct NetManPacketBuffer{
+	void *handle;
+	void *payload;
+	u32 length;
+};
+
 static unsigned char FrameBuffer[1600];
 static struct NetManPacketBuffer RxPbuf;
 static unsigned int PacketAvailable = 1;
+
+
 
 static void LinkStateUp(void)
 {

@@ -43,7 +43,9 @@ nic_get_state(void *buf)
 int nic_send(const void *pPacket, int size)
 {
     // return(SMAPSendPacket(pPacket, size)!=0?1:0);
-    return (NetManNetIFSendPacket(pPacket, size) != 0 ? 1 : 0);
+    //return (NetManNetIFSendPacket(pPacket, size) != 0 ? 1 : 0);
+	NetManNetIFXmit();
+	return 0;
 }
 
 int nic_send_wait(const void *pPacket, int size)
