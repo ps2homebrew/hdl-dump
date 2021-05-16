@@ -21,20 +21,15 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#if defined(__MACH__)
-#define USE_NAMED_SEMAPHORES
-#endif
 
 #if defined(_BUILD_WIN32)
 #include <windows.h>
 #include "sema.h" /* POSIX semaphores for win32 */
+#elif defined(__MACH__)
+#include "sema.h" /* POSIX semaphores for macOS */
 #else
 #include <pthread.h>
 #include <semaphore.h>
-#endif
-#if defined(USE_NAMED_SEMAPHORES)
-#include <unistd.h>
-#include <limits.h>
 #endif
 #include <stdio.h>
 #include <string.h>
@@ -71,11 +66,7 @@ typedef struct threaded_decorator_type
     job_t job;
 
     /* both are exclusive => at any moment only one is acquirable */
-#ifdef USE_NAMED_SEMAPHORES
-    sem_t *worker_lock, *master_lock;
-#else
     sem_t worker_lock, master_lock;
-#endif
 
     buffer_t buf[2];
     size_t active_buf; /* <= % 2 == index of the current buffer */
@@ -96,11 +87,7 @@ thd_loop(void *p)
     threaded_decorator_t *thd = (threaded_decorator_t *)p;
 
     do {
-#if defined(USE_NAMED_SEMAPHORES)
-        int result = sem_wait(thd->worker_lock);
-#else
         int result = sem_wait(&thd->worker_lock);
-#endif
         if (result == 0 && !thd->done) {
             job_t *job = &thd->job;
             buffer_t *dest = job->dest;
@@ -118,20 +105,12 @@ thd_loop(void *p)
             dest->num_sectors = job->num_sectors;
 
             /* unlock master */
-#if defined(USE_NAMED_SEMAPHORES)
-            sem_post(thd->master_lock);
-#else
             sem_post(&thd->master_lock);
-#endif
         }
     } while (!thd->done);
 
     /* notify master */
-#if defined(USE_NAMED_SEMAPHORES)
-    sem_post(thd->master_lock);
-#else
     sem_post(&thd->master_lock);
-#endif
     return (0);
 }
 
@@ -148,11 +127,7 @@ thd_read(iin_t *iin,
     int result;
 
     do {
-#if defined(USE_NAMED_SEMAPHORES)
-        result = sem_wait(thd->master_lock);
-#else
         result = sem_wait(&thd->master_lock);
-#endif
         if (result == 0) { /* worker is idle */
             const buffer_t *buf = thd->buf + (thd->active_buf % 2);
             if (start_sector == buf->start_sector &&
@@ -165,11 +140,7 @@ thd_read(iin_t *iin,
                 thd->job.start_sector = start_sector;
                 thd->job.num_sectors = num_sectors;
                 thd->job.dest = thd->buf + (thd->active_buf % 2);
-#if defined(USE_NAMED_SEMAPHORES)
-                sem_post(thd->worker_lock);
-#else
                 sem_post(&thd->worker_lock);
-#endif
             }
         }
     } while (1);
@@ -180,19 +151,11 @@ thd_read(iin_t *iin,
         thd->job.start_sector = start_sector + num_sectors;
         thd->job.num_sectors = IIN_NUM_SECTORS;
         thd->job.dest = thd->buf + (++thd->active_buf % 2);
-#if defined(USE_NAMED_SEMAPHORES)
-        sem_post(thd->worker_lock);
-#else
         sem_post(&thd->worker_lock);
-#endif
     } else
-    /* since there is no pre-fetch scheduled,
+        /* since there is no pre-fetch scheduled,
        unlock master or the next read call would block forever */
-#if defined(USE_NAMED_SEMAPHORES)
-        sem_post(thd->master_lock);
-#else
         sem_post(&thd->master_lock);
-#endif
 
     return (result);
 }
@@ -219,28 +182,14 @@ thd_close(iin_t *iin)
     int result;
 
     /* wait for worker to finish... */
-#if defined(USE_NAMED_SEMAPHORES)
-    sem_wait(thd->master_lock);
-#else
     sem_wait(&thd->master_lock);
-#endif
     thd->done = 1;
-#if defined(USE_NAMED_SEMAPHORES)
-    sem_post(thd->worker_lock);
-    sem_wait(thd->master_lock);
-#else
     sem_post(&thd->worker_lock);
     sem_wait(&thd->master_lock);
-#endif
 
     /* clean-up */
-#if defined(USE_NAMED_SEMAPHORES)
-    sem_close(thd->worker_lock);
-    sem_close(thd->master_lock);
-#else
     sem_destroy(&thd->worker_lock);
     sem_destroy(&thd->master_lock);
-#endif
     result = thd->worker->close(thd->worker);
     thd->worker = NULL;
 
@@ -274,9 +223,6 @@ thd_create(iin_t *worker)
 {
     u_int32_t total_sectors, sector_size;
     threaded_decorator_t *thd;
-#if defined(USE_NAMED_SEMAPHORES)
-    char sema_name_buf[NAME_MAX - 4];
-#endif
 
     if (worker->stat(worker, &sector_size, &total_sectors) != RET_OK)
         return (NULL);
@@ -298,26 +244,8 @@ thd_create(iin_t *worker)
         thd->done = 0;
 
         /* master is unlocked, worker is locked; would run on 1st need */
-#if defined(USE_NAMED_SEMAPHORES)
-        snprintf(sema_name_buf, sizeof(sema_name_buf), "hdl_dump%x_%i", getpid(), 0);
-        thd->worker_lock = sem_open((const char *)sema_name_buf, O_CREAT);
-        if (thd->worker_lock != NULL)
-#else
-        if (sem_init(&thd->worker_lock, 0, 0) == 0)
-#endif
-        {
-#if defined(USE_NAMED_SEMAPHORES)
-            sem_unlink((const char *)sema_name_buf);
-            snprintf(sema_name_buf, sizeof(sema_name_buf), "hdl_dump%x_%i", getpid(), 1);
-            thd->master_lock = sem_open((const char *)sema_name_buf, O_CREAT);
-            if (thd->master_lock != NULL)
-#else
-            if (sem_init(&thd->master_lock, 0, 1) == 0)
-#endif
-            {
-#if defined(USE_NAMED_SEMAPHORES)
-                sem_unlink((const char *)sema_name_buf);
-#endif
+        if (sem_init(&thd->worker_lock, 0, 0) == 0) {
+            if (sem_init(&thd->master_lock, 0, 1) == 0) {
 #if defined(_BUILD_WIN32)
                 DWORD thread_id = 0;
                 HANDLE h = CreateThread(NULL, 0, &thd_loop, thd, 0, &thread_id);
@@ -330,17 +258,9 @@ thd_create(iin_t *worker)
                     return ((iin_t *)thd); /* unix: success */
 #endif
 
-#if defined(USE_NAMED_SEMAPHORES)
-                (void)sem_close(thd->master_lock);
-#else
                 (void)sem_destroy(&thd->master_lock);
-#endif
             }
-#if defined(USE_NAMED_SEMAPHORES)
-            (void)sem_close(thd->worker_lock);
-#else
             (void)sem_destroy(&thd->worker_lock);
-#endif
         }
         osal_free(thd), thd = NULL;
     }
