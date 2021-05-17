@@ -68,6 +68,62 @@ sem_destroy(sem_t *sem)
     return (CloseHandle(sem->h) ? 0 : -1);
 }
 
-#endif /* _BUILD_WIN32 defined? */
+#elif defined(__MACH__)
+#include <pthread.h>
+
+typedef struct sema_type
+{
+    pthread_mutex_t mutex;
+    pthread_cond_t cond;
+    unsigned int counter;
+} sem_t;
+
+static int
+sem_init(sem_t *sem,
+         int pshared,
+         unsigned int value)
+{
+    if (pthread_mutex_init(&sem->mutex, NULL) != 0)
+        return -1;
+    if (pthread_cond_init(&sem->cond, NULL) != 0) {
+        (void)pthread_mutex_destroy(&sem->mutex);
+        return -1;
+    }
+    sem->counter = value;
+    return 0;
+}
+
+static int
+sem_wait(sem_t *sem)
+{
+    if (pthread_mutex_lock(&sem->mutex))
+        return -1;
+    while (sem->counter == 0)
+        (void)pthread_cond_wait(&sem->cond, &sem->mutex);
+    --sem->counter;
+    (void)pthread_mutex_unlock(&sem->mutex);
+    return 0;
+}
+
+static int
+sem_post(sem_t *sem)
+{
+    if (pthread_mutex_lock(&sem->mutex))
+        return -1;
+    ++sem->counter;
+    (void)pthread_mutex_unlock(&sem->mutex);
+    if (pthread_cond_signal(&sem->cond))
+        return -1;
+    return 0;
+}
+
+static int
+sem_destroy(sem_t *sem)
+{
+    (void)pthread_mutex_destroy(&sem->mutex);
+    (void)pthread_cond_destroy(&sem->cond);
+}
+
+#endif
 
 #endif /* _SEMA_H defined? */
