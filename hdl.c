@@ -1274,7 +1274,14 @@ int hdl_modify_game(hio_t *hio,
             char part_id[PS2_PART_IDMAX];
             int tmp_slice_index = 0;
             u_int32_t tmp_partition_index = 0;
-            hdl_pname(NULL, new_name, part_id);
+            char game_id[11];
+            
+            /* Get the game ID from the partition header so it cam be preserved */
+            memmove(game_id, part->header.id + 3, 8);
+            game_id[8] = '.';
+            memmove(game_id + 9, part->header.id + 11, 2);
+
+            hdl_pname(game_id, new_name, part_id);
             result = apa_find_partition(toc, part_id, &tmp_slice_index,
                                         &tmp_partition_index);
             if (result == RET_NOT_FOUND) {
