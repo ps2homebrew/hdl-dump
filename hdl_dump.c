@@ -1894,11 +1894,19 @@ int main(int argc, char *argv[])
 
         else if (caseless_compare(command_name, CMD_HDL_INSTALL)) {
             int slice_index = -1;
-            if ((argc != 4 && argc != 5) || (argc == 5 && argv[4][0] != '@'))
+            int i;
+            
+            if (!(argc >= 4 && argc <= 5))
                 show_usage_and_exit(argv[0], CMD_HDL_INSTALL);
 
-            if (argc == 5)
-                slice_index = (int)strtoul(argv[4] + 1, NULL, 10) - 1;
+            for (i = 4; i < argc; ++i) {
+                if (argv[i][0] == '@')
+                    /* slice index */
+                    slice_index = (int)strtoul(argv[i] + 1, NULL, 10) - 1;                
+                else
+                    show_usage_and_exit(argv[0], CMD_HDL_INSTALL);
+            }
+
             handle_result_and_exit(install(config, argv[2], argv[3],
                                            slice_index, get_progress()),
                                    argv[2], argv[3]);
@@ -1997,48 +2005,30 @@ int main(int argc, char *argv[])
             const char *new_name = NULL;
             compat_flags_t new_flags = COMPAT_FLAGS_INVALID;
             unsigned short new_dma = 0;
+            int i;
 
-            if (argc != 5 && argc != 6 && argc != 7)
+            if (!(argc >= 5 && argc <= 7))
                 show_usage_and_exit(argv[0], CMD_MODIFY);
-
-            if (argc == 5) { /* test for flags, dma one arg*/
-                new_flags = parse_compat_flags(argv[4]);
-                if (new_flags == COMPAT_FLAGS_INVALID) {
-                    new_dma = parse_dma(argv[4]);
-                    if (new_dma == 0) {
-                        if (argv[4][0] != '*')
-                            new_name = argv[4];
-                        else
-                            show_usage_and_exit(argv[0], CMD_MODIFY);
-                    }
-                }
-            } else if (argc == 6) { /* test for flags and dma 2 args */
-                new_flags = parse_compat_flags(argv[4]);
-                if (new_flags == COMPAT_FLAGS_INVALID) {
-                    new_name = argv[4];
-                    new_flags = parse_compat_flags(argv[5]);
-                    if (new_flags == COMPAT_FLAGS_INVALID) { /* name + dma*/
-                        new_dma = parse_dma(argv[5]);
-                        if (new_dma == 0)
-                            show_usage_and_exit(argv[0], CMD_MODIFY);
-                    }    /* name + flags */
-                } else { /* flags + dma */
-                    new_dma = parse_dma(argv[5]);
-                    if (new_dma == 0)
-                        show_usage_and_exit(argv[0], CMD_MODIFY);
-                }
-            } else { /* test for flags and dma 2 args */
-                new_name = argv[4];
-                new_flags = parse_compat_flags(argv[5]);
-                if (new_flags == COMPAT_FLAGS_INVALID)
-                    show_usage_and_exit(argv[0], CMD_MODIFY);
-                new_dma = parse_dma(argv[6]);
-                if (new_dma == 0)
-                    show_usage_and_exit(argv[0], CMD_MODIFY);
+			
+            for (i = 4; i < argc; ++i) {
+                if (argv[i][0] == '+' ||
+                         (argv[i][0] == '0' && argv[i][1] == 'x'))
+                    /* compatibility flags */
+                    new_flags = parse_compat_flags(argv[i]);
+                else if (argv[i][0] == '*')
+                    /* dma modes */
+                    new_dma = parse_dma(argv[i]);
+                else
+                    /* new name */
+                    new_name = argv[i];
             }
 
             if (new_name != NULL && caseless_compare(argv[3], new_name))
                 new_name = NULL; /* new name is same as the present one */
+
+            if (new_name == NULL && new_dma == 0 &&
+				new_flags == COMPAT_FLAGS_INVALID)
+                show_usage_and_exit(argv[0], CMD_MODIFY); /* Nothing was modified */
 
             handle_result_and_exit(modify(config, argv[2], argv[3], new_name,
                                           new_flags, new_dma),
