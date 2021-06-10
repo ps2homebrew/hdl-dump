@@ -943,6 +943,7 @@ inject(const dict_t *config,
        compat_flags_t compat_flags,
        unsigned short dma,
        int is_dvd,
+       int is_hidden,
        int slice_index,
        progress_t *pgs)
 {
@@ -988,7 +989,7 @@ inject(const dict_t *config,
                                  game.name, game.compat_flags);
 
             if (result == RET_OK)
-                result = hdl_inject(hio, iin, &game, slice_index, pgs);
+                result = hdl_inject(hio, iin, &game, slice_index, is_hidden, pgs);
 
             (void)hio->close(hio), hio = NULL;
         }
@@ -1005,6 +1006,7 @@ install(const dict_t *config,
         const char *output,
         const char *input,
         int slice_index,
+        int is_hidden,
         progress_t *pgs)
 {
     hdl_game_t game;
@@ -1052,7 +1054,7 @@ install(const dict_t *config,
                                 break;
                         }
 
-                        result = hdl_inject(hio, iin, &game, slice_index, pgs);
+                        result = hdl_inject(hio, iin, &game, slice_index, is_hidden, pgs);
                         result = (result == RET_OK && incompatible == 1 ?
                                       RET_DDB_INCOMPATIBLE :
                                       result);
@@ -1090,7 +1092,8 @@ modify(const dict_t *config,
        const char *game,
        const char *new_name,
        compat_flags_t new_flags,
-       unsigned short new_dma)
+       unsigned short new_dma,
+       int is_hidden)
 {
     /*@only@*/ hio_t *hio = NULL;
     int result = hio_probe(config, device, &hio);
@@ -1103,7 +1106,7 @@ modify(const dict_t *config,
             result = apa_find_partition(toc, game, &slice_index,
                                         &partition_index);
             if (result == RET_NOT_FOUND) { /* assume it is `game_name' and not a partition name */
-                char partition_id[PS2_PART_IDMAX + 8];
+                char partition_id[PS2_PART_IDMAX + 1];
                 result = hdl_lookup_partition_ex(hio, game, partition_id);
                 if (result == RET_OK)
                     result = apa_find_partition(toc, partition_id,
@@ -1113,7 +1116,7 @@ modify(const dict_t *config,
             if (result == RET_OK) {
                 u_int32_t start_sector = get_u32(&toc->slice[slice_index].parts[partition_index].header.start);
                 result = hdl_modify_game(hio, toc, slice_index, start_sector,
-                                         new_name, new_flags, new_dma);
+                                         new_name, new_flags, new_dma, is_hidden);
             }
 
             apa_toc_free(toc), toc = NULL;
@@ -1201,10 +1204,16 @@ copy_hdd(const dict_t *config,
             if (i >= flags_count || tolower(flags[i]) == 'y') { /* copy that game */
                 char in[1024];
                 const hdl_game_info_t *game = in_list->games + i;
+                int is_hidden = 0;
+
+                /* Determine if the partition is hidden */
+                if(strncmp(game->partition_name, HIDDEN_PART, 3) == 0)
+                    is_hidden = 1;
+
                 sprintf(in, "%s@%s", game->name, src_device_name);
                 result = inject(config, dest_device_name, game->name,
                                 in, game->startup, game->compat_flags, game->dma,
-                                game->is_dvd, -1, pgs);
+                                game->is_dvd, is_hidden, -1, pgs);
                 if (result == RET_OK)
                     fprintf(stdout, "  %s copied.                               \n",
                             game->name);
@@ -1358,32 +1367,37 @@ show_usage_and_exit(const char *app_path,
         {CMD_HDL_EXTRACT, "device name output_file",
          "extract application image from HDL partition", NULL,
          "hdd1: \"tekken tag tournament\" c:\\tekken.iso", NULL, 0},
-        {CMD_HDL_INJECT_CD, "target name source [startup] [+flags] [*dma] [@slice_index]",
+        {CMD_HDL_INJECT_CD, "target name source [startup] [+flags] [*dma] [@slice_index] [-hide]",
          "create a new HDL partition from a CD",
          "You can use boot.elf, list.cio, icon.sys. Check Readme\n"
          "Supported inputs: plain ISO files, CDRWIN cuesheets, Nero images and tracks,\n"
          "RecordNow! Global images, HDL partitions (PP.HDL.Xenosaga@hdd1:) and\n"
          "Sony CD/DVD generator IML files (with full paths).\n"
-         "Startup file, dma and compatibility flags are optional.\n"
+         /* "Startup file, dma and compatibility flags are optional.\n" */
+         "Items in brackets [] are optional.\n"
          "Flags syntax is `+#[+#[+#]]' or `0xNN', for example `+1', `+2+3', `0x00', `0x03' etc.\n"
-         "DMA syntax is `*u4` for UDMA4 (default one).",
+         "DMA syntax is `*u4` for UDMA4 (default).\n"
+         "-hide will cause it to be hidden in HDDOSD/Browser 2.0",
          "192.168.0.10 \"Tekken Tag Tournament\" cd0: SCES_xxx.xx *u4",
          "hdd1: \"Tekken\" c:\\tekken.iso SCES_xxx.xx +1+2 *u4", 1},
-        {CMD_HDL_INJECT_DVD, "target name source [startup] [+flags] [*dma] [@slice_index]",
+        {CMD_HDL_INJECT_DVD, "target name source [startup] [+flags] [*dma] [@slice_index] [-hide]",
          "create a new HDL partition from a DVD",
          "You can use boot.elf, list.cio, icon.sys. Check Readme\n"
          "DVD-9 supports only ISO or IML.\n"
          "Supported inputs: plain ISO files, CDRWIN cuesheets, Nero images and tracks,\n"
          "RecordNow! Global images, HDL partitions (PP.HDL.Xenosaga@192....) and\n"
          "Sony CD/DVD generator IML files (with full paths).\n"
-         "Startup file, dma and compatibility flags are optional.\n"
+         /* "Startup file, dma and compatibility flags are optional.\n" */
+         "Items in brackets [] are optional.\n"
          "Flags syntax is `+#[+#[+#]]' or `0xNN', for example `+1', `+2+3', `0x00', `0x03', etc.\n"
-         "DMA syntax is `*u4` for UDMA4 (default one).",
+         "DMA syntax is `*u4` for UDMA4 (default).\n"
+         "-hide will cause it to be hidden in HDDOSD/Browser 2.0",
          "192.168.0.10 \"Gran Turismo 3\" cd0: *u4",
          "hdd1: \"Gran Turismo 3\" c:\\gt3.iso SCES_xxx.xx +2+3 *u4", 1},
-        {CMD_HDL_INSTALL, "target source [@slice_index]",
+        {CMD_HDL_INSTALL, "target source [@slice_index] [-hide]",
          "create a new HDL partition from a source, that has an entry in compatibility list",
-         "You need boot.elf for installing the game. More info in Readme",
+         "You need boot.elf for installing the game. More info in Readme\n"
+         "-hide will cause it to be hidden in HDDOSD/Browser 2.0",
          "192.168.0.10 cd0:", "hdd1: c:\\gt3.iso", 1},
         {CMD_CDVD_INFO, "iin_input",
          "display signature (startup file), volume label and data size for a CD-/DVD-drive or image file", NULL,
@@ -1421,8 +1435,12 @@ show_usage_and_exit(const char *app_path,
          "hdd1:", "192.168.0.10", 0},
 #endif /* INCLUDE_DIAG_CMD defined? */
 #if defined(INCLUDE_MODIFY_CMD)
-        {CMD_MODIFY, "device game [new_name] [new_flags] [dma]",
-         "rename a game and/or change compatibility flags", NULL,
+        {CMD_MODIFY, "device game [new_name] [new_flags] [dma] [-hide/-unhide]",
+         "rename a game and/or change compatibility flags",
+         "Items in brackets [] are optional but at least one option must be used.\n"
+         "Flags syntax is `+#[+#[+#]]' or `0xNN', for example `+1', `+2+3', `0x00', `0x03', etc.\n"
+         "DMA syntax is `*u4` for UDMA4\n"
+         "-hide or -unhide will change the visibility of a game in HDDOSD/Browser 2.0",
          "hdd1: DDS \"Digital Devil Saga\"",
          "192.168.0.100 \"FF X-2\" +3", 1},
 #endif /* INCLUDE_MODIFY_CMD defined? */
@@ -1852,9 +1870,10 @@ int main(int argc, char *argv[])
             const char *startup = NULL;
             int is_dvd =
                 caseless_compare(command_name, CMD_HDL_INJECT_CD) ? 0 : 1;
+            int is_hidden = 0;  /* Games are visible by default */
             int i;
 
-            if (!(argc >= 5 && argc <= 9))
+            if (!(argc >= 5 && argc <= 10))
                 show_usage_and_exit(argv[0], command_name);
 
             compat_flags = parse_compat_flags("0x00");
@@ -1866,6 +1885,9 @@ int main(int argc, char *argv[])
                          (argv[i][0] == '0' && argv[i][1] == 'x'))
                     /* compatibility flags */
                     compat_flags = parse_compat_flags(argv[i]);
+                else if (argv[i][0] == '-' && argv[i][1] == 'h' && argv[i][2] == 'i')
+                    /* assume it's the -hide switch */
+                    is_hidden = 1;
                 else if (argv[i][0] == '*')
                     /* dma modes */
                     dma = parse_dma(argv[i]);
@@ -1888,27 +1910,31 @@ int main(int argc, char *argv[])
 
             handle_result_and_exit(inject(config, argv[2], argv[3], argv[4],
                                           startup, compat_flags, dma, is_dvd,
-                                          slice_index, get_progress()),
+                                          is_hidden, slice_index, get_progress()),
                                    argv[2], argv[3]);
         }
 
         else if (caseless_compare(command_name, CMD_HDL_INSTALL)) {
             int slice_index = -1;
+            int is_hidden = 0; /* Games are visible by default */            
             int i;
             
-            if (!(argc >= 4 && argc <= 5))
+            if (!(argc >= 4 && argc <= 6))
                 show_usage_and_exit(argv[0], CMD_HDL_INSTALL);
 
             for (i = 4; i < argc; ++i) {
                 if (argv[i][0] == '@')
                     /* slice index */
                     slice_index = (int)strtoul(argv[i] + 1, NULL, 10) - 1;                
+                else if (argv[i][0] == '-' && argv[i][1] == 'h' && argv[i][2] == 'i')
+                    /* assume it's the -hide switch */
+                    is_hidden = 1;
                 else
                     show_usage_and_exit(argv[0], CMD_HDL_INSTALL);
             }
-
-            handle_result_and_exit(install(config, argv[2], argv[3],
-                                           slice_index, get_progress()),
+            
+            handle_result_and_exit(install(config, argv[2], argv[3], slice_index,
+                                           is_hidden, get_progress()),
                                    argv[2], argv[3]);
         }
 
@@ -2005,9 +2031,10 @@ int main(int argc, char *argv[])
             const char *new_name = NULL;
             compat_flags_t new_flags = COMPAT_FLAGS_INVALID;
             unsigned short new_dma = 0;
+            int is_hidden = -1;
             int i;
 
-            if (!(argc >= 5 && argc <= 7))
+            if (!(argc >= 5 && argc <= 8))
                 show_usage_and_exit(argv[0], CMD_MODIFY);
 			
             for (i = 4; i < argc; ++i) {
@@ -2015,24 +2042,32 @@ int main(int argc, char *argv[])
                          (argv[i][0] == '0' && argv[i][1] == 'x'))
                     /* compatibility flags */
                     new_flags = parse_compat_flags(argv[i]);
-                else if (argv[i][0] == '*')
+                else if (argv[i][0] == '-') {
+					/* switches */ 
+                    if(argv[i][1] == 'h' && argv[i][2] == 'i')
+                        /* assume it's the -hide switch */
+                        is_hidden = 1;
+                    else if(argv[i][1] == 'u' && argv[i][2] == 'n')
+                        /* assume it's the -unhide switch */
+                        is_hidden = 0;
+                } else if (argv[i][0] == '*')
                     /* dma modes */
                     new_dma = parse_dma(argv[i]);
                 else
                     /* new name */
                     new_name = argv[i];
-            }
+            }		
 
             if (new_name != NULL && caseless_compare(argv[3], new_name))
                 new_name = NULL; /* new name is same as the present one */
-
-            if (new_name == NULL && new_dma == 0 &&
-				new_flags == COMPAT_FLAGS_INVALID)
+			
+			if (new_name == NULL && new_dma == 0 &&
+				new_flags == COMPAT_FLAGS_INVALID && is_hidden == -1) 
                 show_usage_and_exit(argv[0], CMD_MODIFY); /* Nothing was modified */
 
             handle_result_and_exit(modify(config, argv[2], argv[3], new_name,
-                                          new_flags, new_dma),
-                                   argv[2], argv[3]);
+                                          new_flags, new_dma, is_hidden),
+                                    argv[2], argv[3]);
         }
 #endif /* INCLUDE_MODIFY_CMD defined? */
         else if (caseless_compare(command_name, CMD_MODIFY_HEADER)) {

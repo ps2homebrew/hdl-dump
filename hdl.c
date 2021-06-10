@@ -714,7 +714,7 @@ int hdd_inject_header(hio_t *hio,
 
 
 /**************************************************************/
-void hdl_pname(const char *startup_name, const char *name,
+void hdl_pname(const char *startup_name, const char *name, const char part_prefix[3],
                char partition_name[PS2_PART_IDMAX + 1])
 {
     u_int32_t game_name_len = 0;
@@ -724,7 +724,7 @@ void hdl_pname(const char *startup_name, const char *name,
     game_name_len = strlen(name) < game_name_len ? strlen(name) : game_name_len;
     if (name[0] != '_' && name[1] != '_') {
         game_name_len = PS2_PART_IDMAX - 1 - 3 - 10 - 5; /* limit partition name length */
-        strcpy(partition_name, "PP.");
+        strcpy(partition_name, part_prefix);
         memmove(partition_name + 3, "SLUS-00000", 10); /*if startup file name absent*/
         if (startup_name != NULL) {
             memmove(partition_name + 3, startup_name, 4); /*we will copy first 4 symbols*/
@@ -978,6 +978,7 @@ int hdl_inject(hio_t *hio,
                iin_t *iin,
                hdl_game_t *details,
                int slice_index,
+               int is_hidden,
                progress_t *pgs)
 {
     /*@only@*/ apa_toc_t *toc = NULL;
@@ -1001,7 +1002,13 @@ int hdl_inject(hio_t *hio,
            *
            * PP.XXXX-xxxxx.HDL.name
            */
-                hdl_pname(details->startup, details->name, details->partition_name);
+                char part_prefix[3];
+                if(is_hidden) /* partition will be hidden due to "+" as first char */
+                    strncpy(part_prefix, HIDDEN_PART, 3);
+                else /* partition will be shown normally */
+                    strncpy(part_prefix, VISIBLE_PART, 3);
+
+                hdl_pname(details->startup, details->name, part_prefix, details->partition_name);
             }
 
             result = apa_allocate_space(toc, details->partition_name,
@@ -1248,7 +1255,8 @@ int hdl_modify_game(hio_t *hio,
                     u_int32_t starting_partition_sector,
                     const char *new_name,            /* or NULL */
                     compat_flags_t new_compat_flags, /* or COMPAT_FLAGS_INVALID */
-                    unsigned short new_dma)          /* or 0 */
+                    unsigned short new_dma,          /* or 0 */                    
+                    int is_hidden)
 {
     apa_slice_t *slice = toc->slice + slice_index;
     const u_int32_t SLICE_2_OFFS = 0x10000000; /* sectors */
@@ -1270,18 +1278,34 @@ int hdl_modify_game(hio_t *hio,
               0x00101000 / 512 + slice_index * SLICE_2_OFFS);
     result = hio->read(hio, sector, 2, hdl_hdr, &bytes);
     if (result == RET_OK) {
-        if (new_name != NULL && !toc->is_toxic) { /* HD Loader partition naming: "PP.HDL.Game name" */
+        char part_prefix[3];
+
+        if(is_hidden == -1)
+        /* hidden switch was not specified, so make no changes */
+            strncpy(part_prefix, part->header.id, 3);
+        else if (is_hidden == 1)
+        /* partition will be hidden in HDDOSD due to "+" as first char */
+            strncpy(part_prefix, HIDDEN_PART, 3);
+        else
+        /* partition will be shown normally */
+            strncpy(part_prefix, VISIBLE_PART, 3);
+
+        if ((strncmp(part_prefix, part->header.id, 3) || new_name != NULL) && !toc->is_toxic) { /* HD Loader partition naming: "PP.HDL.Game name" */
             char part_id[PS2_PART_IDMAX];
             int tmp_slice_index = 0;
             u_int32_t tmp_partition_index = 0;
             char game_id[11];
             
-            /* Get the game ID from the partition header so it cam be preserved */
-            memmove(game_id, part->header.id + 3, 8);
+            /* Get the game ID from the partition header so it can be preserved */
+            strncpy(game_id, part->header.id + 3, 8);
             game_id[8] = '.';
-            memmove(game_id + 9, part->header.id + 11, 2);
+            strncpy(game_id + 9, part->header.id + 11, 2);
 
-            hdl_pname(game_id, new_name, part_id);
+            if (new_name == NULL)
+                hdl_pname(game_id, part->header.id + 18, part_prefix, part_id);
+            else    
+                hdl_pname(game_id, new_name, part_prefix, part_id);
+                
             result = apa_find_partition(toc, part_id, &tmp_slice_index,
                                         &tmp_partition_index);
             if (result == RET_NOT_FOUND) {
@@ -1295,6 +1319,8 @@ int hdl_modify_game(hio_t *hio,
                 result = RET_PART_EXISTS;
         }
 
+        /* BUG: Renaming a game with hdl_dump modify may cause it to show as corrupted data in HDDOSD */
+        /* -hide or -unhide alone do not cause corruption */
         if (result == RET_OK) {
             if (new_name != NULL) {
                 memset(hdl_hdr + 0x08, 0, 0xa0);
