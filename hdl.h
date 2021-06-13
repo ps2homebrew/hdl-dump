@@ -34,6 +34,8 @@
 C_START
 
 #define HDL_GAME_NAME_MAX 64
+#define VISIBLE_PART "PP."
+#define HIDDEN_PART "+P."
 
 typedef struct hdl_game_type
 {
@@ -70,7 +72,7 @@ typedef struct hdl_games_list_type
 typedef /*@only@*/ /*@null@*/ /*@out@*/ hdl_games_list_t *hdl_games_list_p_t;
 
 
-void hdl_pname(const char *startup_name, const char *name,
+void hdl_pname(const char *startup_name, const char *name, const char part_prefix[3],
                /*@out@*/ char partition_name[PS2_PART_IDMAX + 1]);
 
 int hdl_extract_ex(hio_t *hio,
@@ -88,6 +90,7 @@ int hdl_inject(hio_t *hio,
                iin_t *iin,
                hdl_game_t *details,
                int slice_index,
+               int is_hidden,       /* is the game hidden? */
                progress_t *pgs);
 
 
@@ -127,7 +130,8 @@ int hdl_modify_game(hio_t *hio,
                     u_int32_t starting_partition_sector,
                     const char *new_name,            /* or NULL */
                     compat_flags_t new_compat_flags, /* or COMPAT_FLAGS_INVALID */
-                    unsigned short new_dma);         /* or 0 */
+                    unsigned short new_dma,          /* or 0 */                    
+                    int is_hidden);                  /* is the game hidden? */
 
 int hdd_inject_header(hio_t *hio,
                       apa_toc_t *toc,

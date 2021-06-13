@@ -816,7 +816,7 @@ install(HWND dlg)
                 ddb_update(config_, game.startup, game.name, game.compat_flags);
 
             pgs = get_progress(dlg);
-            result = hdl_inject(hio_, iin, &game, -1, pgs);
+            result = hdl_inject(hio_, iin, &game, -1, 0, pgs);
             dispose_progress(pgs);
 
             iin->close(iin);

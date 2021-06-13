@@ -150,6 +150,12 @@ Now `icon.sys` can be in any of 2 formats: Memory Card format or HDD format.
 `boot.kirx` size limit - 1,044,480 bytes
 
 
+### Hiding Games
+
+You can hide games so that they are not visible in the HDD Browser by using the -hide switch with the 'install', 'inject_cd',
+'inject_dvd' or 'modify' commands. A hidden game can be made visible again using the -unhide switch with the 'modify' command.
+
+
 ### Others
 
 If you want to know more about these files (and their restrictions) you have to study official ps2sdk document called `hdd_rule_3.0.2.pdf`
