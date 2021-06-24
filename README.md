@@ -21,7 +21,10 @@ Easy guide for installing games can be found here <http://web.archive.org/web/20
 
 ## Networking server
 
-A UDP-based network server is available, based on the SMAP driver recently released on psx-scene forums <http://ichiba.geocities.jp/ysai187/PS2/smap.htm>. It is called `hdl_svr_093.elf` and is now part of the `hdl_dump` sources.
+*Update:* Currently, opl built-in server is the preffered option.
+
+*Deprecated:*
+A UDP-based network server is available, based on the SMAP driver released by @sp193 <http://ichiba.geocities.jp/ysai187/PS2/smap.htm>. It is called `hdl_svr_093.elf` and is now part of the `hdl_dump` sources.
 
 _**Note**: You might need to punch a hole in your firewall for incoming UDP from port 12345._
 
@@ -58,8 +61,8 @@ Finally: You just can run shell script in the project folder: `mkrel.sh`. It wil
 You can place this files in folder where is installed hdl_dump for making it portable.
 
 * **Windows**: (cited names are for English version of Windows)
-  `C:\Documents and Settings\<login name>\Application Data\hdl_dump.conf`
-  `C:\Documents and Settings\<login name>\Application Data\hdl_dump.list`
+  `%APPDATA%\hdl_dump.conf`
+  `%APPDATA%\hdl_dump.list`
 
 * **Linux**, **Mac OS X** and **FreeBSD**: (`~` is your home dir)
   `~/.hdl_dump.conf`
@@ -108,8 +111,6 @@ All HDD data will remain intact.
 
 `MBR.KELF` size should be maximum 883200 bytes and have valid header.
 
-There is no easy way to make `MBR.KELF`s from a common elf.
-
 _**Note**: In a previous version this command tried to install one `__mbr` partition, but this command didn't work correctly and was replaced with MBR injection._
 
 
@@ -152,8 +153,8 @@ Now `icon.sys` can be in any of 2 formats: Memory Card format or HDD format.
 
 ### Hiding Games
 
-You can hide games so that they are not visible in the HDD Browser by using the -hide switch with the 'install', 'inject_cd',
-'inject_dvd' or 'modify' commands. A hidden game can be made visible again using the -unhide switch with the 'modify' command.
+You can hide games so that they are not visible in the HDD Browser by using the `-hide` switch with the `install`, `inject_cd`,
+`inject_dvd` or `modify` commands. A hidden game can be made visible again using the `-unhide` switch with the `modify` command.
 
 
 ### Others
@@ -170,6 +171,8 @@ There are also some undocumented features like this:
 
   This is used for HDL games for example.
   If you need to erase `boot.elf` from PATINFO you have to place zero-sized `boot.kelf` or elf in program folder.
+
+  _**Note**: PSX1 (DESR 1st generation) doesnt support PATINFO paramater. Only next option is available._
 
 * If you want to launch KELF from PFS partition you have to change `BOOT2` in `system.cnf`
 

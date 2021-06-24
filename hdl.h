@@ -34,8 +34,8 @@
 C_START
 
 #define HDL_GAME_NAME_MAX 64
-#define VISIBLE_PART "PP."
-#define HIDDEN_PART "+P."
+#define VISIBLE_PART      "PP."
+#define HIDDEN_PART       "+P."
 
 typedef struct hdl_game_type
 {
@@ -90,7 +90,7 @@ int hdl_inject(hio_t *hio,
                iin_t *iin,
                hdl_game_t *details,
                int slice_index,
-               int is_hidden,       /* is the game hidden? */
+               int is_hidden, /* is the game hidden? */
                progress_t *pgs);
 
 
@@ -130,7 +130,7 @@ int hdl_modify_game(hio_t *hio,
                     u_int32_t starting_partition_sector,
                     const char *new_name,            /* or NULL */
                     compat_flags_t new_compat_flags, /* or COMPAT_FLAGS_INVALID */
-                    unsigned short new_dma,          /* or 0 */                    
+                    unsigned short new_dma,          /* or 0 */
                     int is_hidden);                  /* is the game hidden? */
 
 int hdd_inject_header(hio_t *hio,

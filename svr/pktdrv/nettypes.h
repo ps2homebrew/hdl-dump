@@ -84,7 +84,7 @@ typedef unsigned char nt_mac_t[6];
             (dst)[i] = (src)[i]; \
     } while (0)
 
-#define NT_IP_EQ(ip1, ip2) NT_DWORD_EQ(ip1, ip2)
+#define NT_IP_EQ(ip1, ip2)   NT_DWORD_EQ(ip1, ip2)
 #define COPY_NT_IP(dst, src) COPY_NT_DWORD(dst, src)
 
 typedef struct eth_hdr_type

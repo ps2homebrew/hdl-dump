@@ -34,9 +34,9 @@
 
 
 /* that is for a preliminary check only; device is probed anyway */
-#define MAX_HOSTS 15
+#define MAX_HOSTS   15
 #define MAX_SCSI_ID 15
-#define MAX_LUN 7
+#define MAX_LUN     7
 
 
 typedef struct iin_aspi_type

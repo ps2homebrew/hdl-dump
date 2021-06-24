@@ -14,18 +14,18 @@ C_START
 
 /* Various PS2 partition constants */
 #define PS2_PARTITION_MAGIC "APA" /* "APA\0" */
-#define PS2_PART_IDMAX 32
-#define PS2_PART_NAMEMAX 128
-#define PS2_PART_MAXSUB 64       /* Maximum # of sub-partitions */
-#define PS2_PART_FLAG_SUB 0x0001 /* Is partition a sub-partition? */
-#define PS2_MBR_VERSION 2        /* Current MBR version */
-#define PS2_MBR_MAGIC "Sony Computer Entertainment Inc."
+#define PS2_PART_IDMAX      32
+#define PS2_PART_NAMEMAX    128
+#define PS2_PART_MAXSUB     64     /* Maximum # of sub-partitions */
+#define PS2_PART_FLAG_SUB   0x0001 /* Is partition a sub-partition? */
+#define PS2_MBR_VERSION     2      /* Current MBR version */
+#define PS2_MBR_MAGIC       "Sony Computer Entertainment Inc."
 
 /* Partition types */
-#define PS2_MBR_PARTITION 0x0001
-#define PS2_SWAP_PARTITION 0x0082
+#define PS2_MBR_PARTITION   0x0001
+#define PS2_SWAP_PARTITION  0x0082
 #define PS2_LINUX_PARTITION 0x0083
-#define PS2_GAME_PARTITION 0x0100
+#define PS2_GAME_PARTITION  0x0100
 
 /* Date/time descriptor used in on-disk partition header */
 typedef struct ps2fs_datetime_type

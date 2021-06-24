@@ -28,12 +28,12 @@
 #if defined(__APPLE__) || defined(__FreeBSD__)
 #undef _BUILD_UNIX
 #define _BUILD_UNIX
-#define lseek64 lseek
-#define stat64 stat
-#define open64 open
-#define off64_t off_t
-#define fstat64 fstat
-#define mmap64 mmap
+#define lseek64     lseek
+#define stat64      stat
+#define open64      open
+#define off64_t     off_t
+#define fstat64     fstat
+#define mmap64      mmap
 #define O_LARGEFILE 0
 #endif
 /* end of MacOS X support patch */
@@ -107,16 +107,16 @@ static const compat_flags_t COMPAT_FLAGS_INVALID = (compat_flags_t)-1;
 #undef INCLUDE_HIDE_CMD /*Hide function is malfunction*/
 
 /* option names and values for the config file */
-#define CONFIG_ENABLE_ASPI_FLAG "enable_aspi"
+#define CONFIG_ENABLE_ASPI_FLAG   "enable_aspi"
 #define CONFIG_DISC_DATABASE_FILE "disc_database_file"
-#define CONFIG_LAST_IP "last_ip"
-#define CONFIG_TARGET_KBPS "target_kbps"
-#define CONFIG_AUTO_THROTTLE "auto_throttle"
-#define CONFIG_DEFAULT_DMA "default_dma"
+#define CONFIG_LAST_IP            "last_ip"
+#define CONFIG_TARGET_KBPS        "target_kbps"
+#define CONFIG_AUTO_THROTTLE      "auto_throttle"
+#define CONFIG_DEFAULT_DMA        "default_dma"
 
 #if defined(__cplusplus)
 #define C_START extern "C" {
-#define C_END } // extern "C"
+#define C_END   } // extern "C"
 #else
 #define C_START
 #define C_END

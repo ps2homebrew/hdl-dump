@@ -55,8 +55,8 @@
 #include "dict.h"
 #include "net_io.h"
 
-#define UNBOLD "\033[0m"
-#define BOLD "\033[1m"
+#define UNBOLD       "\033[0m"
+#define BOLD         "\033[1m"
 #define WARNING_SIGN "/\033[4m!\033[0m\\"
 
 /* command names */
@@ -67,7 +67,7 @@
 #if defined(INCLUDE_COMPARE_IIN_CMD)
 #define CMD_COMPARE_IIN "compare_iin"
 #endif
-#define CMD_TOC "toc"
+#define CMD_TOC     "toc"
 #define CMD_HDL_TOC "hdl_toc"
 #if defined(INCLUDE_MAP_CMD)
 #define CMD_MAP "map"
@@ -84,13 +84,13 @@
 #if defined(INCLUDE_INFO_CMD)
 #define CMD_HDL_INFO "info"
 #endif
-#define CMD_HDL_EXTRACT "extract"
-#define CMD_HDL_INJECT_CD "inject_cd"
+#define CMD_HDL_EXTRACT    "extract"
+#define CMD_HDL_INJECT_CD  "inject_cd"
 #define CMD_HDL_INJECT_DVD "inject_dvd"
-#define CMD_HDL_INSTALL "install"
-#define CMD_CDVD_INFO "cdvd_info"
-#define CMD_CDVD_INFO2 "cdvd_info2"
-#define CMD_POWER_OFF "poweroff"
+#define CMD_HDL_INSTALL    "install"
+#define CMD_CDVD_INFO      "cdvd_info"
+#define CMD_CDVD_INFO2     "cdvd_info2"
+#define CMD_POWER_OFF      "poweroff"
 #if defined(INCLUDE_INITIALIZE_CMD)
 #define CMD_INITIALIZE "initialize"
 #endif
@@ -598,8 +598,9 @@ cdvd_info(const dict_t *config,
                 else
                     fprintf(out, "%s%s %luKB \"%s\" \"%s\" \n",
                             (info.layer_pvd != 0 ? "dual-layer " : ""),
-                            (info.media_type == mt_cd ? "CD" :
-                                                        info.media_type == mt_dvd ? "DVD" : "?"),
+                            (info.media_type == mt_cd  ? "CD" :
+                             info.media_type == mt_dvd ? "DVD" :
+                                                         "?"),
                             (unsigned long)(tot_size / 1024),
                             info.volume_id, info.startup_elf);
             }
@@ -1207,7 +1208,7 @@ copy_hdd(const dict_t *config,
                 int is_hidden = 0;
 
                 /* Determine if the partition is hidden */
-                if(strncmp(game->partition_name, HIDDEN_PART, 3) == 0)
+                if (strncmp(game->partition_name, HIDDEN_PART, 3) == 0)
                     is_hidden = 1;
 
                 sprintf(in, "%s@%s", game->name, src_device_name);
@@ -1870,7 +1871,7 @@ int main(int argc, char *argv[])
             const char *startup = NULL;
             int is_dvd =
                 caseless_compare(command_name, CMD_HDL_INJECT_CD) ? 0 : 1;
-            int is_hidden = 0;  /* Games are visible by default */
+            int is_hidden = 0; /* Games are visible by default */
             int i;
 
             if (!(argc >= 5 && argc <= 10))
@@ -1916,23 +1917,23 @@ int main(int argc, char *argv[])
 
         else if (caseless_compare(command_name, CMD_HDL_INSTALL)) {
             int slice_index = -1;
-            int is_hidden = 0; /* Games are visible by default */            
+            int is_hidden = 0; /* Games are visible by default */
             int i;
-            
+
             if (!(argc >= 4 && argc <= 6))
                 show_usage_and_exit(argv[0], CMD_HDL_INSTALL);
 
             for (i = 4; i < argc; ++i) {
                 if (argv[i][0] == '@')
                     /* slice index */
-                    slice_index = (int)strtoul(argv[i] + 1, NULL, 10) - 1;                
+                    slice_index = (int)strtoul(argv[i] + 1, NULL, 10) - 1;
                 else if (argv[i][0] == '-' && argv[i][1] == 'h' && argv[i][2] == 'i')
                     /* assume it's the -hide switch */
                     is_hidden = 1;
                 else
                     show_usage_and_exit(argv[0], CMD_HDL_INSTALL);
             }
-            
+
             handle_result_and_exit(install(config, argv[2], argv[3], slice_index,
                                            is_hidden, get_progress()),
                                    argv[2], argv[3]);
@@ -2036,18 +2037,18 @@ int main(int argc, char *argv[])
 
             if (!(argc >= 5 && argc <= 8))
                 show_usage_and_exit(argv[0], CMD_MODIFY);
-			
+
             for (i = 4; i < argc; ++i) {
                 if (argv[i][0] == '+' ||
-                         (argv[i][0] == '0' && argv[i][1] == 'x'))
+                    (argv[i][0] == '0' && argv[i][1] == 'x'))
                     /* compatibility flags */
                     new_flags = parse_compat_flags(argv[i]);
                 else if (argv[i][0] == '-') {
-					/* switches */ 
-                    if(argv[i][1] == 'h' && argv[i][2] == 'i')
+                    /* switches */
+                    if (argv[i][1] == 'h' && argv[i][2] == 'i')
                         /* assume it's the -hide switch */
                         is_hidden = 1;
-                    else if(argv[i][1] == 'u' && argv[i][2] == 'n')
+                    else if (argv[i][1] == 'u' && argv[i][2] == 'n')
                         /* assume it's the -unhide switch */
                         is_hidden = 0;
                 } else if (argv[i][0] == '*')
@@ -2056,18 +2057,18 @@ int main(int argc, char *argv[])
                 else
                     /* new name */
                     new_name = argv[i];
-            }		
+            }
 
             if (new_name != NULL && caseless_compare(argv[3], new_name))
                 new_name = NULL; /* new name is same as the present one */
-			
-			if (new_name == NULL && new_dma == 0 &&
-				new_flags == COMPAT_FLAGS_INVALID && is_hidden == -1) 
+
+            if (new_name == NULL && new_dma == 0 &&
+                new_flags == COMPAT_FLAGS_INVALID && is_hidden == -1)
                 show_usage_and_exit(argv[0], CMD_MODIFY); /* Nothing was modified */
 
             handle_result_and_exit(modify(config, argv[2], argv[3], new_name,
                                           new_flags, new_dma, is_hidden),
-                                    argv[2], argv[3]);
+                                   argv[2], argv[3]);
         }
 #endif /* INCLUDE_MODIFY_CMD defined? */
         else if (caseless_compare(command_name, CMD_MODIFY_HEADER)) {

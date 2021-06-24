@@ -1003,7 +1003,7 @@ int hdl_inject(hio_t *hio,
            * PP.XXXX-xxxxx.HDL.name
            */
                 char part_prefix[3];
-                if(is_hidden) /* partition will be hidden due to "+" as first char */
+                if (is_hidden) /* partition will be hidden due to "+" as first char */
                     strncpy(part_prefix, HIDDEN_PART, 3);
                 else /* partition will be shown normally */
                     strncpy(part_prefix, VISIBLE_PART, 3);
@@ -1255,7 +1255,7 @@ int hdl_modify_game(hio_t *hio,
                     u_int32_t starting_partition_sector,
                     const char *new_name,            /* or NULL */
                     compat_flags_t new_compat_flags, /* or COMPAT_FLAGS_INVALID */
-                    unsigned short new_dma,          /* or 0 */                    
+                    unsigned short new_dma,          /* or 0 */
                     int is_hidden)
 {
     apa_slice_t *slice = toc->slice + slice_index;
@@ -1280,14 +1280,14 @@ int hdl_modify_game(hio_t *hio,
     if (result == RET_OK) {
         char part_prefix[3];
 
-        if(is_hidden == -1)
-        /* hidden switch was not specified, so make no changes */
+        if (is_hidden == -1)
+            /* hidden switch was not specified, so make no changes */
             strncpy(part_prefix, part->header.id, 3);
         else if (is_hidden == 1)
-        /* partition will be hidden in HDDOSD due to "+" as first char */
+            /* partition will be hidden in HDDOSD due to "+" as first char */
             strncpy(part_prefix, HIDDEN_PART, 3);
         else
-        /* partition will be shown normally */
+            /* partition will be shown normally */
             strncpy(part_prefix, VISIBLE_PART, 3);
 
         if ((strncmp(part_prefix, part->header.id, 3) || new_name != NULL) && !toc->is_toxic) { /* HD Loader partition naming: "PP.HDL.Game name" */
@@ -1295,7 +1295,7 @@ int hdl_modify_game(hio_t *hio,
             int tmp_slice_index = 0;
             u_int32_t tmp_partition_index = 0;
             char game_id[11];
-            
+
             /* Get the game ID from the partition header so it can be preserved */
             strncpy(game_id, part->header.id + 3, 8);
             game_id[8] = '.';
@@ -1303,9 +1303,9 @@ int hdl_modify_game(hio_t *hio,
 
             if (new_name == NULL)
                 hdl_pname(game_id, part->header.id + 18, part_prefix, part_id);
-            else    
+            else
                 hdl_pname(game_id, new_name, part_prefix, part_id);
-                
+
             result = apa_find_partition(toc, part_id, &tmp_slice_index,
                                         &tmp_partition_index);
             if (result == RET_NOT_FOUND) {

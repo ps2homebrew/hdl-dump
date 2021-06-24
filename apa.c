@@ -1129,12 +1129,12 @@ int apa_diag(const dict_t *config,
 /**************************************************************/
 int apa_initialize(const dict_t *config,
                    const char *device,
-				   const char *file_name)
+                   const char *file_name)
 {
     /*@out@*/ hio_t *hio = NULL;
     int result = hio_probe(config, device, &hio);
     if (result == RET_OK && hio != NULL) {
-        result = apa_initialize_ex(hio,file_name);
+        result = apa_initialize_ex(hio, file_name);
         if (result == RET_OK) {
             fprintf(stdout, "MBR data successfully injected\n");
             result = hio->close(hio);
@@ -1167,49 +1167,49 @@ int apa_initialize_ex(hio_t *hio, const char *file_name)
     prev = (u_int32_t)get_u32(buffer + 12);
 
     result = read_file(file_name, &mbrelf, &mbrelf_length);
-	if (result != OSAL_OK)
-		return (result);
+    if (result != OSAL_OK)
+        return (result);
 
-	/* check MBR file */
-	if (mbrelf_length > MAX_MBR_KELF_SIZE)
-		result = RET_MBR_KELF_SIZE;
-	else if (mbrelf[0] != 0x01 || mbrelf[3] != 0x04)
-		result = RET_INVALID_KELF;
+    /* check MBR file */
+    if (mbrelf_length > MAX_MBR_KELF_SIZE)
+        result = RET_MBR_KELF_SIZE;
+    else if (mbrelf[0] != 0x01 || mbrelf[3] != 0x04)
+        result = RET_INVALID_KELF;
 
-	else if ((mbrelf = realloc(mbrelf, 4 _MB)) != NULL) { /* fill 4MB with HDD MBR at 0x2020 */
-		memset(mbrelf + mbrelf_length , 0, 4 _MB - mbrelf_length);
-		result = hio->write(hio, osd_start, 4 _MB / 512, mbrelf, &dummy);
-		free(mbrelf);
-	}
+    else if ((mbrelf = realloc(mbrelf, 4 _MB)) != NULL) { /* fill 4MB with HDD MBR at 0x2020 */
+        memset(mbrelf + mbrelf_length, 0, 4 _MB - mbrelf_length);
+        result = hio->write(hio, osd_start, 4 _MB / 512, mbrelf, &dummy);
+        free(mbrelf);
+    }
 
-	if (result != OSAL_OK) {
-		osal_free(mbrelf);
-		return result;
-	}
+    if (result != OSAL_OK) {
+        osal_free(mbrelf);
+        return result;
+    }
 
-	/* prepare MBR */
+    /* prepare MBR */
 
-	memset(&header, 0, sizeof(ps2_partition_header_t));
-	strcpy((void*) header.magic, PS2_PARTITION_MAGIC);
-	strcpy(header.id, "__mbr");
-	set_u32(&header.length, 128 * 1024 * 2);
-	set_u16(&header.type, 0x0001);
-	set_ps2fs_datetime(&header.created, time(NULL));
-	memcpy(header.mbr.magic, PS2_MBR_MAGIC, 32);
-	header.mbr.version = PS2_MBR_VERSION;
-	header.mbr.nsector = 0;
-	set_ps2fs_datetime(&header.mbr.created, time(NULL));
+    memset(&header, 0, sizeof(ps2_partition_header_t));
+    strcpy((void *)header.magic, PS2_PARTITION_MAGIC);
+    strcpy(header.id, "__mbr");
+    set_u32(&header.length, 128 * 1024 * 2);
+    set_u16(&header.type, 0x0001);
+    set_ps2fs_datetime(&header.created, time(NULL));
+    memcpy(header.mbr.magic, PS2_MBR_MAGIC, 32);
+    header.mbr.version = PS2_MBR_VERSION;
+    header.mbr.nsector = 0;
+    set_ps2fs_datetime(&header.mbr.created, time(NULL));
 
-	/*fix broken - just injection*/
-	set_u32(&header.modver, 0x201);
-	set_u32(&header.prev, prev);
-	set_u32(&header.next, next);
-	set_u32(&header.mbr.data_start, osd_start);
-	set_u32(&header.mbr.data_len, (mbrelf_length + 511) / 512);
-	set_u32(&header.checksum, apa_partition_checksum(&header));
+    /*fix broken - just injection*/
+    set_u32(&header.modver, 0x201);
+    set_u32(&header.prev, prev);
+    set_u32(&header.next, next);
+    set_u32(&header.mbr.data_start, osd_start);
+    set_u32(&header.mbr.data_len, (mbrelf_length + 511) / 512);
+    set_u32(&header.checksum, apa_partition_checksum(&header));
 
-	/* save __mbr partition */
-	return (hio->write(hio, 0, 2, &header, &dummy));
+    /* save __mbr partition */
+    return (hio->write(hio, 0, 2, &header, &dummy));
 }
 
 /**************************************************************/

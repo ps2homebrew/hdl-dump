@@ -203,6 +203,7 @@ $(BINARY): $(OBJECTS)
 	@rm -f afxres.h
 
 
-ifneq ($(MAKECMDGOAL),rmdeps)
+GOALS := rmdeps clean
+ifeq (,$(filter $(GOALS),$(MAKECMDGOALS)))
   -include $(DEPENDS)
 endif

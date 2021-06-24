@@ -26,24 +26,24 @@ typedef struct // size = 1024
 //
 // DEVCTL commands
 //
-#define APA_DEVCTL_MAX_SECTORS 0x00004801 // max partition size(in sectors)
-#define APA_DEVCTL_TOTAL_SECTORS 0x00004802
-#define APA_DEVCTL_IDLE 0x00004803
-#define APA_DEVCTL_FLUSH_CACHE 0x00004804
-#define APA_DEVCTL_SWAP_TMP 0x00004805
-#define APA_DEVCTL_DEV9_SHUTDOWN 0x00004806
-#define APA_DEVCTL_STATUS 0x00004807
-#define APA_DEVCTL_FORMAT 0x00004808
-#define APA_DEVCTL_SMART_STAT 0x00004809
-#define APA_DEVCTL_GETTIME 0x00006832
-#define APA_DEVCTL_SET_OSDMBR 0x00006833 // arg = hddSetOsdMBR_t
-#define APA_DEVCTL_GET_SECTOR_ERROR 0x00006834
+#define APA_DEVCTL_MAX_SECTORS         0x00004801 // max partition size(in sectors)
+#define APA_DEVCTL_TOTAL_SECTORS       0x00004802
+#define APA_DEVCTL_IDLE                0x00004803
+#define APA_DEVCTL_FLUSH_CACHE         0x00004804
+#define APA_DEVCTL_SWAP_TMP            0x00004805
+#define APA_DEVCTL_DEV9_SHUTDOWN       0x00004806
+#define APA_DEVCTL_STATUS              0x00004807
+#define APA_DEVCTL_FORMAT              0x00004808
+#define APA_DEVCTL_SMART_STAT          0x00004809
+#define APA_DEVCTL_GETTIME             0x00006832
+#define APA_DEVCTL_SET_OSDMBR          0x00006833 // arg = hddSetOsdMBR_t
+#define APA_DEVCTL_GET_SECTOR_ERROR    0x00006834
 #define APA_DEVCTL_GET_ERROR_PART_NAME 0x00006835 // bufp = namebuffer[0x20]
-#define APA_DEVCTL_ATA_READ 0x00006836            // arg  = hddAtaTransfer_t
-#define APA_DEVCTL_ATA_WRITE 0x00006837           // arg  = hddAtaTransfer_t
-#define APA_DEVCTL_SCE_IDENTIFY_DRIVE 0x00006838  // bufp = buffer for atadSceIdentifyDrive
-#define APA_DEVCTL_IS_48BIT 0x00006840
-#define APA_DEVCTL_SET_TRANSFER_MODE 0x00006841
+#define APA_DEVCTL_ATA_READ            0x00006836 // arg  = hddAtaTransfer_t
+#define APA_DEVCTL_ATA_WRITE           0x00006837 // arg  = hddAtaTransfer_t
+#define APA_DEVCTL_SCE_IDENTIFY_DRIVE  0x00006838 // bufp = buffer for atadSceIdentifyDrive
+#define APA_DEVCTL_IS_48BIT            0x00006840
+#define APA_DEVCTL_SET_TRANSFER_MODE   0x00006841
 
 //-------------------------------------------------------------------------
 u32 hddGetTotalSectors(void)

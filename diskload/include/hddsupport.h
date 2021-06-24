@@ -1,16 +1,16 @@
 #ifndef __HDD_SUPPORT_H
 #define __HDD_SUPPORT_H
 
-#define PS2PART_IDMAX 32
+#define PS2PART_IDMAX     32
 #define HDL_GAME_NAME_MAX 64
 
 // APA Partition
-#define APA_MAGIC 0x00415041 // 'APA\0'
-#define APA_IDMAX PS2PART_IDMAX
-#define APA_MAXSUB 64 // Maximum # of sub-partitions
-#define APA_PASSMAX 8
-#define APA_FLAG_SUB 0x0001
-#define APA_MBR_VERSION 2
+#define APA_MAGIC            0x00415041 // 'APA\0'
+#define APA_IDMAX            PS2PART_IDMAX
+#define APA_MAXSUB           64 // Maximum # of sub-partitions
+#define APA_PASSMAX          8
+#define APA_FLAG_SUB         0x0001
+#define APA_MBR_VERSION      2
 #define APA_IOCTL2_GETHEADER 0x6836
 #define PFS_IOCTL2_GET_INODE 0x7007
 

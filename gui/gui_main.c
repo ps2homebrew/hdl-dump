@@ -459,8 +459,9 @@ dlg_refresh_hdd_info(HWND dlg)
                     lv.iItem = count;
                     lv.iSubItem = 0;
                     lv.pszText = (char *)game->name;
-                    lv.iImage = (!game->is_dvd ? 0 :
-                                                 game->raw_size_in_kb / 1024 <= 4608 ? 1 : 2);
+                    lv.iImage = (!game->is_dvd                       ? 0 :
+                                 game->raw_size_in_kb / 1024 <= 4608 ? 1 :
+                                                                       2);
                     index = ListView_InsertItem(lvw, &lv);
 
                     details[0] = details[1] = '\0';

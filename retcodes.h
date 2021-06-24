@@ -25,42 +25,42 @@
 #define _RETCODES_H
 
 
-#define RET_ERR -1    /* error */
+#define RET_ERR    -1 /* error */
 #define RET_NO_MEM -2 /* out-of-memory */
 
 #define RET_OK 0
 
-#define RET_NOT_APA 1           /* not an APA device */
-#define RET_NOT_HDL_PART 2      /* not a HD Loader partition */
-#define RET_NOT_FOUND 3         /* partition is not found */
-#define RET_BAD_FORMAT 4        /* bad device name format */
-#define RET_BAD_DEVICE 5        /* unrecognized device */
-#define RET_NO_SPACE 6          /* not enough free space */
-#define RET_BAD_APA 7           /* something wrong with APA partition */
-#define RET_DIFFERENT 8         /* files are different */
-#define RET_INTERRUPTED 9       /* operation were interrupted */
-#define RET_PART_EXISTS 10      /* partition with such name already exists */
-#define RET_BAD_ISOFS 11        /* not an ISO file system */
-#define RET_NOT_PS_CDVD 12      /* not a Playstation CD/DVD */
-#define RET_BAD_SYSCNF 13       /* system.cnf is not in the expected format */
-#define RET_NOT_COMPAT 14       /* iin probe returns "not compatible" */
-#define RET_NOT_ALLOWED 15      /* operation is not allowed */
-#define RET_BAD_COMPAT 16       /* iin probe is compatible, but the source is bad */
-#define RET_SVR_ERR 17          /* server reported error */
-#define RET_1ST_LONGER 18       /* compare_iin: first input is longer */
-#define RET_2ND_LONGER 19       /* compare_iin: second input is longer */
-#define RET_FILE_NOT_FOUND 20   /* pretty obvious */
-#define RET_BROKEN_LINK 21      /* missing linked file (to an IML or CUE for example) */
-#define RET_CROSS_128GB 22      /* data behind 128GB mark */
-#define RET_ASPI_ERROR 23       /* ASPI error; they are far too many to list here */
-#define RET_NO_DISC_DB 24       /* disc database file could not be found */
-#define RET_NO_DDBENTRY 25      /* there is no entry for that game in the disc database */
+#define RET_NOT_APA          1  /* not an APA device */
+#define RET_NOT_HDL_PART     2  /* not a HD Loader partition */
+#define RET_NOT_FOUND        3  /* partition is not found */
+#define RET_BAD_FORMAT       4  /* bad device name format */
+#define RET_BAD_DEVICE       5  /* unrecognized device */
+#define RET_NO_SPACE         6  /* not enough free space */
+#define RET_BAD_APA          7  /* something wrong with APA partition */
+#define RET_DIFFERENT        8  /* files are different */
+#define RET_INTERRUPTED      9  /* operation were interrupted */
+#define RET_PART_EXISTS      10 /* partition with such name already exists */
+#define RET_BAD_ISOFS        11 /* not an ISO file system */
+#define RET_NOT_PS_CDVD      12 /* not a Playstation CD/DVD */
+#define RET_BAD_SYSCNF       13 /* system.cnf is not in the expected format */
+#define RET_NOT_COMPAT       14 /* iin probe returns "not compatible" */
+#define RET_NOT_ALLOWED      15 /* operation is not allowed */
+#define RET_BAD_COMPAT       16 /* iin probe is compatible, but the source is bad */
+#define RET_SVR_ERR          17 /* server reported error */
+#define RET_1ST_LONGER       18 /* compare_iin: first input is longer */
+#define RET_2ND_LONGER       19 /* compare_iin: second input is longer */
+#define RET_FILE_NOT_FOUND   20 /* pretty obvious */
+#define RET_BROKEN_LINK      21 /* missing linked file (to an IML or CUE for example) */
+#define RET_CROSS_128GB      22 /* data behind 128GB mark */
+#define RET_ASPI_ERROR       23 /* ASPI error; they are far too many to list here */
+#define RET_NO_DISC_DB       24 /* disc database file could not be found */
+#define RET_NO_DDBENTRY      25 /* there is no entry for that game in the disc database */
 #define RET_DDB_INCOMPATIBLE 26 /* game is incompatible according to disc database */
-#define RET_TIMEOUT 27          /* communication timeout */
-#define RET_PROTO_ERR 28        /* network communication protocol error */
-#define RET_INVARIANT 29        /* invalid internal data state; probably a bug */
-#define RET_SPTI_ERROR 30       /* SPTI error */
-#define RET_MBR_KELF_SIZE 31    /* file size exceeds MAX_MBR_KELF_SIZE */
-#define RET_INVALID_KELF 32     /* Invalid kelf header */
+#define RET_TIMEOUT          27 /* communication timeout */
+#define RET_PROTO_ERR        28 /* network communication protocol error */
+#define RET_INVARIANT        29 /* invalid internal data state; probably a bug */
+#define RET_SPTI_ERROR       30 /* SPTI error */
+#define RET_MBR_KELF_SIZE    31 /* file size exceeds MAX_MBR_KELF_SIZE */
+#define RET_INVALID_KELF     32 /* Invalid kelf header */
 
 #endif /* _RETCODES_H defined? */

@@ -67,8 +67,8 @@ typedef struct
 /*
  * constants for DataIn member of SCSI_PASS_THROUGH* structures
  */
-#define SCSI_IOCTL_DATA_OUT 0
-#define SCSI_IOCTL_DATA_IN 1
+#define SCSI_IOCTL_DATA_OUT         0
+#define SCSI_IOCTL_DATA_IN          1
 #define SCSI_IOCTL_DATA_UNSPECIFIED 2
 
 /*
@@ -82,16 +82,16 @@ typedef struct
 /*
  * method codes
  */
-#define METHOD_BUFFERED 0
-#define METHOD_IN_DIRECT 1
+#define METHOD_BUFFERED   0
+#define METHOD_IN_DIRECT  1
 #define METHOD_OUT_DIRECT 2
-#define METHOD_NEITHER 3
+#define METHOD_NEITHER    3
 
 /*
  * file access values
  */
-#define FILE_ANY_ACCESS 0
-#define FILE_READ_ACCESS (0x0001)
+#define FILE_ANY_ACCESS   0
+#define FILE_READ_ACCESS  (0x0001)
 #define FILE_WRITE_ACCESS (0x0002)
 
 #define IOCTL_SCSI_BASE 0x00000004

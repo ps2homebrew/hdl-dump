@@ -53,8 +53,8 @@ extern "C" {
 
 #define IOCTL_SCSI_PASS_THROUGH 0x4D004
 
-#define SCSI_IOCTL_DATA_OUT 0
-#define SCSI_IOCTL_DATA_IN 1
+#define SCSI_IOCTL_DATA_OUT         0
+#define SCSI_IOCTL_DATA_IN          1
 #define SCSI_IOCTL_DATA_UNSPECIFIED 2
 
 typedef struct ScsiPassThrough

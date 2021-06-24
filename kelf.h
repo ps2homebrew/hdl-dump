@@ -9,7 +9,7 @@
 #define _KELF_H
 
 #define HDLOADER_KELF_HEADER_LEN 928
-#define KELF_LENGTH 2026464
+#define KELF_LENGTH              2026464
 #define HDLOADER_KELF_FOOTER_LEN 224
 
 static unsigned char hdloader_kelf_header[HDLOADER_KELF_HEADER_LEN] =

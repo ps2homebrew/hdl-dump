@@ -1,7 +1,23 @@
+#
+# NOTE! Please use 'git ls-files -i --exclude-standard -c'
+# command after changing this file, to see if there are
+# any tracked files which get ignored after the change.
+#
+# Normal rules
 *.d
+.*
 *.o
 *.exe
 *_irx.c
 *.elf
 open-ps2-loader
 hdl_dump
+
+#
+# files that we don't want to ignore
+#
+!.gitignore
+!.gitattributes
+!.github
+!.editorconfig
+!.clang-format

@@ -40,8 +40,8 @@ C_START
 
 
 #include "retcodes.h"
-#define OSAL_OK RET_OK
-#define OSAL_ERR RET_ERR
+#define OSAL_OK     RET_OK
+#define OSAL_ERR    RET_ERR
 #define OSAL_NO_MEM RET_NO_MEM
 
 #define _MB *(1024 * 1024) /* really ugly :-) */
@@ -49,7 +49,7 @@ C_START
 
 #if defined(_BUILD_WIN32)
 typedef HANDLE osal_handle_t;
-#define OSAL_HANDLE_INIT 0
+#define OSAL_HANDLE_INIT  0
 #define OSAL_IS_OPENED(x) ((x) != OSAL_HANDLE_INIT)
 
 #elif defined(_BUILD_UNIX)
@@ -66,7 +66,7 @@ typedef struct
 #define OSAL_IS_OPENED(x) ((x).desc != -1)
 
 /* This needs to be at least 256 bytes -- see iin_gi_probe_path */
-#define MAX_PATH 1024
+#define MAX_PATH          1024
 
 #endif
 typedef /*@special@*/ /*@only@*/ /*@out@*/ osal_handle_t *osal_handle_p_t;

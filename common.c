@@ -100,8 +100,9 @@ copy_data(osal_handle_t in,
         int result, copy_til_eof = (bytes == 0);
         u_int32_t len;
         do {
-            u_int32_t chunk_size = (copy_til_eof ? buff_size :
-                                                   ((u_int64_t)buff_size < bytes) ? buff_size : (u_int32_t)bytes);
+            u_int32_t chunk_size = (copy_til_eof                   ? buff_size :
+                                    ((u_int64_t)buff_size < bytes) ? buff_size :
+                                                                     (u_int32_t)bytes);
             result = osal_read(in, buffer, chunk_size, &len);
             if (result == OSAL_OK && len > 0) {
                 result = osal_write(out, buffer, len, &len);

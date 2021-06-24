@@ -10,37 +10,36 @@ jobs:
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest]
-        
-    steps:       
+
+    steps:
     - uses: actions/checkout@v2
-        
+
     - name: Install Ubuntu version
       if: ${{ matrix.os == 'ubuntu-latest' && always() }}
-      run: |
-        make --trace RELEASE=yes
-        
+      run: make --trace RELEASE=yes
+
     - name: Install Mac version
       if: ${{ matrix.os == 'macos-latest' && always() }}
-      run: |
-        make --debug USE_THREADED_IIN=no IIN_OPTICAL_MMAP=no RELEASE=yes
+      run: make --debug USE_THREADED_IIN=no IIN_OPTICAL_MMAP=no RELEASE=yes
+
     - name: Get short SHA
       id: slug
       run: echo "::set-output name=sha8::$(echo ${GITHUB_SHA} | cut -c1-8)"
 
     - name: Create tar archive (keep executable bit)
       run: tar -zcvf hdl-dump-${{ steps.slug.outputs.sha8 }}-${{matrix.os}}.tar.gz hdl_dump
-        
+
     - uses: actions/upload-artifact@v2
       with:
         name: hdl-dump-${{ steps.slug.outputs.sha8 }}-${{matrix.os}}
         path: |
           *tar.gz
-          
+
   build-win:
     runs-on: ubuntu-latest
     container: dockcross/windows-static-x86:latest
-    
-    steps:       
+
+    steps:
     - uses: actions/checkout@v2
 
     - name: Compile windows version with cross-compilator
@@ -50,32 +49,32 @@ jobs:
         mv hdl_dump.exe rel/
         make clean
         make --trace -C gui XC=win RELEASE=yes
-        mv gui/hdl_dumb.exe rel/        
-                
+        mv gui/hdl_dumb.exe rel/
+
     - name: Get short SHA
       id: slug
       run: echo "::set-output name=sha8::$(echo ${GITHUB_SHA} | cut -c1-8)"
 
     - name: Create tar archive
       run: tar -zcvf hdl-dump-${{ steps.slug.outputs.sha8 }}-windows-latest.tar.gz rel
-        
+
     - uses: actions/upload-artifact@v2
       with:
         name: hdl-dump-${{ steps.slug.outputs.sha8 }}-windows-latest
         path: |
           *tar.gz
-          
+
   release:
     needs: [build, build-win]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/master'
     steps:
     - uses: actions/checkout@v2
-    
+
     - name: Get short SHA
       id: slug
       run: echo "::set-output name=sha8::$(echo ${GITHUB_SHA} | cut -c1-8)"
-      
+
     - name: Download Mac artifact
       uses: actions/download-artifact@v2
       with:
@@ -101,7 +100,7 @@ jobs:
         title: "Development build"
         files: |
           *tar.gz
-          
+
     - name: Create Tagged Release Draft
       if: startsWith(github.ref, 'refs/tags/v')
       uses: marvinpinto/action-automatic-releases@latest

@@ -125,7 +125,7 @@ int apa_diag_ex(hio_t *hio,
 
 int apa_initialize(const dict_t *config,
                    const char *device,
-				   const char *file_name);
+                   const char *file_name);
 
 int apa_initialize_ex(hio_t *hio, const char *file_name);
 
