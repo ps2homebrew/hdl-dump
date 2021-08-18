@@ -717,36 +717,33 @@ int hdd_inject_header(hio_t *hio,
 void hdl_pname(const char *startup_name, const char *name, const char part_prefix[3],
                char partition_name[PS2_PART_IDMAX + 1])
 {
-    u_int32_t game_name_len = 0;
-    char *p;
-    p = 0;
+    u_int32_t game_name_len;
 
-    game_name_len = strlen(name) < game_name_len ? strlen(name) : game_name_len;
-    if (name[0] != '_' && name[1] != '_') {
-        game_name_len = PS2_PART_IDMAX - 1 - 3 - 10 - 5; /* limit partition name length */
-        strcpy(partition_name, part_prefix);
-        memmove(partition_name + 3, "SLUS-00000", 10); /*if startup file name absent*/
-        if (startup_name != NULL) {
-            memmove(partition_name + 3, startup_name, 4); /*we will copy first 4 symbols*/
-            partition_name[8] = startup_name[5];
-            partition_name[9] = startup_name[6];
-            partition_name[10] = startup_name[7];
-            partition_name[11] = startup_name[9];
-            partition_name[12] = startup_name[10];
-            /*we will copy last 5 digits*/
-        }
-        memmove(partition_name + 13, ".HDL.", 5);
-        memmove(partition_name + 18, name, game_name_len);
-        partition_name[18 + game_name_len] = '\0';
-        p = partition_name + 18; /* len ("PP.XXXX-xxxx.HDL.") */
+    game_name_len = strlen(name) < PS2_PART_IDMAX ? strlen(name) : PS2_PART_IDMAX;
+    if ((game_name_len > 9) && (!strncmp(name, "__.linux.", 9))) {
+        memmove(partition_name, name, game_name_len); /* __.linux.nr are copited as is */
+        partition_name[game_name_len] = '\0';
     } else {
-        game_name_len = PS2_PART_IDMAX - 1;
-        memmove(partition_name, name, game_name_len); /* __.linux.nr */
-    }
-    while (*p != '\0') {
-        if (!isalnum(*p) && *p != ' ' && *p != '.')
-            *p = '_'; /* escape non-alphanumeric characters with `_' */
-        ++p;
+        char *p;
+        game_name_len = PS2_PART_IDMAX - 1 - 3 - 10 - 2; /* limit partition name length */
+        game_name_len = strlen(name) < game_name_len ? strlen(name) : game_name_len;
+        strcpy(partition_name, part_prefix);
+        memmove(partition_name + 3, "SLUS-00000", 10); /* if startup file name absent */
+        if (strlen(startup_name) >= 10)
+            memmove(partition_name + 3, startup_name, 10);
+
+        memmove(partition_name + 13, "..", 2);
+        memmove(partition_name + 15, name, game_name_len);
+        partition_name[15 + game_name_len] = '\0';
+        p = partition_name + 15; /* len ("PP.XXXX-xxxxx..") */
+
+        while (*p != '\0') {
+            if (islower(*p))
+                *p = toupper(*p);
+            else if (!isalpha(*p) && *p != '_')
+                *p = '_'; /* escape non-alphanumeric characters with '_' */
+            ++p;
+        }
     }
 }
 
@@ -995,15 +992,15 @@ int hdl_inject(hio_t *hio,
 
             if (details->partition_name[0] == '\0') {
                 /* partition naming is now auto-detected
-           * Toxic OS partition naming: "PP.HDL.STARTUP" doesnt work
-           * if (toc->is_toxic)
-           * hdl_pname (details->startup, details->startup, details->partition_name);
-           * else
-           *
-           * PP.XXXX-xxxxx.HDL.name
-           */
+                 * Toxic OS partition naming: "PP.HDL.STARTUP" doesnt work
+                 * if (toc->is_toxic)
+                 * hdl_pname (details->startup, details->startup, details->partition_name);
+                 * else
+                 *
+                 * PP.XXXX-xxxxx..GAME_NAME
+                 */
                 char part_prefix[3];
-                if (is_hidden) /* partition will be hidden due to "+" as first char */
+                if (is_hidden) /* partition will be hidden due to "__" as first chars */
                     strncpy(part_prefix, HIDDEN_PART, 3);
                 else /* partition will be shown normally */
                     strncpy(part_prefix, VISIBLE_PART, 3);
@@ -1284,13 +1281,13 @@ int hdl_modify_game(hio_t *hio,
             /* hidden switch was not specified, so make no changes */
             strncpy(part_prefix, part->header.id, 3);
         else if (is_hidden == 1)
-            /* partition will be hidden in HDDOSD due to "+" as first char */
+            /* partition will be hidden in HDDOSD due to "__" as first chars */
             strncpy(part_prefix, HIDDEN_PART, 3);
         else
             /* partition will be shown normally */
             strncpy(part_prefix, VISIBLE_PART, 3);
 
-        if ((strncmp(part_prefix, part->header.id, 3) || new_name != NULL) && !toc->is_toxic) { /* HD Loader partition naming: "PP.HDL.Game name" */
+        if ((strncmp(part_prefix, part->header.id, 3) || new_name != NULL) && !toc->is_toxic) {
             char part_id[PS2_PART_IDMAX];
             int tmp_slice_index = 0;
             u_int32_t tmp_partition_index = 0;
@@ -1302,7 +1299,7 @@ int hdl_modify_game(hio_t *hio,
             strncpy(game_id + 9, part->header.id + 11, 2);
 
             if (new_name == NULL)
-                hdl_pname(game_id, part->header.id + 18, part_prefix, part_id);
+                hdl_pname(game_id, part->header.id + 15, part_prefix, part_id); /* "PP.XXXX-xxxx..GAME_NAME" */
             else
                 hdl_pname(game_id, new_name, part_prefix, part_id);
 

@@ -961,7 +961,7 @@ inject(const dict_t *config,
             memset(&game, 0, sizeof(hdl_game_t));
             memmove(game.name, name, sizeof(game.name) - 1);
             game.name[sizeof(game.name) - 1] = '\0';
-            if (game.name[0] != '_' && game.name[1] != '_') {
+            if (strncmp(game.name, "__.linux.", 9)) {
                 result = isofs_get_ps2_cdvd_info(iin, &info);
                 if (result == RET_OK) {
                     if (info.layer_pvd != 0)
