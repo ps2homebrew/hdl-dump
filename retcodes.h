@@ -62,5 +62,6 @@
 #define RET_SPTI_ERROR       30 /* SPTI error */
 #define RET_MBR_KELF_SIZE    31 /* file size exceeds MAX_MBR_KELF_SIZE */
 #define RET_INVALID_KELF     32 /* Invalid kelf header */
+#define RET_MULTITRACK       33 /* Titles with audio tracks supported only if converted to one cue/bin */
 
 #endif /* _RETCODES_H defined? */

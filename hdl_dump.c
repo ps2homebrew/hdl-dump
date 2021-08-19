@@ -1732,6 +1732,10 @@ handle_result_and_exit(int result,
             fprintf(stderr, "Invalid kelf header.\n");
             exit(100 + RET_INVALID_KELF);
 
+        case RET_MULTITRACK:
+            fprintf(stderr, "Multitrack images isnt supported. Please convert to 1 cue/bin with CDMage before.\n");
+            exit(100 + RET_MULTITRACK);
+
         default:
             fprintf(stderr, "%s: don't know what the error is: %d.\n", device, result);
             exit(200);

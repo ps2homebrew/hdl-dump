@@ -24,6 +24,9 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
+#if defined(_DEBUG)
+#include <stdio.h>
+#endif
 #include "iin_cdrwin.h"
 #include "iin_img_base.h"
 #include "osal.h"
@@ -233,9 +236,18 @@ cue_parse(const char *path,
                     result = RET_BAD_COMPAT;
             }
 
-            if (result == OSAL_OK) { /* there should not be 4th line */
+            if (result == OSAL_OK) { /* validate that 5th line is an index line or empty */
                 line = strtok(NULL, "\r\n");
-                result = line == NULL || *line == '\0' ? RET_OK : RET_BAD_COMPAT;
+                if (line != NULL && *line != '\0') {
+                    line = strtok(NULL, "\r\n");
+                    if (line != NULL && *line != '\0') {
+                        result = cue_parse_index_line(line);
+                        if (result != RET_OK)
+                            result = RET_MULTITRACK;
+                    } else
+                        result = RET_OK;
+                } else
+                    result = RET_OK;
             }
 
             osal_free(contents);
