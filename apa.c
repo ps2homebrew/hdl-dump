@@ -159,12 +159,13 @@ apa_setup_statistics(/*@special@*/ apa_slice_t *slice)
 /*@sets slice->total_chunks, slice->allocated_chunks,
        slice->free_chunks, slice->chunks_map, *slice->chunks_map@*/
 {
-    u_int32_t i;
+
     char *map;
 
     slice->total_chunks = slice->size_in_mb / 128;
     map = osal_alloc(slice->total_chunks * sizeof(char));
     if (map != NULL) {
+        u_int32_t i;
         *map = MAP_AVAIL;
         for (i = 0; i < slice->total_chunks; ++i)
             map[i] = MAP_AVAIL;
@@ -610,7 +611,7 @@ apa_allocate_space_in_slice(apa_slice_t *slice,
 {
     int result = RET_OK;
     char *map = slice->chunks_map;
-    u_int32_t i;
+
 
     *new_partition_start = (u_int32_t)-1;
     if (size_in_mb == 0)
@@ -628,7 +629,7 @@ apa_allocate_space_in_slice(apa_slice_t *slice,
             /* use the most straight forward approach possible:
 	     fill from the first gap onwards */
             u_int32_t mb_remaining = size_in_mb;
-            u_int32_t allocated_mb, overhead_mb;
+            u_int32_t allocated_mb, overhead_mb, i;
             partitions->sector = partitions->size_in_mb = 0;
             for (i = 0; i < estimated_entries; ++i) { /* initialize */
                 partitions[i].sector = 0;
@@ -1163,6 +1164,9 @@ int apa_initialize_ex(hio_t *hio, const char *file_name)
 
     char buffer[1024];
     result = hio->read(hio, 0, 2, buffer, &dummy);
+    if (result != RET_OK)
+        return (result);
+
     next = (u_int32_t)get_u32(buffer + 8);
     prev = (u_int32_t)get_u32(buffer + 12);
 
@@ -1176,10 +1180,15 @@ int apa_initialize_ex(hio_t *hio, const char *file_name)
     else if (mbrelf[0] != 0x01 || mbrelf[3] != 0x04)
         result = RET_INVALID_KELF;
 
-    else if ((mbrelf = realloc(mbrelf, 4 _MB)) != NULL) { /* fill 4MB with HDD MBR at 0x2020 */
-        memset(mbrelf + mbrelf_length, 0, 4 _MB - mbrelf_length);
-        result = hio->write(hio, osd_start, 4 _MB / 512, mbrelf, &dummy);
-        free(mbrelf);
+    else {
+        char *tmp = realloc(mbrelf, 4 _MB);
+        if (tmp != NULL) { /* fill 4MB with HDD MBR at 0x2020 */
+            mbrelf = tmp;
+            memset(mbrelf + mbrelf_length, 0, 4 _MB - mbrelf_length);
+            result = hio->write(hio, osd_start, 4 _MB / 512, mbrelf, &dummy);
+            free(mbrelf);
+        } else
+            return RET_ERR;
     }
 
     if (result != OSAL_OK) {
@@ -1219,7 +1228,7 @@ int apa_dump_mbr(const dict_t *config, const char *device, const char *file_name
     int result = hio_probe(config, device, &hio);
     ps2_partition_header_t header;
     u_int32_t szread;
-    char *buffer;
+
 
     if (result == RET_OK && hio != NULL) {
         u_int32_t bytes;
@@ -1228,10 +1237,13 @@ int apa_dump_mbr(const dict_t *config, const char *device, const char *file_name
         result = hio->read(hio, 0, 2, &header, &bytes);
 
         if (result == RET_OK) {
-
+            char *buffer;
             buffer = malloc(header.mbr.data_len * 512);
             result = hio->read(hio, header.mbr.data_start, header.mbr.data_len, buffer, &szread);
             /* won't overwrite */
+            if (result != RET_OK)
+                return result;
+
             result = write_file(file_name, buffer, szread);
             free(buffer);
         }

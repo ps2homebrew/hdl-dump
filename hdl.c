@@ -59,6 +59,7 @@ typedef struct McIconSys
     unsigned char unknown3[512];
 } McIcon;
 
+/*
 struct IconSysData
 {
     wchar_t title0[HDL_GAME_NAME_MAX + 1];
@@ -79,6 +80,7 @@ struct IconSysData
     wchar_t uninstallmes1[61];
     wchar_t uninstallmes2[61];
 };
+*/
 
 /*
  * notice: that code would only run on a big-endian machine
@@ -152,18 +154,15 @@ prepare_main(const hdl_game_t *details,
 
     const char *patinfo_header = (const char *)hdloader_kelf_header;
     const char *patinfo_footer = (const char *)hdloader_kelf_footer;
-    u_int32_t patinfo_header_length = HDLOADER_KELF_HEADER_LEN;
-    u_int32_t patinfo_footer_length = HDLOADER_KELF_FOOTER_LEN;
+
     char *patinfo = NULL;
     u_int32_t patinfo_length = 0;
-    u_int32_t patinfo_kelf_length = KELF_LENGTH;
 
     char *icon = NULL;
     u_int32_t icon_length = 0;
     char *iconsys = NULL;
     u_int32_t iconsys_length = 0;
 
-    char icon_props[1024];
     const ps2_partition_header_t *part;
     const apa_slice_t *slice = toc->slice + slice_index;
 
@@ -172,8 +171,8 @@ prepare_main(const hdl_game_t *details,
         char info_props[1024];
         sprintf(info_props, HDL_HDR3, details->name, details->startup);
         fwrite(info_props, 1, strlen(info_props), out);
+        (void)fclose(out);
     }
-    (void)fclose(out);
 
     part = NULL;
 
@@ -195,6 +194,8 @@ prepare_main(const hdl_game_t *details,
         u_int32_t partition_data_len_in_kb;
         u_int32_t partitions_used = 0;
         u_int32_t sector;
+        char icon_props[1024];
+        u_int32_t patinfo_kelf_length = KELF_LENGTH;
 
         /* read miniopl (optional) */
         result = read_file("./boot.elf", &patinfo, &patinfo_length);
@@ -223,6 +224,7 @@ prepare_main(const hdl_game_t *details,
         */
         result = read_file("./icon.sys", &iconsys, &iconsys_length);
         if ((result == OSAL_OK) && (!strncmp(iconsys, "PS2D", 4))) {
+
             McIcon *mcIcon_details;
             mcIcon_details = (McIcon *)iconsys;
             sprintf(icon_props, HDL_HDR2,
@@ -292,8 +294,7 @@ prepare_main(const hdl_game_t *details,
          *         |  |  |  |  +--+--+--+- BE, PATINFO.KELF length in bytes
          *         +--+--+--+- PATINFO.KELF offset relative to 0x1000
          */
-        if (patinfo_length != 0) /* no boot.elf */
-        {
+        if (patinfo_length != 0) { /* no boot.elf */
             set_u32(tmp++, 0x110000);
             set_u32(tmp++, patinfo_kelf_length);
         }
@@ -368,6 +369,8 @@ prepare_main(const hdl_game_t *details,
          *179640: 7e bd 13 b2 4e 1f 26 08  29 53 97 37 13 c3 71 1c
          */
         if (patinfo_length != 0) {
+            u_int32_t patinfo_header_length = HDLOADER_KELF_HEADER_LEN;
+            u_int32_t patinfo_footer_length = HDLOADER_KELF_FOOTER_LEN;
             memcpy(buffer_4m + 0x111000, patinfo_header, patinfo_header_length);
             memcpy(buffer_4m + 0x111000 + patinfo_header_length, patinfo, patinfo_length);
             memcpy(buffer_4m + 0x111000 + patinfo_kelf_length - patinfo_footer_length, patinfo_footer, patinfo_footer_length);
@@ -436,11 +439,9 @@ int hdd_inject_header(hio_t *hio,
 
     const char *patinfo_header = (const char *)hdloader_kelf_header;
     const char *patinfo_footer = (const char *)hdloader_kelf_footer;
-    u_int32_t patinfo_header_length = HDLOADER_KELF_HEADER_LEN;
-    u_int32_t patinfo_footer_length = HDLOADER_KELF_FOOTER_LEN;
+
     char *patinfo = NULL;
     u_int32_t patinfo_length = 0;
-    u_int32_t patinfo_kelf_length = KELF_LENGTH;
 
     char *syscnf = NULL;
     u_int32_t syscnf_length;
@@ -457,7 +458,6 @@ int hdd_inject_header(hio_t *hio,
     const apa_slice_t *slice = toc->slice + slice_index;
     const u_int32_t SLICE_2_OFFS = 0x10000000; /* sectors */
     u_int32_t sector, dummy = 0;
-    char icon_props[1024];
 
     u_int32_t i;
     char *buffer_4m;
@@ -465,12 +465,16 @@ int hdd_inject_header(hio_t *hio,
         if (get_u32(&slice->parts[i].header.start) == starting_partition_sector)
             /* starting partition index located */
             part = slice->parts + i;
-    if (part == NULL)
+    if (part == NULL) {
         result = RET_NOT_FOUND;
+        return result;
+    }
 
     buffer_4m = osal_alloc(4 _MB + 24576);
-    if (buffer_4m == NULL)
+    if (buffer_4m == NULL) {
         result = RET_NO_MEM;
+        return result;
+    }
 
     sector = (get_u32(&part->header.start) + slice_index * SLICE_2_OFFS);
     result = hio->read(hio, sector, (4 _MB + 24576) / 512, buffer_4m, &dummy);
@@ -542,6 +546,7 @@ int hdd_inject_header(hio_t *hio,
                 fprintf(stdout, "Succesfully read icon.sys\n");
             }
         } else if ((result == OSAL_OK) && (!strncmp(iconsys, "PS2D", 4))) {
+            char icon_props[1024];
             McIcon *mcIcon_details;
             mcIcon_details = (McIcon *)iconsys;
             sprintf(icon_props, HDL_HDR2,
@@ -631,14 +636,16 @@ int hdd_inject_header(hio_t *hio,
          */
 
         fprintf(stdout, "Skipped boot.kelf. Trying to inject boot.elf\n");
-        if (patinfo != NULL)
-            osal_free(patinfo);
+        osal_free(patinfo);
 
         result = read_file("./boot.elf", &patinfo, &patinfo_length);
         if (result == OSAL_OK) {
             if (patinfo_length > 0x1EEBE0)
                 fprintf(stdout, "boot.elf is larger than 2 026 464 Kbytes\n");
             else {
+                u_int32_t patinfo_header_length = HDLOADER_KELF_HEADER_LEN;
+                u_int32_t patinfo_footer_length = HDLOADER_KELF_FOOTER_LEN;
+                u_int32_t patinfo_kelf_length = KELF_LENGTH;
                 set_u32(buffer_4m + 0x001030, 0x110000);
                 set_u32(buffer_4m + 0x001034, patinfo_kelf_length);
                 memcpy(buffer_4m + 0x111000, patinfo_header, patinfo_header_length);
@@ -878,7 +885,7 @@ inject_data(hio_t *hio,
     buffer = osal_alloc(4 _MB);
     if (buffer == NULL)
         result = RET_NO_MEM;
-    if (result == RET_OK && part != NULL && buffer != NULL) {
+    if (result == RET_OK && buffer != NULL) {
         const u_int32_t SLICE_2_OFFS = 0x10000000; /* sectors */
         result = prepare_main(details, toc, slice_index,
                               starting_partition_sector,
@@ -887,7 +894,7 @@ inject_data(hio_t *hio,
             u_int32_t kb_remaining = size_in_kb;
             u_int32_t offset = 0;
             u_int32_t bytes;
-            u_int32_t sector;
+
             const u_int32_t MAIN_HDR_SIZE_S = (4 _MB) / 512;
 
             pgs_prepare(pgs, (u_int64_t)(size_in_kb + 4 * 1024) * 1024);
@@ -943,6 +950,7 @@ inject_data(hio_t *hio,
              * where transfer can no longer be interrupted by the user */
 
             if (result == RET_OK) { /* last: write main partition header (4MB total) */
+                u_int32_t sector;
                 sector = get_u32(&part->start) + SLICE_2_OFFS * slice_index;
                 result = hio->write(hio, sector, MAIN_HDR_SIZE_S,
                                     buffer, &bytes);
@@ -1033,7 +1041,6 @@ hdl_ginfo_read(hio_t *hio,
                const ps2_partition_header_t *part,
                hdl_game_info_t *ginfo)
 {
-    u_int32_t i, size;
     /* data we're interested in starts @ 0x101000 and is header
      * plus information for up to 65 partitions
      * (1 main + 64 sub) by 12 bytes each */
@@ -1048,6 +1055,7 @@ hdl_ginfo_read(hio_t *hio,
     result = hio->read(hio, sector, 2, buffer, &bytes);
     if (result == RET_OK) {
         if (bytes == 1024) {
+            u_int32_t i, size;
             u_int32_t num_parts = (u_int32_t)buffer[0x00f0];
             const u_int32_t *data = (u_int32_t *)(buffer + 0x00f5);
 
