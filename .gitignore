@@ -21,3 +21,4 @@ hdl_dump
 !.github
 !.editorconfig
 !.clang-format
+*.iso

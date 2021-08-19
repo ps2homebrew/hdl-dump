@@ -735,10 +735,13 @@ void hdl_pname(const char *startup_name, const char *name, const char part_prefi
         game_name_len = PS2_PART_IDMAX - 1 - 3 - 10 - 2; /* limit partition name length */
         game_name_len = strlen(name) < game_name_len ? strlen(name) : game_name_len;
         strcpy(partition_name, part_prefix);
-        memmove(partition_name + 3, "SLUS-00000", 10); /* if startup file name absent */
-        if (strlen(startup_name) >= 10)
-            memmove(partition_name + 3, startup_name, 10);
-
+        memmove(partition_name + 3, "SLUS-00000", 10);    /* if startup file name absent */
+        if (strlen(startup_name) > 10) {                  /* convert SLUS_123.45 to SLUS-12345 */
+            memmove(partition_name + 3, startup_name, 8); /*  SLUS_123 */
+            partition_name[7] = '-';                      /*  SLUS-123 */
+            partition_name[11] = startup_name[9];         /*  SLUS-12345 */
+            partition_name[12] = startup_name[10];
+        }
         memmove(partition_name + 13, "..", 2);
         memmove(partition_name + 15, name, game_name_len);
         partition_name[15 + game_name_len] = '\0';
