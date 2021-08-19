@@ -649,7 +649,7 @@ query_devices(const dict_t *config)
 
         if (optical_drives != NULL) {
             fprintf(stdout, "\nOptical drives:\n");
-            for (i = 0; optical_drives != NULL && i < optical_drives->used; ++i) {
+            for (i = 0; i < optical_drives->used; ++i) {
                 const osal_dev_t *dev = optical_drives->device + i;
                 fprintf(stdout, "\t%s ", dev->name);
                 if (dev->status == 0)
@@ -686,21 +686,10 @@ query_devices(const dict_t *config)
                         if (dlist->device[i].name[0] != '\0')
                             printf("(%s):  ", dlist->device[i].name);
 
-                        if (dlist->device[i].size_in_sectors != -1 &&
-                            dlist->device[i].sector_size != -1)
-                            printf("%lu MB\n",
-                                   (unsigned long)(((u_int64_t)dlist->device[i].size_in_sectors *
-                                                    dlist->device[i].sector_size) /
-                                                   (1024 * 1024)));
-                        else {
-#if 1 /* used to be not really meaningful */
-                            const char *error = aspi_get_error_msg(dlist->device[i].status);
-                            printf("%s\n", error);
-                            aspi_dispose_error_msg((char *)error);
-#else
-                            printf("Stat failed.\n");
-#endif
-                        }
+                        printf("%lu MB\n",
+                               (unsigned long)(((u_int64_t)dlist->device[i].size_in_sectors *
+                                                dlist->device[i].sector_size) /
+                                               (1024 * 1024)));
                     }
                 }
                 aspi_dlist_free(dlist);
@@ -761,7 +750,7 @@ compare_iin(const dict_t *config,
             u_int32_t sector = 0;
             u_int32_t sector_size1, num_sectors1;
             u_int32_t sector_size2, num_sectors2;
-            u_int64_t size1, size2;
+            u_int64_t size1;
 
             result = iin1->stat(iin1, &sector_size1, &num_sectors1);
             if (result == OSAL_OK) {
@@ -769,6 +758,7 @@ compare_iin(const dict_t *config,
                 result = iin2->stat(iin2, &sector_size2, &num_sectors2);
             }
             if (result == OSAL_OK) {
+                u_int64_t size2;
                 size2 = (u_int64_t)num_sectors2 * sector_size2;
                 if (sector_size1 == IIN_SECTOR_SIZE &&
                     sector_size2 == IIN_SECTOR_SIZE)
@@ -961,7 +951,7 @@ inject(const dict_t *config,
             memset(&game, 0, sizeof(hdl_game_t));
             memmove(game.name, name, sizeof(game.name) - 1);
             game.name[sizeof(game.name) - 1] = '\0';
-            if (game.name[0] != '_' && game.name[1] != '_') {
+            if (strncmp(game.name, "__.linux.", 9)) {
                 result = isofs_get_ps2_cdvd_info(iin, &info);
                 if (result == RET_OK) {
                     if (info.layer_pvd != 0)
@@ -1023,12 +1013,12 @@ install(const dict_t *config,
             result = hio_probe(config, output, &hio);
             if (result == RET_OK && hio != NULL) {
                 ps2_cdvd_info_t info;
-                char name[HDL_GAME_NAME_MAX + 1];
                 compat_flags_t flags;
-                int incompatible;
 
                 result = isofs_get_ps2_cdvd_info(iin, &info);
                 if (result == RET_OK) {
+                    char name[HDL_GAME_NAME_MAX + 1];
+                    int incompatible;
                     result = ddb_lookup(config, info.startup_elf, name, &flags);
                     incompatible = (result == RET_DDB_INCOMPATIBLE) ? 1 : 0;
 
@@ -1167,7 +1157,8 @@ copy_hdd(const dict_t *config,
          progress_t *pgs)
 {
     hio_t *hio = NULL;
-    int result, i;
+    u_int32_t result, i;
+
     hdl_games_list_t *in_list = NULL, *out_list = NULL;
     size_t count = 0, flags_count = 0, chunks_needed = 0;
 
@@ -1471,7 +1462,7 @@ show_usage_and_exit(const char *app_path,
          "hdd2: PP.POPS-00001",
          "192.168.0.10 PP.HDL.Battlefield", 1},
         {NULL, NULL,
-         NULL,
+         NULL, NULL,
          NULL, NULL, 0}
     };
     const char *app;

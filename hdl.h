@@ -35,7 +35,7 @@ C_START
 
 #define HDL_GAME_NAME_MAX 64
 #define VISIBLE_PART      "PP."
-#define HIDDEN_PART       "+P."
+#define HIDDEN_PART       "__."
 
 typedef struct hdl_game_type
 {

@@ -337,11 +337,10 @@ dlg_switch_source(HWND dlg)
 int fill_ps2hdd_combo(HWND dlg)
 {
     HWND cbo = GetDlgItem(dlg, IDC_PS2HDD);
-    int result;
     osal_dlist_free(hard_drives_);
 
     if (device_name == NULL) {
-        result = osal_query_hard_drives(&hard_drives_);
+        int result = osal_query_hard_drives(&hard_drives_);
         if (result == RET_OK) {
             int count = 0;
             size_t i;
@@ -451,9 +450,8 @@ dlg_refresh_hdd_info(HWND dlg)
                 /* setup games list */
                 for (i = 0; i < games_->count; ++i) {
                     const hdl_game_info_t *game = &games_->games[i];
-                    int index;
+                    unsigned int index, j;
                     LVITEM lv;
-                    size_t j;
 
                     lv.mask = LVIF_TEXT | LVIF_IMAGE;
                     lv.iItem = count;
@@ -542,9 +540,7 @@ fill_name_and_signature(HWND dlg,
                 size_t i;
                 for (i = 0; i < MAX_FLAGS; ++i)
                     CheckDlgButton(dlg, MODE_IDC[i],
-                                   (flags & (1 << i) ?
-                                        BST_CHECKED :
-                                        BST_UNCHECKED));
+                                   ((flags & (1 << i)) ? BST_CHECKED : BST_UNCHECKED));
                 strcpy(info.volume_id, volume_id);
             } else if (result == RET_DDB_INCOMPATIBLE) { /* marked as incompatible; warn */
                 MessageBox(dlg, get_string(IDS_INCOMPATIBLE_GAME, 0),

@@ -167,7 +167,8 @@ isofs_get_file_addr(iin_t *iin,
         u_int32_t start_addr, length;
         const unsigned char *p = buffer;
         do {
-            int len_dr, len_ext_ar, name_len;
+            int len_dr, len_ext_ar;
+            u_int32_t name_len;
             const unsigned char *start = p;
             len_dr = *p++;
             if (len_dr == 0 ||
@@ -190,8 +191,7 @@ isofs_get_file_addr(iin_t *iin,
             ++p;
             p += 4; /* flags, unit size, intereave gap size, volume seq no */
             name_len = *p++;
-            if (name_len == file_name_len &&
-                memcmp(p, file_name, file_name_len) == 0) { /* found */
+            if ((name_len == file_name_len) && (memcmp(p, file_name, file_name_len) == 0)) { /* found */
                 found = 1;
                 break;
             } else
@@ -242,9 +242,8 @@ parse_config_cnf(const char *contents,
                 while (*p == ' ' || *p == '\t')
                     ++p;
                 if (memcmp(p, "cdrom0:\\", 8) == 0) {
-                    int len = 0;
                     p += 8;
-                    while (*p != ';' && len <= 12)
+                    while (*p != ';')
                         *signature++ = *p++;
                     *signature = '\0';
                     found = 1;
