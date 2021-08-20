@@ -215,7 +215,7 @@ parse_config_cnf(const char *contents,
                  /*@out@*/ char signature[12 + 1])
 {
     /* when using memory-mapped I/O buffer is read-only */
-    char buf[2048];
+    char buf[131072];
     int found = 0;
     char *line = buf;
     const char *end = buf + length;
@@ -226,7 +226,7 @@ parse_config_cnf(const char *contents,
         return (RET_NOT_PS_CDVD);
     do {
         char *p = line, *start = line;
-        while (*p != '\r' && *p != '\n' && p < end)
+        while (*p != '\r' && *p != '\n' && p < end && *p != '\0')
             ++p;
         *p = '\0';
         line = p + 1;
@@ -235,20 +235,15 @@ parse_config_cnf(const char *contents,
         p = start;
         if (memcmp(p, "BOOT2", 5) == 0) {
             p += 5;
-            while (*p == ' ' || *p == '\t')
+            while (*p == ' ' || *p == '\t' || *p == '=')
                 ++p;
-            if (*p == '=') {
-                ++p;
-                while (*p == ' ' || *p == '\t')
-                    ++p;
-                if (memcmp(p, "cdrom0:\\", 8) == 0) {
-                    p += 8;
-                    while (*p != ';')
-                        *signature++ = *p++;
-                    *signature = '\0';
-                    found = 1;
-                    break;
-                }
+            if (memcmp(p, "cdrom0:\\", 8) == 0) {
+                p += 8;
+                while (*p != ';')
+                    *signature++ = *p++;
+                *signature = '\0';
+                found = 1;
+                break;
             }
         }
     } while (line < end);
