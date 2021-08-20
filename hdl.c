@@ -732,26 +732,41 @@ void hdl_pname(const char *startup_name, const char *name, const char part_prefi
         partition_name[game_name_len] = '\0';
     } else {
         char *p;
+        int i;
         game_name_len = PS2_PART_IDMAX - 1 - 3 - 10 - 2; /* limit partition name length */
         game_name_len = strlen(name) < game_name_len ? strlen(name) : game_name_len;
         strcpy(partition_name, part_prefix);
-        memmove(partition_name + 3, "SLUS-00000", 10);          /* if startup file name absent */
-        if (startup_name != NULL && startup_name[10] != '\0') { /* convert SLUS_123.45 to SLUS-12345 */
-            memmove(partition_name + 3, startup_name, 8);       /*  SLUS_123 */
-            partition_name[7] = '-';                            /*  SLUS-123 */
-            partition_name[11] = startup_name[9];               /*  SLUS-12345 */
+        memmove(partition_name + 3, "SLUS-00000", 10); /* if startup file name absent */
+        if (startup_name != NULL) {                    /* convert SLUS_123.45 to SLUS-12345 */
+            memmove(partition_name + 3, startup_name, 8);
+            partition_name[11] = startup_name[9];
             partition_name[12] = startup_name[10];
         }
+
+        partition_name[2] = '.';
+        partition_name[7] = '-';
         memmove(partition_name + 13, "..", 2);
         memmove(partition_name + 15, name, game_name_len);
         partition_name[15 + game_name_len] = '\0';
-        p = partition_name + 15; /* len ("PP.XXXX-xxxxx..") */
 
+        i = 3;
+        p = partition_name + i;
         while (*p != '\0') {
-            if (islower(*p))
-                *p = toupper(*p);
-            else if (!isalpha(*p) && *p != '_')
-                *p = '_'; /* escape non-alphanumeric characters with '_' */
+            if (i < 7) {
+                if (islower(*p))
+                    *p = toupper(*p);
+                else if (!isalpha(*p))
+                    *p = 'X'; /* fix PP.XXXX- */
+            } else if ((i > 7) && (i < 13)) {
+                if (!isdigit(*p))
+                    *p = '0'; /* fix PP.XXXX-00000.. */
+            } else if (i > 14) {
+                if (islower(*p))
+                    *p = toupper(*p);
+                else if (!isalnum(*p))
+                    *p = '_'; /* fix PP.XXXX-00000..GAME_NAME_01 */
+            }
+            i++;
             ++p;
         }
     }
