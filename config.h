@@ -96,7 +96,7 @@ static const compat_flags_t COMPAT_FLAGS_INVALID = (compat_flags_t)-1;
 #define INCLUDE_INFO_CMD
 #define INCLUDE_ZERO_CMD
 #define INCLUDE_CUTOUT_CMD
-#define INCLUDE_INITIALIZE_CMD
+#define INCLUDE_INJECT_MBR_CMD
 #define INCLUDE_DUMP_MBR_CMD
 #define INCLUDE_DELETE_CMD
 #define INCLUDE_BACKUP_TOC_CMD

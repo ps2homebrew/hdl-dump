@@ -91,8 +91,8 @@
 #define CMD_CDVD_INFO      "cdvd_info"
 #define CMD_CDVD_INFO2     "cdvd_info2"
 #define CMD_POWER_OFF      "poweroff"
-#if defined(INCLUDE_INITIALIZE_CMD)
-#define CMD_INITIALIZE "initialize"
+#if defined(INCLUDE_INJECT_MBR_CMD)
+#define CMD_INJECT_MBR "inject_mbr"
 #endif
 #if defined(INCLUDE_DUMP_MBR_CMD)
 #define CMD_DUMP_MBR "dump_mbr"
@@ -1400,12 +1400,12 @@ show_usage_and_exit(const char *app_path,
         {CMD_POWER_OFF, "ip",
          "power off Playstation 2", NULL,
          "192.168.0.10", NULL, 0},
-#if defined(INCLUDE_INITIALIZE_CMD)
-        {CMD_INITIALIZE, "device input_file",
+#if defined(INCLUDE_INJECT_MBR_CMD)
+        {CMD_INJECT_MBR, "device input_file",
          "inject input_file into MBR",
-         "All your partitions remain intact!!!" CMD_INITIALIZE " is rewrited by AKuHAK.",
+         "All your partitions remain intact!!!" CMD_INJECT_MBR " is rewrited by AKuHAK.",
          "hdd1: MBR.KELF", NULL, 1},
-#endif /* INCLUDE_INITIALIZE_CMD defined? */
+#endif /* INCLUDE_INJECT_MBR_CMD defined? */
 #if defined(INCLUDE_DUMP_MBR_CMD)
         {CMD_DUMP_MBR, "device output_file",
          "dump mbr to disc", NULL,
@@ -1976,15 +1976,15 @@ int main(int argc, char *argv[])
                                    argv[2], NULL);
         }
 
-#if defined(INCLUDE_INITIALIZE_CMD)
-        else if (caseless_compare(command_name, CMD_INITIALIZE)) { /* prepare a HDD for HDL usage */
+#if defined(INCLUDE_INJECT_MBR_CMD)
+        else if (caseless_compare(command_name, CMD_INJECT_MBR)) { /* prepare a HDD for HDL usage */
             if (argc != 4)
-                show_usage_and_exit(argv[0], CMD_INITIALIZE);
+                show_usage_and_exit(argv[0], CMD_INJECT_MBR);
 
             handle_result_and_exit(apa_initialize(config, argv[2], argv[3]),
                                    argv[2], NULL);
         }
-#endif /* INCLUDE_INITIALIZE_CMD defined? */
+#endif /* INCLUDE_INJECT_MBR_CMD defined? */
 
 #if defined(INCLUDE_DUMP_MBR_CMD)
         else if (caseless_compare(command_name, CMD_DUMP_MBR)) {

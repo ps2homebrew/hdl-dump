@@ -627,7 +627,7 @@ apa_allocate_space_in_slice(apa_slice_t *slice,
             osal_alloc(estimated_entries * sizeof(ps2_partition_run_t));
         if (partitions != NULL) {
             /* use the most straight forward approach possible:
-	     fill from the first gap onwards */
+         fill from the first gap onwards */
             u_int32_t mb_remaining = size_in_mb;
             u_int32_t allocated_mb, overhead_mb, i;
             partitions->sector = partitions->size_in_mb = 0;
@@ -648,7 +648,7 @@ apa_allocate_space_in_slice(apa_slice_t *slice,
                                 max_part_size_in_mb);
 
             /* calculate overhead (4M for main + 1M for each sub)
-	     and allocate additional 128 M partition if necessary */
+         and allocate additional 128 M partition if necessary */
             allocated_mb = 0;
             overhead_mb = 3;
             for (i = 0; i < partitions_used; ++i) {
@@ -1163,6 +1163,7 @@ int apa_initialize_ex(hio_t *hio, const char *file_name)
     u_int32_t mbrelf_length;
 
     char buffer[1024];
+    char *buffer_1725sect;
     result = hio->read(hio, 0, 2, buffer, &dummy);
     if (result != RET_OK)
         return (result);
@@ -1174,27 +1175,21 @@ int apa_initialize_ex(hio_t *hio, const char *file_name)
     if (result != OSAL_OK)
         return (result);
 
+    buffer_1725sect = osal_alloc(MAX_MBR_KELF_SIZE);
     /* check MBR file */
     if (mbrelf_length > MAX_MBR_KELF_SIZE)
         result = RET_MBR_KELF_SIZE;
     else if (mbrelf[0] != 0x01 || mbrelf[3] != 0x04)
         result = RET_INVALID_KELF;
-
     else {
-        char *tmp = realloc(mbrelf, 4 _MB);
-        if (tmp != NULL) { /* fill 4MB with HDD MBR at 0x2020 */
-            mbrelf = tmp;
-            memset(mbrelf + mbrelf_length, 0, 4 _MB - mbrelf_length);
-            result = hio->write(hio, osd_start, 4 _MB / 512, mbrelf, &dummy);
-            free(mbrelf);
-        } else
-            return RET_ERR;
+        memcpy(buffer_1725sect, mbrelf, mbrelf_length);
+        result = hio->write(hio, osd_start, MAX_MBR_KELF_SIZE / 512, buffer_1725sect, &dummy);
     }
 
-    if (result != OSAL_OK) {
-        osal_free(mbrelf);
+    osal_free(mbrelf);
+    osal_free(buffer_1725sect);
+    if (result != OSAL_OK)
         return result;
-    }
 
     /* prepare MBR */
 

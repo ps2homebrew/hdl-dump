@@ -95,9 +95,9 @@ Note: following options aren't supported by PSX1 (PSX DESR 1st generation).
 
 `boot.elf`, `boot.kelf` - PS2 executable file in signed or unsigned form. [OPL-Launcher](https://github.com/ps2homebrew/OPL-Launcher) is a preferable option. Injection address - `0x111000`. Size limit - 2,026,464 bytes (thanks to kHn)
 
-### `initialize`
+### `inject_mbr`
 
-    hdl_dump initialize /dev/sdb MBR.KELF
+    hdl_dump inject_mbr /dev/sdb MBR.KELF
 
 When you use this command and place the hard drive into your PlayStation 2 phat, it will launch the injected `MBR.KELF`. This option can be used as an entry point for PS2.
 
