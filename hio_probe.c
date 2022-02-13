@@ -22,7 +22,6 @@
  */
 
 #include "hio_win32.h"
-#include "hio_udpnet2.h"
 #include "hio_dbg.h"
 #include "hio_trace.h"
 #include "retcodes.h"
@@ -38,8 +37,6 @@ int hio_probe(const dict_t *config,
         result = hio_trace_probe(config, path, hio);
     if (result == RET_NOT_COMPAT)
         result = hio_dbg_probe(config, path, hio);
-    if (result == RET_NOT_COMPAT)
-        result = hio_udpnet2_probe(config, path, hio);
     if (result == RET_NOT_COMPAT)
         result = hio_win32_probe(config, path, hio);
     return (result);
