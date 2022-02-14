@@ -39,6 +39,7 @@ C_START
 #define MAX_PATH 1024
 #endif
 
+#define HDD_SECTOR_SIZE 512  /* HDD sector size in bytes */
 
 char *ltrim(/*@returned@*/ char *text);
 

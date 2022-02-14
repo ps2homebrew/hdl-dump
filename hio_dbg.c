@@ -22,12 +22,11 @@
  */
 
 #include "hio_dbg.h"
-#include "net_io.h"
 #include "osal.h"
 #include "retcodes.h"
+#include "common.h"
 #include <stdio.h>
 #include <string.h>
-
 
 typedef struct hio_dbg_type
 {

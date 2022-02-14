@@ -53,7 +53,6 @@
 #include "aligned.h"
 #include "hio.h"
 #include "dict.h"
-#include "net_io.h"
 
 #define UNBOLD       "\033[0m"
 #define BOLD         "\033[1m"
