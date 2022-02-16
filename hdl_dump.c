@@ -113,6 +113,7 @@
 #define CMD_COPY_HDD "copy_hdd"
 #endif
 #define CMD_MODIFY_HEADER "modify_header"
+#define CMD_DUMP_HEADER   "dump_header"
 
 /**************************************************************/
 static void
@@ -1147,6 +1148,34 @@ modify_header(const dict_t *config,
     return (result);
 }
 
+/**************************************************************/
+static int
+dump_header(const dict_t *config,
+            const char *device,
+            const char *partname)
+{
+    /*@only@*/ hio_t *hio = NULL;
+    int result = hio_probe(config, device, &hio);
+    if (result == RET_OK && hio != NULL) {
+        /*@only@*/ apa_toc_t *toc = NULL;
+        result = apa_toc_read_ex(hio, &toc);
+        if (result == RET_OK && toc != NULL) {
+            int slice_index = 0;
+            u_int32_t partition_index = 0;
+            result = apa_find_partition(toc, partname, &slice_index,
+                                        &partition_index);
+
+            if (result == RET_OK) {
+                u_int32_t start_sector = get_u32(&toc->slice[slice_index].parts[partition_index].header.start);
+                result = apa_dump_header(hio, start_sector);
+            }
+
+            apa_toc_free(toc), toc = NULL;
+        }
+        (void)hio->close(hio), hio = NULL;
+    }
+    return (result);
+}
 
 /**************************************************************/
 static int
@@ -1461,6 +1490,16 @@ show_usage_and_exit(const char *app_path,
          "Every file can be skipped. More info about using and restrictions in README.\n" CMD_MODIFY_HEADER " is contributed by AKuHAK.",
          "hdd2: PP.POPS-00001",
          "192.168.0.10 PP.HDL.Battlefield", 1},
+        {CMD_DUMP_HEADER, "device partition_name",
+         "dump all attributes from partition header",
+         "system.cnf,\n"
+         "icon.sys,\n"
+         "list.ico,\n"
+         "del.ico,\n"
+         "boot.kelf,\n"
+         "boot.kirx,\n"
+         "and if more, name HEADER_X, where X is file position in header.",
+         "hdd2: PP.POPS-00001", 0},
         {NULL, NULL,
          NULL, NULL,
          NULL, NULL, 0}
@@ -2070,8 +2109,11 @@ int main(int argc, char *argv[])
             if (argc != 4)
                 show_usage_and_exit(argv[0], CMD_MODIFY_HEADER);
             handle_result_and_exit(modify_header(config, argv[2], argv[3]), argv[2], argv[3]);
+        } else if (caseless_compare(command_name, CMD_DUMP_HEADER)) {
+            if (argc != 4)
+                show_usage_and_exit(argv[0], CMD_DUMP_HEADER);
+            handle_result_and_exit(dump_header(config, argv[2], argv[3]), argv[2], argv[3]);
         }
-
 #if defined(INCLUDE_COPY_HDD_CMD)
         else if (caseless_compare(command_name, CMD_COPY_HDD)) {
             if (argc != 4 && argc != 5)
