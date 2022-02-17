@@ -161,13 +161,6 @@ dbg_write(hio_t *hio,
 }
 
 
-/**************************************************************/
-static int
-dbg_poweroff(hio_t *hio)
-{
-    return (RET_OK);
-}
-
 
 /**************************************************************/
 static int
@@ -225,7 +218,6 @@ dbg_alloc(const char *dump_path)
         dbg->hio.write = &dbg_write;
         dbg->hio.flush = &dbg_flush;
         dbg->hio.close = &dbg_close;
-        dbg->hio.poweroff = &dbg_poweroff;
         dbg->hio.last_error = &dbg_last_error;
         dbg->hio.dispose_error = &dbg_dispose_error;
         dbg->error_code = 0;
