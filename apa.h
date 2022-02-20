@@ -78,8 +78,7 @@ typedef struct apa_toc_type
 typedef /*@out@*/ /*@only@*/ /*@null@*/ apa_toc_t *apa_toc_p_t;
 
 #define PPAA_START 0x1000
-static const char *PPAA_MAGIC =
-    "PS2ICON3D";
+extern const char *PPAA_MAGIC;
 
 /* Parent Partition Attribute Area
  * The header size is fixed at 512 bytes.

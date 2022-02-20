@@ -107,12 +107,14 @@ endif
 ifeq ($(RELEASE), yes)
   DEBUG = no
 endif
+
+# Even on debug we need optimization for _FORTIFY_SOURCE
 ifeq ($(DEBUG), yes)
-  CFLAGS += -O0 -g -D_DEBUG
-  CXXFLAGS += -O0 -g -D_DEBUG
+  CFLAGS += -O2 -g -D_DEBUG
+  CXXFLAGS += -O2 -g -D_DEBUG
 else
-  CFLAGS += -O2 -s -DNDEBUG
-  CXXFLAGS += -O2 -s -DNDEBUG
+  CFLAGS += -O2 -DNDEBUG
+  CXXFLAGS += -O2 -DNDEBUG
 endif
 
 ifeq ($(USE_THREADED_IIN), yes)
