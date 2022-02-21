@@ -26,6 +26,7 @@ C_START
 #define PS2_SWAP_PARTITION  0x0082
 #define PS2_LINUX_PARTITION 0x0083
 #define PS2_GAME_PARTITION  0x0100
+#define PS2_HDL_PARTITION   0x1337
 
 /* Date/time descriptor used in on-disk partition header */
 typedef struct ps2fs_datetime_type

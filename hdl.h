@@ -99,6 +99,11 @@ int hdl_glist_read(hio_t *hio,
 
 void hdl_glist_free(/*@special@*/ /*@only@*/ hdl_games_list_t *glist) /*@releases glist@*/;
 
+int hdl_ginfo_read(hio_t *hio,
+                   int slice_index,
+                   const ps2_partition_header_t *part,
+                   hdl_game_info_t *ginfo);
+
 int hdl_lookup_partition_ex(hio_t *hio,
                             const char *game_name,
                             /*@out@*/ char partition_id[PS2_PART_IDMAX + 1]);

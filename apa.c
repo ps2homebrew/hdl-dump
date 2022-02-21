@@ -41,6 +41,9 @@
 
 #define _MB *(1024 * 1024) /* really ugly :-) */
 
+const char *PPAA_MAGIC =
+    "PS2ICON3D";
+
 typedef struct ps2_partition_run_type
 {
     u_int32_t sector;
@@ -527,7 +530,7 @@ setup_main_part(/*@out@*/ ps2_partition_header_t *part,
             strlen(name) > PS2_PART_IDMAX ? PS2_PART_IDMAX : strlen(name));
     set_u32(&part->start, partitions[0].sector);
     set_u32(&part->length, partitions[0].size_in_mb * ((1 _MB) / 512));
-    set_u16(&part->type, 0x1337);
+    set_u16(&part->type, PS2_HDL_PARTITION);
     set_u16(&part->flags, 0);
     set_u32(&part->nsub, partitions_used - 1);
     set_ps2fs_datetime(&part->created, time(NULL));
@@ -554,7 +557,7 @@ setup_sub_part(ps2_partition_header_t *part,
     set_u32(&part->prev, partitions[index - 1].sector);
     set_u32(&part->start, partitions[index].sector);
     set_u32(&part->length, partitions[index].size_in_mb * ((1 _MB) / 512));
-    set_u16(&part->type, 0x1337);
+    set_u16(&part->type, PS2_HDL_PARTITION);
     set_u16(&part->flags, PS2_PART_FLAG_SUB);
     set_u32(&part->nsub, 0);
     set_ps2fs_datetime(&part->created, time(NULL));

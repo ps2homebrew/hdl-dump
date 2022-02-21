@@ -1050,11 +1050,10 @@ int hdl_inject(hio_t *hio,
 
 
 /**************************************************************/
-static int
-hdl_ginfo_read(hio_t *hio,
-               int slice_index,
-               const ps2_partition_header_t *part,
-               hdl_game_info_t *ginfo)
+int hdl_ginfo_read(hio_t *hio,
+                   int slice_index,
+                   const ps2_partition_header_t *part,
+                   hdl_game_info_t *ginfo)
 {
     /* data we're interested in starts @ 0x101000 and is header
      * plus information for up to 65 partitions
@@ -1109,7 +1108,7 @@ hdl_games_count(const apa_slice_t *slice)
     size_t i, count = 0;
     for (i = 0; i < slice->part_count; ++i)
         count += (get_u16(&slice->parts[i].header.flags) == 0x00 &&
-                  get_u16(&slice->parts[i].header.type) == 0x1337);
+                  get_u16(&slice->parts[i].header.type) == PS2_HDL_PARTITION);
     return (count);
 }
 
@@ -1127,7 +1126,7 @@ hdl_glist_read_slice(hio_t *hio,
         const ps2_partition_header_t *part =
             &toc->slice[slice_index].parts[i].header;
         if (get_u16(&part->flags) == 0x00 &&
-            get_u16(&part->type) == 0x1337)
+            get_u16(&part->type) == PS2_HDL_PARTITION)
             result = hdl_ginfo_read(hio, slice_index, part,
                                     glist->games + glist->count++);
     }

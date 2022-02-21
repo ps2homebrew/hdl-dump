@@ -36,6 +36,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <libgen.h>
 
 #include "byteseq.h"
 #include "retcodes.h"
@@ -202,7 +203,6 @@ show_apa_toc(const apa_toc_t *toc,
     }
 }
 
-
 /**************************************************************/
 #if defined(INCLUDE_MAP_CMD) || defined(INCLUDE_CUTOUT_CMD)
 static void
@@ -249,21 +249,141 @@ show_apa_map(const apa_toc_t *toc)
 }
 #endif /* INCLUDE_MAP_CMD or INCLUDE_CUTOUT_CMD defined? */
 
+/**************************************************************/
+typedef struct dm_table
+{
+    u_int32_t logical_start_sector;
+    u_int32_t num_sectors;
+    char target_type[7];   /* "linear" */
+    u_int32_t target_args; /* start_sector */
+} dm_table;
+
+typedef struct dm_concise
+{
+    char name[PS2_PART_IDMAX + 1];
+    char *uuid;
+    char *minor;
+    char flags[3]; /* ro|rw */
+    struct dm_table *table, *ptable;
+} dm_concise;
+
+static void
+show_dm_toc(const dict_t *config, const apa_toc_t *toc, const char *device_name)
+{
+    const apa_slice_t *slice;
+    dm_concise *pconcise;
+    dm_table *ptable;
+    u_int32_t offset;
+    int i, j, result;
+    /* we need hio just to read game info ... */
+    hio_t *hio = NULL;
+    hdl_game_alloc_table_t gat;
+    char formatted;
+    char *path;
+
+    result = hio_probe(config, device_name, &hio);
+    if (result != RET_OK || hio == NULL) {
+        return;
+    }
+
+    /* need a copy for __xpg_basename() from libgen.h */
+    path = malloc(strlen(device_name) + 1);
+    strcpy(path, device_name);
+
+    slice = toc->slice;
+    pconcise = malloc(sizeof(dm_concise));
+    pconcise->uuid = "";  /* let dmsetup set it*/
+    pconcise->minor = ""; /* let dmsetup set it*/
+
+    for (i = 0; i < slice->part_count; ++i) {
+        const ps2_partition_header_t *part = &slice->parts[i].header;
+        if (!strncmp(part->id, "__mbr", 5))
+            continue;
+
+        if (part->flags == PS2_PART_FLAG_SUB) {
+            continue;
+        }
+
+        formatted = 0;
+        strncpy(pconcise->name, part->id, PS2_PART_IDMAX);
+
+        ptable = pconcise->table = malloc((part->nsub + 1) * sizeof(dm_table));
+        ptable->logical_start_sector = 0;
+
+        /* content-aware part */
+        switch (part->type) {
+            case PS2_SWAP_PARTITION:
+            case PS2_LINUX_PARTITION:
+            case PS2_GAME_PARTITION:
+                break;
+            case PS2_HDL_PARTITION:
+                strcpy(pconcise->flags, "ro");
+                result = hdl_read_game_alloc_table(hio, toc, 0, i, &gat);
+                if (result != RET_OK)
+                    break;
+
+                offset = 0;
+                for (j = 0; j < gat.count; j++) {
+                    ptable->logical_start_sector = offset;
+                    ptable->num_sectors = gat.part[j].len; /* only latest ptable->num_sectors one would differ from generic */
+                    ptable->target_args = gat.part[j].start;
+                    strcpy(ptable->target_type, "linear");
+                    offset += ptable->num_sectors;
+                    ptable++;
+                }
+                formatted = 1;
+                break;
+
+            default:
+                break;
+        }
+
+        if (!formatted) {
+            strcpy(pconcise->flags, "rw");
+
+            ptable->num_sectors = part->length - 8192;
+            strcpy(ptable->target_type, "linear");
+            ptable->target_args = part->start + 8192;
+
+            offset = ptable->num_sectors;
+            for (j = 0; j < part->nsub; j++) {
+                ptable++;
+                ptable->logical_start_sector = offset;
+                ptable->num_sectors = part->subs[j].length - 2048;
+                ptable->target_args = part->subs[j].start + 2048;
+                strcpy(ptable->target_type, "linear");
+                offset += ptable->num_sectors;
+            }
+        }
+
+        fprintf(stdout, "%s-%s,%s,%s,%s", basename(path), pconcise->name, pconcise->uuid, pconcise->minor, pconcise->flags);
+        for (j = 0; j < part->nsub + 1; j++) {
+            ptable = &pconcise->table[j];
+            fprintf(stdout, ",%u %u %s %s %u", ptable->logical_start_sector, ptable->num_sectors, ptable->target_type, device_name, ptable->target_args);
+        }
+        fprintf(stdout, ";");
+        free(pconcise->table);
+    }
+    free(pconcise);
+}
 
 /**************************************************************/
 static int
 show_toc(const dict_t *config,
-         const char *device_name)
+         const char *device_name,
+         const char *option)
 {
     /*@only@*/ apa_toc_t *toc = NULL;
     int result = apa_toc_read(config, device_name, &toc);
     if (result == RET_OK && toc != NULL) {
-        show_apa_toc(toc, 1);
+        if (option == NULL)
+            show_apa_toc(toc, 1);
+        else if (!strncmp(option, "--dm", 4))
+            show_dm_toc(config, toc, device_name);
         apa_toc_free(toc);
     }
     return (result);
 }
-
 
 /**************************************************************/
 static int
@@ -1351,8 +1471,12 @@ show_usage_and_exit(const char *app_path,
          "compare two ISO inputs", NULL,
          "c:\\tekken.cue cd0:", "c:\\gt3.gi GT3@hdd1:", 0},
 #endif
-        {CMD_TOC, "device",
-         "display PlayStation 2 HDD TOC", NULL,
+        {CMD_TOC, "device [option]",
+         "display PlayStation 2 HDD TOC",
+         "option:\n\n"
+         "--dm : print \"concise\" tables for linux device-mapper to be used like that:\n"
+         "  hdl_dump toc device --dm | sudo dmsetup create --concise\n\n"
+         "  device should be a block device such as /dev/hda. For manipulating disk images, use losetup and a loopback device\n",
          "hdd1:", "192.168.0.10", 0},
         {CMD_HDL_TOC, "device",
          "display a list of all HDL games on the PlayStation 2 HDD", NULL,
@@ -1832,9 +1956,12 @@ int main(int argc, char *argv[])
 #endif /* INCLUDE_COMPARE_IIN_CMD defined? */
 
         else if (caseless_compare(command_name, CMD_TOC)) { /* show TOC of a PlayStation 2 HDD */
-            if (argc != 3)
+            char *option = NULL;
+            if (argc < 3)
                 show_usage_and_exit(argv[0], CMD_TOC);
-            handle_result_and_exit(show_toc(config, argv[2]), argv[2], NULL);
+            if (argc == 4)
+                option = argv[3];
+            handle_result_and_exit(show_toc(config, argv[2], option), argv[2], NULL);
         }
 
         else if (caseless_compare(command_name, CMD_HDL_TOC)) { /* show a TOC of installed games only */
