@@ -77,6 +77,25 @@ typedef struct apa_toc_type
 } apa_toc_t;
 typedef /*@out@*/ /*@only@*/ /*@null@*/ apa_toc_t *apa_toc_p_t;
 
+#define PPAA_START 0x1000
+static const char *PPAA_MAGIC =
+    "PS2ICON3D";
+
+/* Parent Partition Attribute Area
+ * The header size is fixed at 512 bytes.
+ *
+ */
+typedef struct ppaa_partition_type
+{
+    char magic[9];     /* PS2ICON3D */
+    char reserved0[3]; /* 0 */
+    int version;       /* 0 */
+    struct
+    {
+        u_int32_t offset; /* must be a multiple of 512 */
+        u_int32_t size;
+    } file[62]; /* could be up to 62 */
+} ppaa_partition_t;
 
 u_int32_t apa_partition_checksum(const ps2_partition_header_t *part);
 
@@ -131,6 +150,8 @@ int apa_initialize_ex(hio_t *hio, const char *file_name);
 
 int apa_dump_mbr(const dict_t *config,
                  const char *device, const char *file_name);
+
+int apa_dump_header(hio_t *hio, u_int32_t starting_partition_sector);
 
 C_END
 

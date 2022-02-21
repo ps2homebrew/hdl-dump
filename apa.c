@@ -1253,3 +1253,56 @@ int apa_dump_mbr(const dict_t *config, const char *device, const char *file_name
 
     return (result);
 }
+
+/**************************************************************/
+char *ppa_files_name[] = {
+    "system.cnf", /* Contains settings used when the application starts */
+    "icon.sys",   /* Contains settings for displaying the application’s icon */
+    "list.ico",   /* Contains data for the icon displayed in the list of applications */
+    "del.ico",    /* Contains data for the icon displayed when the application is deleted (can be the same as the list-view icon) */
+    "boot.kelf",  /* https://github.com/ps2homebrew/OPL-Launcher */
+    "boot.kirx",  /* found on some retail games */
+    NULL,
+};
+
+int apa_dump_header(hio_t *hio, u_int32_t starting_partition_sector)
+{
+    ppaa_partition_t *head;
+    int index = 0, result;
+    char *buffer;
+    u_int32_t bytes_read;
+
+    buffer = osal_alloc(4 _MB);
+    result = hio->read(hio, starting_partition_sector + PPAA_START / 512, 4 _MB / 512, buffer, &bytes_read);
+    if (result != RET_OK)
+        return (result);
+
+    head = (ppaa_partition_t *)buffer;
+
+    if (strncmp(head->magic, PPAA_MAGIC, sizeof(head->magic)))
+        return RET_BAD_APA;
+
+    while (index < 62) {
+        ssize_t bytes_to_read = head->file[index].size;
+        char *filename, genname[10];
+
+        if (bytes_to_read == 0)
+            break;
+
+        if (ppa_files_name[index])
+            filename = ppa_files_name[index];
+        else {
+            filename = genname;
+            sprintf(genname, "HEADER_%d", index);
+        }
+
+        fprintf(stdout, "%-10s offset=0x%-10x size=%lu\n", filename, head->file[index].offset, bytes_to_read);
+        result = write_file(filename, buffer + head->file[index].offset, bytes_to_read);
+        if (result != RET_OK)
+            return (result);
+        index++;
+    }
+
+    osal_free(buffer);
+    return 0;
+}
