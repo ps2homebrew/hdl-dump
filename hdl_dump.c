@@ -1287,7 +1287,7 @@ dump_header(const dict_t *config,
 
             if (result == RET_OK) {
                 u_int32_t start_sector = get_u32(&toc->slice[slice_index].parts[partition_index].header.start);
-                result = apa_dump_header(hio, start_sector);
+                result = apa_dump_header(device, start_sector);
             }
 
             apa_toc_free(toc), toc = NULL;
