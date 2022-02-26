@@ -50,7 +50,7 @@ MXE_TARGETS ?= i686-w64-mingw32.static
 # configuration end
 ###############################################################################
 
-CFLAGS = -Wall -ansi -pedantic -Wno-long-long
+CFLAGS = -Wall -std=c11 -pedantic -Wno-long-long
 
 LDFLAGS =
 
@@ -181,6 +181,9 @@ format:
 
 format-check:
 	@! find . -type f -a \( -iname \*.h -o -iname \*.c \) | xargs clang-format -style=file -output-replacements-xml | grep "<replacement "
+
+clean-header:
+	rm -f system.cnf icon.sys list.ico del.ico boot.kelf boot.kirx HEADER_*
 
 # rules below
 rsrc.o: rsrc.rc

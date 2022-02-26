@@ -115,6 +115,7 @@
 #endif
 #define CMD_MODIFY_HEADER "modify_header"
 #define CMD_DUMP_HEADER   "dump_header"
+#define CMD_MKPART        "mkpart"
 
 /**************************************************************/
 static void
@@ -1440,6 +1441,62 @@ get_progress(void)
 #endif
 }
 
+/**************************************************************/
+static int
+mkpart(const dict_t *config,
+       const char *target_device,
+       const char *partition_name,
+       u_int16_t type,
+       u_int32_t size_in_mb)
+{
+    /*@only@*/ hio_t *hio = NULL;
+    /*@only@*/ apa_toc_t *toc = NULL;
+    int result, slice_index, i;
+    const apa_slice_t *slice;
+    u_int32_t new_partition_start;
+    ps2_partition_header_t *part;
+
+    result = hio_probe(config, target_device, &hio);
+    if (result != RET_OK) {
+        return result;
+    }
+    result = apa_toc_read_ex(hio, &toc);
+    if (result != RET_OK) {
+        return result;
+    }
+
+    fprintf(stdout, "mkpart %s %s 0x%x %d\n", target_device, partition_name, type, size_in_mb);
+    result = apa_allocate_space(toc, partition_name,
+                                size_in_mb, &slice_index,
+                                &new_partition_start,
+                                0); /* order by size desc */
+    fprintf(stdout, "=> slice:%d start:0x%x\n", slice_index, new_partition_start);
+
+    /* Redundant code since apa_allocate_space doesn't return part->header */
+    slice = toc->slice + slice_index;
+    part = NULL;
+    result = RET_NOT_FOUND;
+    for (i = 0; i < slice->part_count; ++i)
+        if (get_u32(&slice->parts[i].header.start) == new_partition_start) { /* locate starting partition index */
+            part = &slice->parts[i].header;
+            result = RET_OK;
+            break;
+        }
+    if (part == NULL)
+        return (RET_INVARIANT);
+
+    //Change in subpart too ?
+    part->type = type;
+    part->checksum = apa_partition_checksum(part);
+
+    result = apa_commit_ex(hio, toc);
+
+    if (toc != NULL)
+        apa_toc_free(toc);
+
+    return (result);
+}
+
 
 /**************************************************************/
 /*@noreturn@*/ static void
@@ -1589,6 +1646,18 @@ show_usage_and_exit(const char *app_path,
          "hdd1: DDS \"Digital Devil Saga\"",
          "192.168.0.100 \"FF X-2\" +3", 1},
 #endif /* INCLUDE_MODIFY_CMD defined? */
+#if defined(INCLUDE_MKPART_CMD)
+        {CMD_MKPART, "source_device name type size",
+         "copy file between two device",
+         "You need boot.elf and list.ico for installing the game. More info in Readme\n"
+         "Be careful all games will use one list.ico and boot.elf.\n"
+         "Copy games from one device to another. Flags is a sequence of `y' or `n'\n"
+         "characters, one for each game on the source device, given in the same order as\n"
+         "in hdl_toc command list. If no character given for a particular game (or flags\n"
+         "are missing) yes is assumed. " CMD_MKPART " is contributed by JimmyZ.",
+         "hdd1: 192.168.0.100 # to copy all games",
+         "hdd1: hdd2: ynyn # to copy all games but 2nd and 4th", 1},
+#endif /* INCLUDE_MKPART_CMD defined? */
 #if defined(INCLUDE_COPY_HDD_CMD)
         {CMD_COPY_HDD, "source_device destination_device [flags]",
          "copy file between two device",
@@ -2251,6 +2320,39 @@ int main(int argc, char *argv[])
                                    argv[2], NULL);
         }
 #endif /* INCLUDE_COPY_HDD_CMD defined? */
+#if defined(INCLUDE_MKPART_CMD)
+        else if (caseless_compare(command_name, CMD_MKPART)) {
+            char *fsname = argv[4];
+            char *human_size = argv[5];
+            u_int16_t type;
+            u_int32_t size_in_mb;
+
+            if (!strncmp(fsname, "0x", 2)) {
+                type = strtoul(fsname, NULL, 16);
+            } else if (!strncmp(fsname, "ext2", 5)) {
+                type = PS2_LINUX_PARTITION;
+            } else if (!strncmp(fsname, "swap", 5)) {
+                type = PS2_SWAP_PARTITION;
+            } else {
+                fprintf(stderr, "%s: invalid partition type.\n", fsname);
+                return (-1);
+            }
+
+            if (human_size[strlen(human_size) - 1] == 'M') {
+                size_in_mb = strtoul(human_size, NULL, 10);
+            } else if (human_size[strlen(human_size) - 1] == 'G') {
+                size_in_mb = strtoul(human_size, NULL, 10) * 1024;
+            } else {
+                fprintf(stderr, "%s: invalid partition size.\n", human_size);
+                return (-1);
+            }
+
+            if (argc != 6)
+                show_usage_and_exit(argv[0], CMD_MKPART);
+            handle_result_and_exit(mkpart(config, argv[2], argv[3], type, size_in_mb),
+                                   argv[2], NULL);
+        }
+#endif /* INCLUDE_MKPART_CMD defined? */
 
         else { /* something else... -h perhaps? */
             show_usage_and_exit(argv[0], command_name);
