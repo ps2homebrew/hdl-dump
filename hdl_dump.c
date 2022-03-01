@@ -133,9 +133,9 @@ show_apa_slice(const apa_slice_t *slice)
                 slice->parts[i].modified != 0 ? '*' : ':',
                 (unsigned long)(get_u32(&part->length) / 2048));
         if (get_u32(&part->main) == 0)
-            fprintf(stdout, "%4x [%-*s]\n",
+            fprintf(stdout, "%4x [%s]\n",
                     (unsigned int)get_u16(&part->type),
-                    PS2_PART_IDMAX, part->id);
+                    part->id);
         else
             fprintf(stdout, "      part # %2lu in %06lx00\n",
                     (unsigned long)(get_u32(&part->number)),
@@ -165,14 +165,14 @@ show_apa_slice2(const apa_slice_t *slice)
             u_int32_t tot_len = get_u32(&part->length);
             for (j = 0; j < count; ++j)
                 tot_len += get_u32(&part->subs[j].length);
-            fprintf(stdout, "0x%04x %06lx00%c%c %2lu %5luMB %-*s\n",
+            fprintf(stdout, "0x%04x %06lx00%c%c %2lu %5luMB %s\n",
                     (unsigned int)get_u16(&part->type),
                     (unsigned long)get_u32(&part->start) >> 8,
                     slice->parts[i].existing != 0 ? '.' : '*',
                     slice->parts[i].modified != 0 ? '*' : ':',
                     (unsigned long)count + 1, /* main partition counts, too */
                     (unsigned long)tot_len / 2048,
-                    PS2_PART_IDMAX, part->id);
+                    part->id);
         }
     }
 
