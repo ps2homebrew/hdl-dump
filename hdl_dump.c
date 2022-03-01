@@ -1255,7 +1255,6 @@ modify_header(const dict_t *config,
             u_int32_t partition_index = 0;
             result = apa_find_partition(toc, partname, &slice_index,
                                         &partition_index);
-            
             if (result == RET_NOT_FOUND) { /* assume it is `game_name' and not a partition name */
                 char partition_id[PS2_PART_IDMAX + 1];
                 result = hdl_lookup_partition_ex(hio, partname, partition_id);
