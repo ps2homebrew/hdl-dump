@@ -383,7 +383,7 @@ int osal_query_hard_drives(osal_dlist_t **hard_drives)
 
     *hard_drives = NULL;
     result = osal_dlist_alloc(hard_drives);
-    for (i = 0; result == RET_OK && i < 16; ++i) {
+    for (i = 0; result == RET_OK && i < 25; ++i) {
         char device_name[20];
         HANDLE device;
         sprintf(device_name, "\\\\.\\PhysicalDrive%u", (unsigned int)i);
