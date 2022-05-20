@@ -66,9 +66,9 @@ int iin_probe(const dict_t *config,
     if (result == RET_NOT_COMPAT)
         result = iin_gi_probe_path(path, iin);
     if (result == RET_NOT_COMPAT)
-        result = iin_iso_probe_path(path, iin);
-    if (result == RET_NOT_COMPAT)
         result = iin_iml_probe_path(path, iin);
+    if (result == RET_NOT_COMPAT)
+        result = iin_iso_probe_path(path, iin);
 
 #if defined(USE_THREADED_IIN)
     if (result == RET_OK) { /* wrap in threaded delegate */
