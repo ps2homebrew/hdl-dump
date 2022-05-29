@@ -237,7 +237,7 @@ parse_config_cnf(const char *contents,
             p += 5;
             while (*p == ' ' || *p == '\t' || *p == '=')
                 ++p;
-            if ((memcmp(p, "cdrom0:\\", 8) == 0) || (memcmp(p, "cdrom1:\\", 8) == 0)) { //Some crappy game mods use 'cdrom1:\\' instead, not sure why, but a considerable ammount of silly users don't like seing their game mods marked as invalid and they switch back to winhiip
+            if ((memcmp(p, "cdrom0:\\", 8) == 0) || (memcmp(p, "cdrom1:\\", 8) == 0)) {/*cdrom1 is used by some game mods*/
                 p += 8;
                 while (*p != ';')
                     *signature++ = *p++;
