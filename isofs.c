@@ -237,7 +237,7 @@ parse_config_cnf(const char *contents,
             p += 5;
             while (*p == ' ' || *p == '\t' || *p == '=')
                 ++p;
-            if (memcmp(p, "cdrom0:\\", 8) == 0) {
+            if ((memcmp(p, "cdrom0:\\", 8) == 0) || (memcmp(p, "cdrom1:\\", 8) == 0)) {/*cdrom1 is used by some game mods*/
                 p += 8;
                 while (*p != ';')
                     *signature++ = *p++;
