@@ -571,7 +571,7 @@ int hdd_inject_header(hio_t *hio,
             set_u32(buffer_4m + 0x001018, 0x0400);
             set_u32(buffer_4m + 0x00101C, strlen(icon_props));
             memcpy(buffer_4m + 0x001400, icon_props, strlen(icon_props));
-            fprintf(stdout, "Succesfully converted icon.sys into HDD format\n");
+            fprintf(stdout, "Succesfully converted memory card icon.sys into HDD format\n");
         } else {
             fprintf(stdout, "Skipped icon.sys\n");
         }
@@ -631,8 +631,6 @@ int hdd_inject_header(hio_t *hio,
          *
          * read kelf or elf
          */
-
-        fprintf(stdout, "Skipped boot.kelf. Trying to inject boot.elf\n");
         osal_free(patinfo);
 
         result = read_file("./boot.elf", &patinfo, &patinfo_length);
