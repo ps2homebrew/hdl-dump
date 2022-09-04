@@ -36,20 +36,27 @@ int iin_iso_probe_path(const char *path,
     osal_handle_t file;
     u_int32_t size_in_sectors, volume_sector_size;
     int result = osal_open(path, &file, 0); /* open with caching enabled */
-    if (result == OSAL_OK) {                /* at offset 0x00008000 there should be "\x01CD001" */
-        result = osal_seek(file, (u_int64_t)0x00008000);
-        if (result == OSAL_OK) {
-            unsigned char buffer[6];
-            u_int32_t bytes;
-            result = osal_read(file, buffer, sizeof(buffer), &bytes);
-            if (result == OSAL_OK) {
-                if (bytes == 6 &&
-                    memcmp(buffer, "\001CD001", 6) == 0)
-                    ; /* success */
-                else
-                    result = RET_NOT_COMPAT;
+    if (result == OSAL_OK) {
+        u_int32_t bytes;
+        unsigned char buffer[6];
+        result = osal_read(file, buffer, sizeof(buffer), &bytes); /* probe zso */
+        if (result == OSAL_OK)
+            if (memcmp(buffer, "ZISO", 4) == 0)
+                ; /* success */
+            else {
+                /* at offset 0x00008000 there should be "\x01CD001" */
+                result = osal_seek(file, (u_int64_t)0x00008000);
+                if (result == OSAL_OK) {
+                    result = osal_read(file, buffer, sizeof(buffer), &bytes);
+                    if (result == OSAL_OK) {
+                        if (bytes == 6 &&
+                            memcmp(buffer, "\001CD001", 6) == 0)
+                            ; /* success */
+                        else
+                            result = OSAL_OK;
+                    }
+                }
             }
-        }
 
         size_in_sectors = 0;
         if (result == OSAL_OK) {
@@ -71,7 +78,7 @@ int iin_iso_probe_path(const char *path,
             result = img_base_add_part(img_base, path, size_in_sectors, 0, volume_sector_size);
             if (result == OSAL_OK) {
                 *iin = (iin_t *)img_base;
-                strcpy((*iin)->source_type, "Plain ISO file");
+                strcpy((*iin)->source_type, "Plain ISO/ZSO file");
             } else
                 ((iin_t *)img_base)->close((iin_t *)img_base);
         } else
