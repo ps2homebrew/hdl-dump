@@ -55,7 +55,6 @@ int iin_iso_probe_path(const char *path,
                     }
                 }
             }
-        }
 
         size_in_sectors = 0;
         if (result == OSAL_OK) {
@@ -77,7 +76,7 @@ int iin_iso_probe_path(const char *path,
             result = img_base_add_part(img_base, path, size_in_sectors, 0, volume_sector_size);
             if (result == OSAL_OK) {
                 *iin = (iin_t *)img_base;
-                strcpy((*iin)->source_type, "Plain ISO file");
+                strcpy((*iin)->source_type, "Plain ISO/ZSO file");
             } else
                 ((iin_t *)img_base)->close((iin_t *)img_base);
         } else

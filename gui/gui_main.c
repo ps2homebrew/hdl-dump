@@ -627,8 +627,9 @@ void browse_for_iso(HWND dlg)
     ofn.lStructSize = sizeof(OPENFILENAME);
     ofn.hwndOwner = dlg;
     ofn.hInstance = inst;
-    ofn.lpstrFilter = ("All supported formats\0*.iso;*.gi;*.cue;*.iml;*.nrg\0"
+    ofn.lpstrFilter = ("All supported formats\0*.iso;*.zso;*.gi;*.cue;*.iml;*.nrg\0"
                        "ISO images\0*.iso\0"
+                       "ZSO images\0*.zso\0"
                        "CDRWIN cuesheets\0*.cue\0"
                        "Nero images\0*.nrg\0"
                        "Global images\0*.gi\0"

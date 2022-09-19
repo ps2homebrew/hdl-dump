@@ -1073,14 +1073,12 @@ inject(const dict_t *config,
             memset(&game, 0, sizeof(hdl_game_t));
             memmove(game.name, name, sizeof(game.name) - 1);
             game.name[sizeof(game.name) - 1] = '\0';
-            if (strncmp(game.name, "__.linux.", 9)) {
+            game.layer_break = 0;
+            if (strcmp(&input[sizeof(input) - 4], ".zso") == 0) {
                 result = isofs_get_ps2_cdvd_info(iin, &info);
-                if (result == RET_OK) {
+                if (result == RET_OK)
                     if (info.layer_pvd != 0)
                         game.layer_break = (u_int32_t)info.layer_pvd - 16;
-                    else
-                        game.layer_break = 0;
-                }
             }
             if (startup != NULL) { /* use given startup file */
                 memmove(game.startup, startup, sizeof(game.startup) - 1);
