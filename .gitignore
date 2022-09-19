@@ -10,6 +10,7 @@
 *.exe
 *_irx.c
 *.elf
+*.sys
 open-ps2-loader
 hdl_dump
 

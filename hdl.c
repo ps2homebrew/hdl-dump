@@ -215,10 +215,10 @@ prepare_main(const hdl_game_t *details,
         memcpy(buffer_4m, part, 1024);
 
         /* read icon.sys in memory card format
-        * or in hdd format
-        * if in another format or skipped used
-        * default data for HDLoader icon
-        */
+         * or in hdd format
+         * if in another format or skipped used
+         * default data for HDLoader icon
+         */
         result = read_file("./icon.sys", &iconsys, &iconsys_length);
         if ((result == OSAL_OK) && (!strncmp(iconsys, "PS2D", 4))) {
 
@@ -1087,7 +1087,7 @@ int hdl_ginfo_read(hio_t *hio,
             memcpy(ginfo->partition_name, part->id, PS2_PART_IDMAX);
             ginfo->partition_name[PS2_PART_IDMAX] = '\0';
             strcpy(ginfo->name, buffer + 0x0008);
-            strcpy(ginfo->startup, buffer + 0x00ac);
+            strncpy(ginfo->startup, buffer + 0x00ac, 8 + 1 + 3 + 1);
             ginfo->compat_flags = (compat_flags_t)get_u8(buffer + 0x00a9);
             ginfo->dma = (unsigned short)get_u16(buffer + 0x00aa);
             ginfo->is_dvd = (buffer[0x00ec] == 0x14);

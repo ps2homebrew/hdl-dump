@@ -1062,6 +1062,7 @@ inject(const dict_t *config,
     hdl_game_t game;
     int result = RET_OK;
     /*@only@*/ iin_t *iin = NULL;
+    iin_t *iin_zso = NULL;
     /*@only@*/ hio_t *hio = NULL;
 
     result = iin_probe(config, input, &iin);
@@ -1100,8 +1101,22 @@ inject(const dict_t *config,
                 (void)ddb_update(config, game.startup,
                                  game.name, game.compat_flags);
 
-            if (result == RET_OK)
-                result = hdl_inject(hio, iin, &game, slice_index, is_hidden, pgs);
+            if (result == RET_OK) {
+                char tmp[MAX_PATH];
+                strcpy(tmp, input);
+                tmp[strlen(input) - 4] = '.';
+                tmp[strlen(input) - 3] = 'z';
+                tmp[strlen(input) - 2] = 's';
+                tmp[strlen(input) - 1] = 'o';
+                tmp[strlen(input)] = '\0';
+                result = iin_probe(config, tmp, &iin_zso);
+                if (result == RET_OK) {
+                    result = hdl_inject(hio, iin_zso, &game, slice_index, is_hidden, pgs);
+                } else {
+                    result = hdl_inject(hio, iin, &game, slice_index, is_hidden, pgs);
+                }
+                (void)iin->close(iin_zso), iin_zso = NULL;
+            }
 
             (void)hio->close(hio), hio = NULL;
         }
@@ -1262,7 +1277,7 @@ modify_header(const dict_t *config,
                     result = apa_find_partition(toc, partition_id,
                                                 &slice_index, &partition_index);
             }
-            
+
             if (result == RET_OK) {
                 u_int32_t start_sector = get_u32(&toc->slice[slice_index].parts[partition_index].header.start);
                 result = hdd_inject_header(hio, toc, slice_index, start_sector);

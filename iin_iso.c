@@ -36,18 +36,24 @@ int iin_iso_probe_path(const char *path,
     osal_handle_t file;
     u_int32_t size_in_sectors, volume_sector_size;
     int result = osal_open(path, &file, 0); /* open with caching enabled */
-    if (result == OSAL_OK) {                /* at offset 0x00008000 there should be "\x01CD001" */
-        result = osal_seek(file, (u_int64_t)0x00008000);
+    if (result == OSAL_OK) {
+        u_int32_t bytes;
+        unsigned char buffer[6];
+        result = osal_read(file, buffer, sizeof(buffer), &bytes);
         if (result == OSAL_OK) {
-            unsigned char buffer[6];
-            u_int32_t bytes;
-            result = osal_read(file, buffer, sizeof(buffer), &bytes);
-            if (result == OSAL_OK) {
-                if (bytes == 6 &&
-                    memcmp(buffer, "\001CD001", 6) == 0)
-                    ; /* success */
-                else
-                    result = RET_NOT_COMPAT;
+            if (memcmp(buffer, "ZISO", 4)) { /* probe zso, if zso header, skip iso probing */
+                /* at offset 0x00008000 there should be "\x01CD001" */
+                result = osal_seek(file, (u_int64_t)0x00008000);
+                if (result == OSAL_OK) {
+                    result = osal_read(file, buffer, sizeof(buffer), &bytes);
+                    if (result == OSAL_OK) {
+                        if (bytes == 6 &&
+                            memcmp(buffer, "\001CD001", 6) == 0)
+                            ; /* success */
+                        else
+                            result = RET_NOT_COMPAT;
+                    }
+                }
             }
         }
 
