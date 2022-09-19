@@ -55,6 +55,7 @@ int iin_iso_probe_path(const char *path,
                     }
                 }
             }
+        }
 
         size_in_sectors = 0;
         if (result == OSAL_OK) {
