@@ -12,7 +12,7 @@ jobs:
         os: [macos-latest, ubuntu-latest]
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Install Ubuntu version
       if: ${{ matrix.os == 'ubuntu-latest' && always() }}
@@ -29,7 +29,7 @@ jobs:
     - name: Create tar archive (keep executable bit)
       run: tar -zcvf hdl-dump-${{ steps.slug.outputs.sha8 }}-${{matrix.os}}.tar.gz hdl_dump
 
-    - uses: actions/upload-artifact@v2
+    - uses: actions/upload-artifact@v3
       with:
         name: hdl-dump-${{ steps.slug.outputs.sha8 }}-${{matrix.os}}
         path: |
@@ -40,7 +40,7 @@ jobs:
     container: dockcross/windows-static-x86:latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Compile windows version with cross-compilator
       run: |
@@ -58,7 +58,7 @@ jobs:
     - name: Create tar archive
       run: tar -zcvf hdl-dump-${{ steps.slug.outputs.sha8 }}-windows-latest.tar.gz rel
 
-    - uses: actions/upload-artifact@v2
+    - uses: actions/upload-artifact@v3
       with:
         name: hdl-dump-${{ steps.slug.outputs.sha8 }}-windows-latest
         path: |
@@ -69,26 +69,14 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/master'
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Get short SHA
       id: slug
       run: echo "::set-output name=sha8::$(echo ${GITHUB_SHA} | cut -c1-8)"
 
-    - name: Download Mac artifact
-      uses: actions/download-artifact@v2
-      with:
-        name: hdl-dump-${{ steps.slug.outputs.sha8 }}-macos-latest
-
-    - name: Download Ubuntu artifact
-      uses: actions/download-artifact@v2
-      with:
-        name: hdl-dump-${{ steps.slug.outputs.sha8 }}-ubuntu-latest
-
-    - name: Download Windows artifact
-      uses: actions/download-artifact@v2
-      with:
-        name: hdl-dump-${{ steps.slug.outputs.sha8 }}-windows-latest
+    - name: Download artifacts
+      uses: actions/download-artifact@v3
 
     - name: Create pre-release
       if: github.ref == 'refs/heads/master'
@@ -99,7 +87,9 @@ jobs:
         automatic_release_tag: "latest"
         title: "Development build"
         files: |
-          *tar.gz
+          hdl-dump-${{ steps.slug.outputs.sha8 }}-windows-latest/*
+          hdl-dump-${{ steps.slug.outputs.sha8 }}-ubuntu-latest/*
+          hdl-dump-${{ steps.slug.outputs.sha8 }}-macos-latest/*
 
     - name: Create Tagged Release Draft
       if: startsWith(github.ref, 'refs/tags/v')
@@ -109,4 +99,6 @@ jobs:
         prerelease: false
         draft: true
         files: |
-          *tar.gz
+          hdl-dump-${{ steps.slug.outputs.sha8 }}-windows-latest/*
+          hdl-dump-${{ steps.slug.outputs.sha8 }}-ubuntu-latest/*
+          hdl-dump-${{ steps.slug.outputs.sha8 }}-macos-latest/*

@@ -2,12 +2,12 @@
 
 ## Contents
 
--   Intro
--   Networking server
--   Compilation
--   Configuration and list file location
--   Configuration
--   New features
+- Intro
+- Networking server
+- Compilation
+- Configuration and list file location
+- Configuration
+- New features
 
 ## Intro
 
@@ -19,7 +19,7 @@ Easy guide for installing games can be found here <http://web.archive.org/web/20
 
 ## Networking server
 
-_Update:_ Currently, OPL built-in server is the preferred option.
+_Update:_ Currently, OPL built-in NBD server is the preferred option.
 
 _Deprecated:_
 A UDP-based network server is available, based on the SMAP driver released by @sp193 <http://ichiba.geocities.jp/ysai187/PS2/smap.htm>. It is called `hdl_svr_093.elf` and is now part of the `hdl_dump` sources.
@@ -32,7 +32,7 @@ First of all, you have to update your PS2SDK.
 
 Finally: You can run the shell script in the project folder: `mkrel.sh`. It will compile both GUI and CLI versions for Windows.
 
--   **Linux**: Build and copy executable into a directory of your choice.
+- **Linux**: Build and copy executable into a directory of your choice.
 
         make RELEASE=yes
 
@@ -42,7 +42,7 @@ Finally: You can run the shell script in the project folder: `mkrel.sh`. It will
         make -C gui          # for WineLib compilation (currently not working)
         make -C gui XC=win   # for GUI cross-compilation using mingw32
 
--   **Mac OS X** or **FreeBSD**: You'll need to have GNU make installed, then
+- **Mac OS X** or **FreeBSD**: You'll need to have GNU make installed, then
 
         gmake RELEASE=yes IIN_OPTICAL_MMAP=no
 
@@ -50,7 +50,7 @@ Finally: You can run the shell script in the project folder: `mkrel.sh`. It will
 
         make RELEASE=yes IIN_OPTICAL_MMAP=no
 
--   **Windows**: You need to have MINGW32 installed;
+- **Windows**: You need to have MINGW32 installed;
     then use
 
         make RELEASE=yes
@@ -62,23 +62,27 @@ Finally: You can run the shell script in the project folder: `mkrel.sh`. It will
 
 You can place these files in the folder where is installed hdl_dump for making it portable.
 
--   **Windows**:
+- **Windows**:
 
     `%APPDATA%\hdl_dump.conf`
     `%APPDATA%\hdl_dump.list`
 
--   **Linux**, **Mac OS X** and **FreeBSD**: (`~` is your home dir)
+- **Linux**, **Mac OS X** and **FreeBSD**: (`~` is your home dir)
 
     `~/.hdl_dump.conf`
     `~/.hdl_dump.list`
 
 ## Configuration
 
--   `disc_database_file` -- full path to your disc compatibility database file;
+- `disc_database_file` -- full path to your disc compatibility database file;
 
 ## New features
 
 All new stuff can be used from HDD OSD, BB Navigator, or XMB from PSX DVR.
+
+### ZSO support
+
+hdl-dump supports zso compressed files. For using ZSO, you must keep original ISO (or cue/bin) files in the same folder and with the same name as ZSO compressed file. You should select original ISO (or cue/bin) and hdl-dump will check zso existence on installation. If ZSO file exists, it will install ZSO, if it does not exist it will install original ISO. Unfortunately, you need to keep original file for program to work.
 
 ### `inject_dvd`, `inject_cd`, `install` or `copy_hdd`.
 
@@ -115,13 +119,13 @@ This command injects header attributes into an existing partition.
 
 It can inject these files:
 
--   `system.cnf`
--   `icon.sys`
--   `list.ico`
--   `del.ico`
--   `boot.kelf`
--   `boot.elf`
--   `boot.kirx`
+- `system.cnf`
+- `icon.sys`
+- `list.ico`
+- `del.ico`
+- `boot.kelf`
+- `boot.elf`
+- `boot.kirx`
 
 Any one can be skipped. It first tries to inject `boot.kelf`, then if not found it will try to inject `boot.elf`.
 
@@ -152,27 +156,27 @@ If you want to know more about these files (and their restrictions), you have to
 
 There are also some undocumented features like this:
 
--   If you want to inject `boot.kelf` (or `boot.elf`), you have to change `BOOT2` in `system.cnf`.
+- If you want to inject `boot.kelf` (or `boot.elf`), you have to change `BOOT2` in `system.cnf`.
 
         BOOT2 = PATINFO
 
     If you need to erase `boot.elf` from the PATINFO you have to place zero-sized `boot.kelf` or elf in program folder.
     \_**Note**: PSX1 (DESR 1st generation) doesn't support the PATINFO parameter.
 
--   If you want to launch KELF from the PFS partition you have to change `BOOT2` in `system.cnf`
+- If you want to launch KELF from the PFS partition you have to change `BOOT2` in `system.cnf`
 
         BOOT2 = pfs:/EXECUTE.KELF
 
     where `EXECUTE.KELF` - is the path to KELF that is placed into the partition. Changedable.
 
--   If you want to inject kirx into the partition you have to add a line into `system.cnf`
+- If you want to inject kirx into the partition you have to add a line into `system.cnf`
 
         IOPRP = PATINFO
 
     Don't ask about kirx - I don't know where that is used.
     \_**Note**: PSX1 (DESR 1st generation) doesn't support the IOPRP parameter.
 
--   If you don't want to boot from HDD OSD you have to add such a line into system.cnf
+- If you don't want to boot from HDD OSD you have to add such a line into system.cnf
 
         BOOT2 = NOBOOT
 
