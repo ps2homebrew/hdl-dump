@@ -1998,7 +1998,7 @@ int main(int argc, char *argv[])
             if (argc < 3)
                 show_usage_and_exit(argv[0], CMD_HDL_TOC);
 			if (argc > 3) {
-				if (!strcmp(argv[3], "--csv")
+				if (!strcmp(argv[3], "--csv"))
 					flags |= CSVPRINT;
 			}
             handle_result_and_exit(show_hdl_toc(config, argv[2], flags),
@@ -2159,7 +2159,7 @@ int main(int argc, char *argv[])
 			flags |= CDVD_INFO_NEW_STYLE;
 			
 			if (argc > 3) {
-				if (!strcmp(argv[3], "--csv")
+				if (!strcmp(argv[3], "--csv"))
 					flags |= CSVPRINT;
 			}
 			
@@ -2172,7 +2172,7 @@ int main(int argc, char *argv[])
                 show_usage_and_exit(argv[0], CMD_CDVD_INFO);
 
 			if (argc > 3) {
-				if (!strcmp(argv[3], "--csv")
+				if (!strcmp(argv[3], "--csv"))
 					flags |= CSVPRINT;
 			}
 			
