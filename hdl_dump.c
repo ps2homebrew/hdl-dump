@@ -721,7 +721,7 @@ cdvd_info(const dict_t *config,
                             (info.layer_pvd != 0 ? "dual layer" : ""),
                             (unsigned long)(tot_size / 1024));
                 else
-                    fprintf(out, flags & CSVPRINT) ? "%s%s;%luKB;%s;%s\n :"%s%s %luKB \"%s\" \"%s\" \n",
+                    fprintf(out, (flags & CSVPRINT) ? "%s%s;%luKB;%s;%s\n" : "%s%s %luKB \"%s\" \"%s\" \n",
                             (info.layer_pvd != 0 ? "dual-layer " : ""),
                             (info.media_type == mt_cd  ? "CD" :
                              info.media_type == mt_dvd ? "DVD" :
