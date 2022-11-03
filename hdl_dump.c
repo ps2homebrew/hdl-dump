@@ -56,9 +56,15 @@
 #include "dict.h"
 #include "net_io.h"
 
+#if defined(_BUILD_WIN32)
+#define UNBOLD ""
+#define BOLD ""
+#define WARNING_SIGN ""
+#else
 #define UNBOLD       "\033[0m"
 #define BOLD         "\033[1m"
 #define WARNING_SIGN "/\033[4m!\033[0m\\"
+#endif
 
 /* command names */
 #define CMD_QUERY "query"
