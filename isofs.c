@@ -167,14 +167,13 @@ isofs_get_file_addr(iin_t *iin,
         u_int32_t start_addr, length;
         const unsigned char *p = buffer;
         do {
-            int len_dr, len_ext_ar;
+            int len_dr;
             u_int32_t name_len;
             const unsigned char *start = p;
             len_dr = *p++;
             if (len_dr == 0 ||
                 p > buffer + 2047)
                 break; /* last entry */
-            len_ext_ar = *p++;
             start_addr = ((u_int32_t)p[3] << 24 |
                           (u_int32_t)p[2] << 16 |
                           (u_int32_t)p[1] << 8 |
