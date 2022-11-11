@@ -116,14 +116,13 @@ isofs_get_root_addr(iin_t *iin,
         const unsigned char *p = buffer;
         do {
             int id_len;
-            int ext_len;
             u_int16_t parent_dir;
 
             id_len = *p++;
             if (id_len == 0 ||
                 p > buffer + 2047)
                 break; /* last entry */
-            ext_len = *p++;
+            p++;
             dir_start_addr = ((u_int32_t)p[3] << 24 |
                               (u_int32_t)p[2] << 16 |
                               (u_int32_t)p[1] << 8 |
@@ -174,6 +173,8 @@ isofs_get_file_addr(iin_t *iin,
             if (len_dr == 0 ||
                 p > buffer + 2047)
                 break; /* last entry */
+            p++;
+
             start_addr = ((u_int32_t)p[3] << 24 |
                           (u_int32_t)p[2] << 16 |
                           (u_int32_t)p[1] << 8 |
