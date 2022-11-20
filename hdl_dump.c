@@ -57,8 +57,8 @@
 #include "net_io.h"
 
 #if defined(_BUILD_WIN32)
-#define UNBOLD ""
-#define BOLD ""
+#define UNBOLD       ""
+#define BOLD         ""
 #define WARNING_SIGN ""
 #else
 #define UNBOLD       "\033[0m"
@@ -66,7 +66,7 @@
 #define WARNING_SIGN "/\033[4m!\033[0m\\"
 #endif
 
-#define CSVPRINT 			(1 << 1)
+#define CSVPRINT            (1 << 1)
 #define CDVD_INFO_NEW_STYLE (1 << 2)
 
 /* command names */
@@ -283,7 +283,8 @@ show_dm_toc(const dict_t *config, const apa_toc_t *toc, const char *device_name)
     dm_concise *pconcise;
     dm_table *ptable;
     u_int32_t offset;
-    int i, j, result;
+    unsigned int i, j;
+    int result;
     /* we need hio just to read game info ... */
     hio_t *hio = NULL;
     hdl_game_alloc_table_t gat;
@@ -398,7 +399,7 @@ show_toc(const dict_t *config,
 static int
 show_hdl_toc(const dict_t *config,
              const char *device_name,
-			 unsigned int flags)
+             unsigned int flags)
 {
     /*@only@*/ hio_t *hio = NULL;
     int result = hio_probe(config, device_name, &hio);
@@ -1509,9 +1510,9 @@ show_usage_and_exit(const char *app_path,
          "  device should be a block device such as /dev/hda. For manipulating disk images, use losetup and a loopback device\n",
          "hdd1:", "192.168.0.10", 0},
         {CMD_HDL_TOC, "device [--csv]",
-         "display a list of all HDL games on the PlayStation 2 HDD", 
-		 "Flags:\n"
-		 "--csv: Print data separated by semicolons, useful for scripts processing the output",
+         "display a list of all HDL games on the PlayStation 2 HDD",
+         "Flags:\n"
+         "--csv: Print data separated by semicolons, useful for scripts processing the output",
          "hdd1:", "192.168.0.10", 0},
 #if defined(INCLUDE_MAP_CMD)
         {CMD_MAP, "device",
@@ -1577,14 +1578,14 @@ show_usage_and_exit(const char *app_path,
          "-hide will cause it to be hidden in HDDOSD/Browser 2.0",
          "192.168.0.10 cd0:", "hdd1: c:\\gt3.iso", 1},
         {CMD_CDVD_INFO, "iin_input [--csv]",
-         "display signature (startup file), volume label and data size for a CD-/DVD-drive or image file", 
-		 "Flags:\n"
-		 "--csv: Print data separated by semicolons, useful for scripts processing the output",
+         "display signature (startup file), volume label and data size for a CD-/DVD-drive or image file",
+         "Flags:\n"
+         "--csv: Print data separated by semicolons, useful for scripts processing the output",
          "c:\\gt3.gi", "\"hdd2:Gran Turismo 3\"", 0},
         {CMD_CDVD_INFO2, "iin_input [--csv]",
-         "display media type, startup ELF, volume label and data size for a CD-/DVD-drive or image file", 
-		 "Flags:\n"
-		 "--csv: Print data separated by semicolons, useful for scripts processing the output",
+         "display media type, startup ELF, volume label and data size for a CD-/DVD-drive or image file",
+         "Flags:\n"
+         "--csv: Print data separated by semicolons, useful for scripts processing the output",
          "c:\\gt3.gi", "\"hdd2:Gran Turismo 3\"", 0},
         {CMD_POWER_OFF, "ip",
          "power off Playstation 2", NULL,
@@ -1659,7 +1660,8 @@ show_usage_and_exit(const char *app_path,
          "boot.kelf,\n"
          "boot.kirx,\n"
          "and if more, name HEADER_X, where X is file position in header.",
-         "hdd2: PP.POPS-00001", 0},
+         "hdd2: PP.POPS-00001",
+         "192.168.0.10 PP.HDL.Battlefield", 0},
         {NULL, NULL,
          NULL, NULL,
          NULL, NULL, 0}
@@ -1945,7 +1947,7 @@ handle_result_and_exit(int result,
 int main(int argc, char *argv[])
 {
     dict_t *config = NULL;
-	int flags = 0;
+    int flags = 0;
     /* load configuration */
     config = dict_alloc();
     if (config != NULL) {
@@ -2003,10 +2005,10 @@ int main(int argc, char *argv[])
         else if (caseless_compare(command_name, CMD_HDL_TOC)) { /* show a TOC of installed games only */
             if (argc < 3)
                 show_usage_and_exit(argv[0], CMD_HDL_TOC);
-			if (argc > 3) {
-				if (!strcmp(argv[3], "--csv"))
-					flags |= CSVPRINT;
-			}
+            if (argc > 3) {
+                if (!strcmp(argv[3], "--csv"))
+                    flags |= CSVPRINT;
+            }
             handle_result_and_exit(show_hdl_toc(config, argv[2], flags),
                                    argv[2], NULL);
         }
@@ -2161,14 +2163,14 @@ int main(int argc, char *argv[])
         else if (caseless_compare(command_name, CMD_CDVD_INFO)) { /* try to display startup file and volume label for an iin */
             if (argc < 3)
                 show_usage_and_exit(argv[0], CMD_CDVD_INFO);
-			
-			flags |= CDVD_INFO_NEW_STYLE;
-			
-			if (argc > 3) {
-				if (!strcmp(argv[3], "--csv"))
-					flags |= CSVPRINT;
-			}
-			
+
+            flags |= CDVD_INFO_NEW_STYLE;
+
+            if (argc > 3) {
+                if (!strcmp(argv[3], "--csv"))
+                    flags |= CSVPRINT;
+            }
+
             handle_result_and_exit(cdvd_info(config, argv[2], flags, stdout),
                                    argv[2], NULL);
         }
@@ -2177,11 +2179,11 @@ int main(int argc, char *argv[])
             if (argc < 3)
                 show_usage_and_exit(argv[0], CMD_CDVD_INFO);
 
-			if (argc > 3) {
-				if (!strcmp(argv[3], "--csv"))
-					flags |= CSVPRINT;
-			}
-			
+            if (argc > 3) {
+                if (!strcmp(argv[3], "--csv"))
+                    flags |= CSVPRINT;
+            }
+
             handle_result_and_exit(cdvd_info(config, argv[2], flags, stdout),
                                    argv[2], NULL);
         }
