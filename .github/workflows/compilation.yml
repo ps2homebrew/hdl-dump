@@ -24,14 +24,14 @@ jobs:
 
     - name: Get short SHA
       id: slug
-      run: echo "::set-output name=sha8::$(echo ${GITHUB_SHA} | cut -c1-8)"
+      run: echo "SHA=$(echo ${GITHUB_SHA} | cut -c1-8)" >> $GITHUB_ENV
 
     - name: Create tar archive (keep executable bit)
-      run: tar -zcvf hdl-dump-${{ steps.slug.outputs.sha8 }}-${{matrix.os}}.tar.gz hdl_dump
+      run: tar -zcvf hdl-dump-${{ env.SHA }}-${{matrix.os}}.tar.gz hdl_dump
 
     - uses: actions/upload-artifact@v3
       with:
-        name: hdl-dump-${{ steps.slug.outputs.sha8 }}-${{matrix.os}}
+        name: hdl-dump-${{ env.SHA }}-${{matrix.os}}
         path: |
           *tar.gz
 
@@ -53,14 +53,14 @@ jobs:
 
     - name: Get short SHA
       id: slug
-      run: echo "::set-output name=sha8::$(echo ${GITHUB_SHA} | cut -c1-8)"
+      run: echo "SHA=$(echo ${GITHUB_SHA} | cut -c1-8)" >> $GITHUB_ENV
 
     - name: Create tar archive
-      run: tar -zcvf hdl-dump-${{ steps.slug.outputs.sha8 }}-windows-latest.tar.gz rel
+      run: tar -zcvf hdl-dump-${{ env.SHA }}-windows-latest.tar.gz rel
 
     - uses: actions/upload-artifact@v3
       with:
-        name: hdl-dump-${{ steps.slug.outputs.sha8 }}-windows-latest
+        name: hdl-dump-${{ env.SHA }}-windows-latest
         path: |
           *tar.gz
 
@@ -73,7 +73,7 @@ jobs:
 
     - name: Get short SHA
       id: slug
-      run: echo "::set-output name=sha8::$(echo ${GITHUB_SHA} | cut -c1-8)"
+      run: echo "SHA=$(echo ${GITHUB_SHA} | cut -c1-8)" >> $GITHUB_ENV
 
     - name: Download artifacts
       uses: actions/download-artifact@v3
@@ -87,9 +87,9 @@ jobs:
         automatic_release_tag: "latest"
         title: "Development build"
         files: |
-          hdl-dump-${{ steps.slug.outputs.sha8 }}-windows-latest/*
-          hdl-dump-${{ steps.slug.outputs.sha8 }}-ubuntu-latest/*
-          hdl-dump-${{ steps.slug.outputs.sha8 }}-macos-latest/*
+          hdl-dump-${{ env.SHA }}-windows-latest/*
+          hdl-dump-${{ env.SHA }}-ubuntu-latest/*
+          hdl-dump-${{ env.SHA }}-macos-latest/*
 
     - name: Create Tagged Release Draft
       if: startsWith(github.ref, 'refs/tags/v')
@@ -99,6 +99,6 @@ jobs:
         prerelease: false
         draft: true
         files: |
-          hdl-dump-${{ steps.slug.outputs.sha8 }}-windows-latest/*
-          hdl-dump-${{ steps.slug.outputs.sha8 }}-ubuntu-latest/*
-          hdl-dump-${{ steps.slug.outputs.sha8 }}-macos-latest/*
+          hdl-dump-${{ env.SHA }}-windows-latest/*
+          hdl-dump-${{ env.SHA }}-ubuntu-latest/*
+          hdl-dump-${{ env.SHA }}-macos-latest/*
