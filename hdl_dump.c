@@ -60,6 +60,9 @@
 #define BOLD         "\033[1m"
 #define WARNING_SIGN "/\033[4m!\033[0m\\"
 
+#define CSVPRINT 			(1 << 1)
+#define CDVD_INFO_NEW_STYLE (1 << 2)
+
 /* command names */
 #define CMD_QUERY "query"
 #if defined(INCLUDE_DUMP_CMD)
@@ -388,7 +391,8 @@ show_toc(const dict_t *config,
 /**************************************************************/
 static int
 show_hdl_toc(const dict_t *config,
-             const char *device_name)
+             const char *device_name,
+			 unsigned int flags)
 {
     /*@only@*/ hio_t *hio = NULL;
     int result = hio_probe(config, device_name, &hio);
@@ -442,7 +446,7 @@ show_hdl_toc(const dict_t *config,
                     }
                 }
 
-                printf("%3s %7luKB %*s %-3s %-12s %s\n",
+                printf((flags & CSVPRINT) ? "%3s;%7luKB;%*s;%-3s;%-12s;%s\n" : "%3s %7luKB %*s %-3s %-12s %s\n",
                        game->is_dvd != 0 ? "DVD" : "CD ",
                        (unsigned long)game->raw_size_in_kb,
                        MAX_FLAGS * 2 - 1, compat_flags,
@@ -698,7 +702,7 @@ zero_device(const char *device_name)
 static int
 cdvd_info(const dict_t *config,
           const char *path,
-          int new_style,
+          unsigned int flags,
           FILE *out)
 {
     /*@only@*/ iin_t *iin = NULL;
@@ -711,13 +715,13 @@ cdvd_info(const dict_t *config,
             result = isofs_get_ps2_cdvd_info(iin, &info);
             if (result == OSAL_OK) {
                 u_int64_t tot_size = (u_int64_t)num_sectors * sector_size;
-                if (new_style == 0)
-                    fprintf(out, "\"%s\" \"%s\" %s %luKB\n",
+                if (flags & CDVD_INFO_NEW_STYLE)
+                    fprintf(out, (flags & CSVPRINT) ? "%s;%s;%s;%luKB\n" : "\"%s\" \"%s\" %s %luKB\n",
                             info.startup_elf, info.volume_id,
                             (info.layer_pvd != 0 ? "dual layer" : ""),
                             (unsigned long)(tot_size / 1024));
                 else
-                    fprintf(out, "%s%s %luKB \"%s\" \"%s\" \n",
+                    fprintf(out, (flags & CSVPRINT) ? "%s%s;%luKB;%s;%s\n" : "%s%s %luKB \"%s\" \"%s\" \n",
                             (info.layer_pvd != 0 ? "dual-layer " : ""),
                             (info.media_type == mt_cd  ? "CD" :
                              info.media_type == mt_dvd ? "DVD" :
@@ -1498,8 +1502,10 @@ show_usage_and_exit(const char *app_path,
          "  hdl_dump toc device --dm | sudo dmsetup create --concise\n\n"
          "  device should be a block device such as /dev/hda. For manipulating disk images, use losetup and a loopback device\n",
          "hdd1:", "192.168.0.10", 0},
-        {CMD_HDL_TOC, "device",
-         "display a list of all HDL games on the PlayStation 2 HDD", NULL,
+        {CMD_HDL_TOC, "device [--csv]",
+         "display a list of all HDL games on the PlayStation 2 HDD", 
+		 "Flags:\n"
+		 "--csv: Print data separated by semicolons, useful for scripts processing the output",
          "hdd1:", "192.168.0.10", 0},
 #if defined(INCLUDE_MAP_CMD)
         {CMD_MAP, "device",
@@ -1564,11 +1570,15 @@ show_usage_and_exit(const char *app_path,
          "You need boot.elf for installing the game. More info in Readme\n"
          "-hide will cause it to be hidden in HDDOSD/Browser 2.0",
          "192.168.0.10 cd0:", "hdd1: c:\\gt3.iso", 1},
-        {CMD_CDVD_INFO, "iin_input",
-         "display signature (startup file), volume label and data size for a CD-/DVD-drive or image file", NULL,
+        {CMD_CDVD_INFO, "iin_input [--csv]",
+         "display signature (startup file), volume label and data size for a CD-/DVD-drive or image file", 
+		 "Flags:\n"
+		 "--csv: Print data separated by semicolons, useful for scripts processing the output",
          "c:\\gt3.gi", "\"hdd2:Gran Turismo 3\"", 0},
-        {CMD_CDVD_INFO2, "iin_input",
-         "display media type, startup ELF, volume label and data size for a CD-/DVD-drive or image file", NULL,
+        {CMD_CDVD_INFO2, "iin_input [--csv]",
+         "display media type, startup ELF, volume label and data size for a CD-/DVD-drive or image file", 
+		 "Flags:\n"
+		 "--csv: Print data separated by semicolons, useful for scripts processing the output",
          "c:\\gt3.gi", "\"hdd2:Gran Turismo 3\"", 0},
         {CMD_POWER_OFF, "ip",
          "power off Playstation 2", NULL,
@@ -1929,7 +1939,7 @@ handle_result_and_exit(int result,
 int main(int argc, char *argv[])
 {
     dict_t *config = NULL;
-
+	int flags = 0;
     /* load configuration */
     config = dict_alloc();
     if (config != NULL) {
@@ -1985,9 +1995,13 @@ int main(int argc, char *argv[])
         }
 
         else if (caseless_compare(command_name, CMD_HDL_TOC)) { /* show a TOC of installed games only */
-            if (argc != 3)
+            if (argc < 3)
                 show_usage_and_exit(argv[0], CMD_HDL_TOC);
-            handle_result_and_exit(show_hdl_toc(config, argv[2]),
+			if (argc > 3) {
+				if (!strcmp(argv[3], "--csv"))
+					flags |= CSVPRINT;
+			}
+            handle_result_and_exit(show_hdl_toc(config, argv[2], flags),
                                    argv[2], NULL);
         }
 
@@ -2139,18 +2153,30 @@ int main(int argc, char *argv[])
 #endif /* INCLUDE_CUTOUT_CMD defined? */
 
         else if (caseless_compare(command_name, CMD_CDVD_INFO)) { /* try to display startup file and volume label for an iin */
-            if (argc != 3)
+            if (argc < 3)
                 show_usage_and_exit(argv[0], CMD_CDVD_INFO);
-
-            handle_result_and_exit(cdvd_info(config, argv[2], 0, stdout),
+			
+			flags |= CDVD_INFO_NEW_STYLE;
+			
+			if (argc > 3) {
+				if (!strcmp(argv[3], "--csv"))
+					flags |= CSVPRINT;
+			}
+			
+            handle_result_and_exit(cdvd_info(config, argv[2], flags, stdout),
                                    argv[2], NULL);
         }
 
         else if (caseless_compare(command_name, CMD_CDVD_INFO2)) { /* try to display startup file and volume label for an iin */
-            if (argc != 3)
+            if (argc < 3)
                 show_usage_and_exit(argv[0], CMD_CDVD_INFO);
 
-            handle_result_and_exit(cdvd_info(config, argv[2], 1, stdout),
+			if (argc > 3) {
+				if (!strcmp(argv[3], "--csv"))
+					flags |= CSVPRINT;
+			}
+			
+            handle_result_and_exit(cdvd_info(config, argv[2], flags, stdout),
                                    argv[2], NULL);
         }
 
