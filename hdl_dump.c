@@ -1124,12 +1124,14 @@ inject(const dict_t *config,
                 } else {
                     result = hdl_inject(hio, iin, &game, slice_index, is_hidden, pgs);
                 }
-                (void)iin->close(iin_zso), iin_zso = NULL;
             }
 
             (void)hio->close(hio), hio = NULL;
         }
+
         (void)iin->close(iin), iin = NULL;
+        if (iin_zso != NULL)
+            (void)iin_zso->close(iin_zso), iin_zso = NULL;
     }
 
     return (result);
