@@ -1129,8 +1129,7 @@ inject(const dict_t *config,
             (void)hio->close(hio), hio = NULL;
         }
 
-        if (iin != NULL)
-            (void)iin->close(iin), iin = NULL;
+        (void)iin->close(iin), iin = NULL;
         if (iin_zso != NULL)
             (void)iin_zso->close(iin_zso), iin_zso = NULL;
     }
