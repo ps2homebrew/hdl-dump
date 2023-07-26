@@ -1085,7 +1085,7 @@ inject(const dict_t *config,
             memmove(game.name, name, sizeof(game.name) - 1);
             game.name[sizeof(game.name) - 1] = '\0';
             game.layer_break = 0;
-            if (strcmp(&input[sizeof(input) - 4], ".zso") == 0) {
+            if (strcmp(&input[strlen(input) - 4], ".zso") != 0) {
                 result = isofs_get_ps2_cdvd_info(iin, &info);
                 if (result == RET_OK)
                     if (info.layer_pvd != 0)
