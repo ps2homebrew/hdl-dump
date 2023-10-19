@@ -54,7 +54,6 @@
 #include "aligned.h"
 #include "hio.h"
 #include "dict.h"
-#include "net_io.h"
 
 #if defined(_BUILD_WIN32)
 #define UNBOLD       ""
@@ -100,7 +99,6 @@
 #define CMD_HDL_INSTALL    "install"
 #define CMD_CDVD_INFO      "cdvd_info"
 #define CMD_CDVD_INFO2     "cdvd_info2"
-#define CMD_POWER_OFF      "poweroff"
 #if defined(INCLUDE_INJECT_MBR_CMD)
 #define CMD_INJECT_MBR "inject_mbr"
 #endif
@@ -1411,21 +1409,6 @@ copy_hdd(const dict_t *config,
 
 
 /**************************************************************/
-static int
-remote_poweroff(const dict_t *config,
-                const char *ip)
-{
-    /*@only@*/ hio_t *hio = NULL;
-    int result = hio_probe(config, ip, &hio);
-    if (result == RET_OK && hio != NULL) {
-        result = hio->poweroff(hio);
-        (void)hio->close(hio), hio = NULL;
-    }
-    return (result);
-}
-
-
-/**************************************************************/
 static volatile int sigint_catched = 0;
 
 static void
@@ -1589,9 +1572,6 @@ show_usage_and_exit(const char *app_path,
          "Flags:\n"
          "--csv: Print data separated by semicolons, useful for scripts processing the output",
          "c:\\gt3.gi", "\"hdd2:Gran Turismo 3\"", 0},
-        {CMD_POWER_OFF, "ip",
-         "power off Playstation 2", NULL,
-         "192.168.0.10", NULL, 0},
 #if defined(INCLUDE_INJECT_MBR_CMD)
         {CMD_INJECT_MBR, "device input_file",
          "inject input_file into MBR",
@@ -2187,14 +2167,6 @@ int main(int argc, char *argv[])
             }
 
             handle_result_and_exit(cdvd_info(config, argv[2], flags, stdout),
-                                   argv[2], NULL);
-        }
-
-        else if (caseless_compare(command_name, CMD_POWER_OFF)) { /* PS2 power-off */
-            if (argc != 3)
-                show_usage_and_exit(argv[0], CMD_POWER_OFF);
-
-            handle_result_and_exit(remote_poweroff(config, argv[2]),
                                    argv[2], NULL);
         }
 
