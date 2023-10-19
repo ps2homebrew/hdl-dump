@@ -150,7 +150,7 @@ int apa_initialize_ex(hio_t *hio, const char *file_name);
 int apa_dump_mbr(const dict_t *config,
                  const char *device, const char *file_name);
 
-int apa_dump_header(hio_t *hio, u_int32_t starting_partition_sector);
+int apa_dump_header(const char *path, u_int32_t starting_partition_sector);
 
 C_END
 
