@@ -94,18 +94,6 @@ trace_write(hio_t *hio,
 }
 
 
-/**************************************************************/
-static int
-trace_poweroff(hio_t *hio)
-{
-    hio_trace_t *trace = (hio_trace_t *)hio;
-    int result;
-    fprintf(trace->log, "hio->poweroff (%p", (void *)trace->real);
-    result = trace->real->poweroff(trace->real);
-    fprintf(trace->log, ") = %d\n", result);
-    return (result);
-}
-
 
 /**************************************************************/
 static int
@@ -114,7 +102,6 @@ trace_flush(hio_t *hio)
     hio_trace_t *trace = (hio_trace_t *)hio;
     int result;
     fprintf(trace->log, "hio->flush (%p", (void *)trace->real);
-    result = trace->real->poweroff(trace->real);
     fprintf(trace->log, ") = %d\n", result);
     return (result);
 }
@@ -173,7 +160,6 @@ trace_alloc(hio_t *real)
         trace->hio.write = &trace_write;
         trace->hio.flush = &trace_flush;
         trace->hio.close = &trace_close;
-        trace->hio.poweroff = &trace_poweroff;
         trace->hio.last_error = &trace_last_error;
         trace->hio.dispose_error = &trace_dispose_error;
 

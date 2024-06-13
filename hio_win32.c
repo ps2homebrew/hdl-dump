@@ -105,14 +105,6 @@ win32_flush(/*@unused@*/ hio_t *hio)
 
 /**************************************************************/
 static int
-win32_poweroff(/*@unused@*/ hio_t *hio)
-{ /* win32_poweroff is intentionately blank */
-    return (RET_OK);
-}
-
-
-/**************************************************************/
-static int
 win32_close(/*@special@*/ /*@only@*/ hio_t *hio) /*@releases hio@*/
 {
     hio_win32_t *hw32 = (hio_win32_t *)hio;
@@ -151,7 +143,6 @@ win32_alloc(osal_handle_t device) /*@allocates result@*/ /*@defines result@*/
         hw32->hio.read = &win32_read;
         hw32->hio.write = &win32_write;
         hw32->hio.flush = &win32_flush;
-        hw32->hio.poweroff = &win32_poweroff;
         hw32->hio.close = &win32_close;
         hw32->hio.last_error = &win32_last_error;
         hw32->hio.dispose_error = &win32_dispose_error;

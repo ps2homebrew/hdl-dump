@@ -60,7 +60,7 @@ SOURCES = hdl_dump.c \
 	iin_img_base.c iin_optical.c iin_iso.c iin_cdrwin.c \
 	iin_nero.c iin_gi.c iin_iml.c iin_probe.c iin_hio.c \
 	hio_probe.c hio_win32.c hio_dbg.c hio_trace.c \
-	net_common.c byteseq.c dict.c hio_udpnet2.c
+	byteseq.c dict.c
 
 # "autodetect" Windows builds
 ifdef SYSTEMROOT

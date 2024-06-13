@@ -55,8 +55,6 @@ typedef int (*hio_write_t)(hio_t *hio,
 
 typedef int (*hio_flush_t)(hio_t *hio);
 
-typedef int (*hio_poweroff_t)(hio_t *hio);
-
 typedef int (*hio_close_t)(/*@special@*/ /*@only@*/ hio_t *hio) /*@releases hio@*/;
 
 /* return last error text in a memory buffer, that would be freed by calling hio_dispose_error_t */
@@ -72,7 +70,6 @@ struct hio_type
     hio_write_t write;
     hio_flush_t flush;
     hio_close_t close;
-    hio_poweroff_t poweroff;
     hio_last_error_t last_error;
     hio_dispose_error_t dispose_error;
 };
