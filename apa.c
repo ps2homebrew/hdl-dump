@@ -1268,29 +1268,34 @@ char *ppa_files_name[] = {
     NULL,
 };
 
-int apa_dump_header(hio_t *hio, u_int32_t starting_partition_sector)
+int apa_dump_header(const char *path, u_int32_t starting_partition_sector)
 {
+    int index = 0;
     ppaa_partition_t *head;
-    int index = 0, result;
-    char *buffer;
-    u_int32_t bytes_read;
+    size_t bytes_read, bytes_to_read;
+    FILE *fd;
+    long int offset = PPAA_START + starting_partition_sector * 512;
 
-    buffer = osal_alloc(4 _MB);
-    result = hio->read(hio, starting_partition_sector + PPAA_START / 512, 4 _MB / 512, buffer, &bytes_read);
-    if (result != RET_OK)
-        return (result);
+    if ((fd = fopen(path, "r")) == NULL)
+        return -1;
 
-    head = (ppaa_partition_t *)buffer;
+    bytes_to_read = sizeof(ppaa_partition_t);
+    head = malloc(bytes_to_read);
+    fseek(fd, offset, SEEK_SET);
+    bytes_read = fread((void *)head, bytes_to_read, 1, fd);
+    if (!bytes_read)
+        return -1;
 
     if (strncmp(head->magic, PPAA_MAGIC, sizeof(head->magic)))
         return RET_BAD_APA;
 
-    while (index < 62) {
-        ssize_t bytes_to_read = head->file[index].size;
-        char *filename, genname[10];
-
-        if (bytes_to_read == 0)
-            break;
+    do {
+        FILE *fdump;
+        char *buffer, *filename, genname[10];
+        bytes_to_read = head->file[index].size;
+        if (bytes_to_read == 0) {
+            continue;
+        }
 
         if (ppa_files_name[index])
             filename = ppa_files_name[index];
@@ -1299,13 +1304,20 @@ int apa_dump_header(hio_t *hio, u_int32_t starting_partition_sector)
             sprintf(genname, "HEADER_%d", index);
         }
 
-        fprintf(stdout, "%-10s offset=0x%-10x size=%lu\n", filename, head->file[index].offset, bytes_to_read);
-        result = write_file(filename, buffer + head->file[index].offset, bytes_to_read);
-        if (result != RET_OK)
-            return (result);
-        index++;
-    }
+        buffer = malloc(bytes_to_read);
+        fseek(fd, offset + head->file[index].offset, SEEK_SET);
+        bytes_read = fread((void *)buffer, bytes_to_read, 1, fd);
+        if (!bytes_read)
+            return -1;
 
-    osal_free(buffer);
+        fprintf(stdout, "%-10s offset=0x%-10x size=%lu\n", filename, head->file[index].offset, bytes_to_read);
+        fdump = fopen(filename, "wb");
+        bytes_read = fwrite(buffer, bytes_to_read, 1, fdump);
+        fclose(fdump);
+        free(buffer);
+    } while (++index < 62);
+
+    fclose(fd);
+    free(head);
     return 0;
 }
