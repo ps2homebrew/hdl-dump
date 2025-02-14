@@ -301,7 +301,7 @@ apa_slice_read(hio_t *hio,
 
     if (!raw) {
         if (count == 0)
-            /* no partitions? __boot should always exists */
+            /* no partitions? __mbr should always exists */
             result = RET_BAD_APA;
 
         if (result == RET_OK) {
@@ -1029,8 +1029,8 @@ apa_check_slice(const apa_slice_t *slice)
         else
             return (RET_BAD_APA); /* data behind end-of-slice */
 
-        if ((get_u32(&part->length) % ((128 _MB) / 512)) != 0)
-            return (RET_BAD_APA); /* partition size not multiple to 128MB */
+        if ((get_u32(&part->length) % ((8 _MB) / 512)) != 0)
+            return (RET_BAD_APA); /* partition size not multiple to 8MB */
 
         if ((get_u32(&part->start) % get_u32(&part->length)) != 0)
             return (RET_BAD_APA); /* partition start not multiple on partition size */
