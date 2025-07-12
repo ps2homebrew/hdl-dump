@@ -1617,11 +1617,13 @@ show_usage_and_exit(const char *app_path,
 #endif /* INCLUDE_DUMP_MBR_CMD defined? */
 #if defined(INCLUDE_BACKUP_TOC_CMD)
         {CMD_BACKUP_TOC, "device file",
+         "Warning: !! will not work properly for HDDs with 8Mb partitions\n"
          "dump TOC into a binary file", NULL,
          "hdd1: toc.bak", NULL, 0},
 #endif /* INCLUDE_BACKUP_TOC_CMD defined? */
 #if defined(INCLUDE_RESTORE_TOC_CMD)
         {CMD_RESTORE_TOC, "device file",
+         "Danger! Will destroy HDD data if you have 8Mb partitions installed\n"
          "restore TOC from a binary file", NULL,
          "hdd1: toc.bak", NULL, 1},
 #endif /* INCLUDE_RESTORE_TOC_CMD defined? */
