@@ -277,14 +277,14 @@ typedef struct dm_concise
 } dm_concise;
 
 static void
-show_dm_toc(const dict_t *config, const apa_toc_t *toc, const char *device_name)
+show_dm_toc(const dict_t *config, const apa_toc_t *toc, const char *device_name, const char *part_name)
 {
     const apa_slice_t *slice;
     dm_concise *pconcise;
     dm_table *ptable;
     u_int32_t offset;
     unsigned int i, j;
-    int result;
+    int result, once = 0;
     /* we need hio just to read game info ... */
     hio_t *hio = NULL;
     hdl_game_alloc_table_t gat;
@@ -305,9 +305,15 @@ show_dm_toc(const dict_t *config, const apa_toc_t *toc, const char *device_name)
     pconcise->uuid = "";  /* let dmsetup set it*/
     pconcise->minor = ""; /* let dmsetup set it*/
 
+    if (part_name)
+        once = 1;
+
     for (i = 0; i < slice->part_count; ++i) {
         const ps2_partition_header_t *part = &slice->parts[i].header;
         if (!strncmp(part->id, "__mbr", 5))
+            continue;
+
+        if (once && strncmp(part->id, part_name, PS2_PART_IDMAX))
             continue;
 
         if (part->flags == PS2_PART_FLAG_SUB) {
@@ -371,8 +377,12 @@ show_dm_toc(const dict_t *config, const apa_toc_t *toc, const char *device_name)
             ptable = &pconcise->table[j];
             fprintf(stdout, ",%u %u %s %s %u", ptable->logical_start_sector, ptable->num_sectors, ptable->target_type, device_name, ptable->target_args);
         }
-        fprintf(stdout, ";");
         free(pconcise->table);
+
+        if (once)
+            break;
+
+        fprintf(stdout, ";");
     }
     free(pconcise);
 }
@@ -381,7 +391,8 @@ show_dm_toc(const dict_t *config, const apa_toc_t *toc, const char *device_name)
 static int
 show_toc(const dict_t *config,
          const char *device_name,
-         const char *option)
+         const char *option,
+         const char *path_name)
 {
     /*@only@*/ apa_toc_t *toc = NULL;
     int result = apa_toc_read(config, device_name, &toc);
@@ -389,7 +400,7 @@ show_toc(const dict_t *config,
         if (option == NULL)
             show_apa_toc(toc, 1);
         else if (!strncmp(option, "--dm", 4))
-            show_dm_toc(config, toc, device_name);
+            show_dm_toc(config, toc, device_name, path_name);
         apa_toc_free(toc);
     }
     return (result);
@@ -1450,19 +1461,18 @@ progress_cb(progress_t *pgs, /*@unused@*/ void *data)
         fprintf(stdout, "[");
         pos = barWidth * (pgs->pc_completed);
         for (i = 0; i < barWidth; ++i) {
-	        if (i < pos)
-	    	    fprintf(stdout, "=");
-	        else if (i == pos)
-	    	    fprintf(stdout, ">");
-	        else
-	    	    fprintf(stdout, " ");
-	    }
+            if (i < pos)
+                fprintf(stdout, "=");
+            else if (i == pos)
+                fprintf(stdout, ">");
+            else
+                fprintf(stdout, " ");
+        }
         fprintf(stdout,
                 "] %3d%%, %s remaining, %.2f MB/sec         \r",
                 pgs->pc_completed, pgs->remaining_text,
                 (double)pgs->curr_bps / (1024.0 * 1024.0));
-    }
-    else
+    } else
         fprintf(stdout, "%3d%%\r", pgs->pc_completed);
 
     if (now > last_flush) { /* flush about once per second */
@@ -1500,186 +1510,185 @@ show_usage_and_exit(const char *app_path,
         const char *example1, *example2;
         int dangerous;
     } help[] =
-    {
+        {
 #if defined(_BUILD_WIN32)
-        {CMD_QUERY, NULL,
-         "display a list of all recognized hard- and optical drives",
-         NULL, NULL, NULL, 0},
+            {CMD_QUERY, NULL,
+             "display a list of all recognized hard- and optical drives",
+             NULL, NULL, NULL, 0},
 #endif
 #if defined(INCLUDE_DUMP_CMD)
-        {CMD_DUMP, "device file",
-         "make device image (AKA ISO-image)", NULL,
-         "cd0: c:\\tekken.iso", "\"Tekken@192.168.0.10\" ./tekken.iso", 0},
+            {CMD_DUMP, "device file",
+             "make device image (AKA ISO-image)", NULL,
+             "cd0: c:\\tekken.iso", "\"Tekken@192.168.0.10\" ./tekken.iso", 0},
 #endif
 #if defined(INCLUDE_COMPARE_IIN_CMD)
-        {CMD_COMPARE_IIN, "iin1 iin2",
-         "compare two ISO inputs", NULL,
-         "c:\\tekken.cue cd0:", "c:\\gt3.gi GT3@hdd1:", 0},
+            {CMD_COMPARE_IIN, "iin1 iin2",
+             "compare two ISO inputs", NULL,
+             "c:\\tekken.cue cd0:", "c:\\gt3.gi GT3@hdd1:", 0},
 #endif
-        {CMD_TOC, "device [option]",
-         "display PlayStation 2 HDD TOC",
-         "option:\n\n"
-         "--dm : print \"concise\" tables for linux device-mapper to be used like that:\n"
-         "  hdl_dump toc device --dm | sudo dmsetup create --concise\n\n"
-         "  device should be a block device such as /dev/hda. For manipulating disk images, use losetup and a loopback device\n",
-         "hdd1:", "192.168.0.10", 0},
-        {CMD_HDL_TOC, "device [--csv]",
-         "display a list of all HDL games on the PlayStation 2 HDD",
-         "Flags:\n"
-         "--csv: Print data separated by semicolons, useful for scripts processing the output",
-         "hdd1:", "192.168.0.10", 0},
+            {CMD_TOC, "device [option]",
+             "display PlayStation 2 HDD TOC",
+             "option:\n\n"
+             "--dm [name]: print \"concise\" tables for linux device-mapper to be used like that:\n"
+             "  hdl_dump toc device --dm | sudo dmsetup create --concise\n\n"
+             "  device should be a block device such as /dev/hda. For manipulating disk images, use losetup and a loopback device\n",
+             "hdd1:", "192.168.0.10", 0},
+            {CMD_HDL_TOC, "device [--csv]",
+             "display a list of all HDL games on the PlayStation 2 HDD",
+             "Flags:\n"
+             "--csv: Print data separated by semicolons, useful for scripts processing the output",
+             "hdd1:", "192.168.0.10", 0},
 #if defined(INCLUDE_MAP_CMD)
-        {CMD_MAP, "device",
-         "display PlayStation 2 HDD usage map", NULL,
-         "hdd1:", NULL, 0},
+            {CMD_MAP, "device",
+             "display PlayStation 2 HDD usage map", NULL,
+             "hdd1:", NULL, 0},
 #endif
 #if defined(INCLUDE_HIDE_CMD)
-        {CMD_HIDE, "device partition/game",
-         "hide PlayStation 2 HDD partition", "First attempts to locate partition\n"
-                                             "by name, then by game name. It is better to use another tool for removing.",
-         "hdd1: \"PP.HDL.Tekken Tag Tournament\"", "192.168.0.10 \"Tekken\"", 1},
+            {CMD_HIDE, "device partition/game",
+             "hide PlayStation 2 HDD partition", "First attempts to locate partition\n"
+                                                 "by name, then by game name. It is better to use another tool for removing.",
+             "hdd1: \"PP.HDL.Tekken Tag Tournament\"", "192.168.0.10 \"Tekken\"", 1},
 #endif
 #if defined(INCLUDE_ZERO_CMD)
-        {CMD_ZERO, "device",
-         "fill HDD with zeroes. All information on the HDD will be lost", NULL,
-         "hdd1:", NULL, 1},
+            {CMD_ZERO, "device",
+             "fill HDD with zeroes. All information on the HDD will be lost", NULL,
+             "hdd1:", NULL, 1},
 #endif
 #if defined(INCLUDE_CUTOUT_CMD)
-        {CMD_CUTOUT, "device size_in_MB [@slice_index]",
-         "display partition table as if a new partition has been created",
-         "slice_index is the index of the slice to attempt to allocate in first\n"
-         "-- 1 or 2.",
-         "hdd1: 2560", "192.168.0.10 640", 0},
+            {CMD_CUTOUT, "device size_in_MB [@slice_index]",
+             "display partition table as if a new partition has been created",
+             "slice_index is the index of the slice to attempt to allocate in first\n"
+             "-- 1 or 2.",
+             "hdd1: 2560", "192.168.0.10 640", 0},
 #endif
 #if defined(INCLUDE_INFO_CMD)
-        {CMD_HDL_INFO, "device partition",
-         "display information about HDL partition", NULL,
-         "hdd1: \"tekken tag tournament\"", "192.168.0.10 Tekken", 0},
+            {CMD_HDL_INFO, "device partition",
+             "display information about HDL partition", NULL,
+             "hdd1: \"tekken tag tournament\"", "192.168.0.10 Tekken", 0},
 #endif
-        {CMD_HDL_EXTRACT, "device name output_file",
-         "extract application image from HDL partition", NULL,
-         "hdd1: \"tekken tag tournament\" c:\\tekken.iso", NULL, 0},
-        {CMD_HDL_INJECT_CD, "target name source [startup] [+flags] [*dma] [@slice_index] [-hide]",
-         "create a new HDL partition from a CD",
-         "You can use boot.elf, list.cio, icon.sys. Check Readme\n"
-         "Supported inputs: plain ISO files, CDRWIN cuesheets, Nero images and tracks,\n"
-         "RecordNow! Global images, HDL partitions (PP.HDL.Xenosaga@hdd1:) and\n"
-         "Sony CD/DVD generator IML files (with full paths).\n"
-         /* "Startup file, dma and compatibility flags are optional.\n" */
-         "Items in brackets [] are optional.\n"
-         "Flags syntax is `+#[+#[+#]]' or `0xNN', for example `+1', `+2+3', `0x00', `0x03' etc.\n"
-         "DMA syntax is `*u4` for UDMA4 (default).\n"
-         "-hide will cause it to be hidden in HDDOSD/Browser 2.0",
-         "192.168.0.10 \"Tekken Tag Tournament\" cd0: SCES_xxx.xx *u4",
-         "hdd1: \"Tekken\" c:\\tekken.iso SCES_xxx.xx +1+2 *u4", 1},
-        {CMD_HDL_INJECT_DVD, "target name source [startup] [+flags] [*dma] [@slice_index] [-hide]",
-         "create a new HDL partition from a DVD",
-         "You can use boot.elf, list.cio, icon.sys. Check Readme\n"
-         "DVD-9 supports only ISO or IML.\n"
-         "Supported inputs: plain ISO files, CDRWIN cuesheets, Nero images and tracks,\n"
-         "RecordNow! Global images, HDL partitions (PP.HDL.Xenosaga@192....) and\n"
-         "Sony CD/DVD generator IML files (with full paths).\n"
-         /* "Startup file, dma and compatibility flags are optional.\n" */
-         "Items in brackets [] are optional.\n"
-         "Flags syntax is `+#[+#[+#]]' or `0xNN', for example `+1', `+2+3', `0x00', `0x03', etc.\n"
-         "DMA syntax is `*u4` for UDMA4 (default).\n"
-         "-hide will cause it to be hidden in HDDOSD/Browser 2.0",
-         "192.168.0.10 \"Gran Turismo 3\" cd0: *u4",
-         "hdd1: \"Gran Turismo 3\" c:\\gt3.iso SCES_xxx.xx +2+3 *u4", 1},
-        {CMD_HDL_INSTALL, "target source [@slice_index] [-hide]",
-         "create a new HDL partition from a source, that has an entry in compatibility list",
-         "You need boot.elf for installing the game. More info in Readme\n"
-         "-hide will cause it to be hidden in HDDOSD/Browser 2.0",
-         "192.168.0.10 cd0:", "hdd1: c:\\gt3.iso", 1},
-        {CMD_CDVD_INFO, "iin_input [--csv]",
-         "display signature (startup file), volume label and data size for a CD-/DVD-drive or image file",
-         "Flags:\n"
-         "--csv: Print data separated by semicolons, useful for scripts processing the output",
-         "c:\\gt3.gi", "\"hdd2:Gran Turismo 3\"", 0},
-        {CMD_CDVD_INFO2, "iin_input [--csv]",
-         "display media type, startup ELF, volume label and data size for a CD-/DVD-drive or image file",
-         "Flags:\n"
-         "--csv: Print data separated by semicolons, useful for scripts processing the output",
-         "c:\\gt3.gi", "\"hdd2:Gran Turismo 3\"", 0},
-        {CMD_POWER_OFF, "ip",
-         "power off Playstation 2", NULL,
-         "192.168.0.10", NULL, 0},
+            {CMD_HDL_EXTRACT, "device name output_file",
+             "extract application image from HDL partition", NULL,
+             "hdd1: \"tekken tag tournament\" c:\\tekken.iso", NULL, 0},
+            {CMD_HDL_INJECT_CD, "target name source [startup] [+flags] [*dma] [@slice_index] [-hide]",
+             "create a new HDL partition from a CD",
+             "You can use boot.elf, list.cio, icon.sys. Check Readme\n"
+             "Supported inputs: plain ISO files, CDRWIN cuesheets, Nero images and tracks,\n"
+             "RecordNow! Global images, HDL partitions (PP.HDL.Xenosaga@hdd1:) and\n"
+             "Sony CD/DVD generator IML files (with full paths).\n"
+             /* "Startup file, dma and compatibility flags are optional.\n" */
+             "Items in brackets [] are optional.\n"
+             "Flags syntax is `+#[+#[+#]]' or `0xNN', for example `+1', `+2+3', `0x00', `0x03' etc.\n"
+             "DMA syntax is `*u4` for UDMA4 (default).\n"
+             "-hide will cause it to be hidden in HDDOSD/Browser 2.0",
+             "192.168.0.10 \"Tekken Tag Tournament\" cd0: SCES_xxx.xx *u4",
+             "hdd1: \"Tekken\" c:\\tekken.iso SCES_xxx.xx +1+2 *u4", 1},
+            {CMD_HDL_INJECT_DVD, "target name source [startup] [+flags] [*dma] [@slice_index] [-hide]",
+             "create a new HDL partition from a DVD",
+             "You can use boot.elf, list.cio, icon.sys. Check Readme\n"
+             "DVD-9 supports only ISO or IML.\n"
+             "Supported inputs: plain ISO files, CDRWIN cuesheets, Nero images and tracks,\n"
+             "RecordNow! Global images, HDL partitions (PP.HDL.Xenosaga@192....) and\n"
+             "Sony CD/DVD generator IML files (with full paths).\n"
+             /* "Startup file, dma and compatibility flags are optional.\n" */
+             "Items in brackets [] are optional.\n"
+             "Flags syntax is `+#[+#[+#]]' or `0xNN', for example `+1', `+2+3', `0x00', `0x03', etc.\n"
+             "DMA syntax is `*u4` for UDMA4 (default).\n"
+             "-hide will cause it to be hidden in HDDOSD/Browser 2.0",
+             "192.168.0.10 \"Gran Turismo 3\" cd0: *u4",
+             "hdd1: \"Gran Turismo 3\" c:\\gt3.iso SCES_xxx.xx +2+3 *u4", 1},
+            {CMD_HDL_INSTALL, "target source [@slice_index] [-hide]",
+             "create a new HDL partition from a source, that has an entry in compatibility list",
+             "You need boot.elf for installing the game. More info in Readme\n"
+             "-hide will cause it to be hidden in HDDOSD/Browser 2.0",
+             "192.168.0.10 cd0:", "hdd1: c:\\gt3.iso", 1},
+            {CMD_CDVD_INFO, "iin_input [--csv]",
+             "display signature (startup file), volume label and data size for a CD-/DVD-drive or image file",
+             "Flags:\n"
+             "--csv: Print data separated by semicolons, useful for scripts processing the output",
+             "c:\\gt3.gi", "\"hdd2:Gran Turismo 3\"", 0},
+            {CMD_CDVD_INFO2, "iin_input [--csv]",
+             "display media type, startup ELF, volume label and data size for a CD-/DVD-drive or image file",
+             "Flags:\n"
+             "--csv: Print data separated by semicolons, useful for scripts processing the output",
+             "c:\\gt3.gi", "\"hdd2:Gran Turismo 3\"", 0},
+            {CMD_POWER_OFF, "ip",
+             "power off Playstation 2", NULL,
+             "192.168.0.10", NULL, 0},
 #if defined(INCLUDE_INJECT_MBR_CMD)
-        {CMD_INJECT_MBR, "device input_file",
-         "inject input_file into MBR",
-         "All your partitions remain intact!!!" CMD_INJECT_MBR " is rewrited by AKuHAK.",
-         "hdd1: MBR.KELF", NULL, 1},
+            {CMD_INJECT_MBR, "device input_file",
+             "inject input_file into MBR",
+             "All your partitions remain intact!!!" CMD_INJECT_MBR " is rewrited by AKuHAK.",
+             "hdd1: MBR.KELF", NULL, 1},
 #endif /* INCLUDE_INJECT_MBR_CMD defined? */
 #if defined(INCLUDE_DUMP_MBR_CMD)
-        {CMD_DUMP_MBR, "device output_file",
-         "dump mbr to disc", NULL,
-         "hdd1: MBR.KELF", NULL, 0},
+            {CMD_DUMP_MBR, "device output_file",
+             "dump mbr to disc", NULL,
+             "hdd1: MBR.KELF", NULL, 0},
 #endif /* INCLUDE_DUMP_MBR_CMD defined? */
 #if defined(INCLUDE_BACKUP_TOC_CMD)
-        {CMD_BACKUP_TOC, "device file",
-         "dump TOC into a binary file", NULL,
-         "hdd1: toc.bak", NULL, 0},
+            {CMD_BACKUP_TOC, "device file",
+             "dump TOC into a binary file", NULL,
+             "hdd1: toc.bak", NULL, 0},
 #endif /* INCLUDE_BACKUP_TOC_CMD defined? */
 #if defined(INCLUDE_RESTORE_TOC_CMD)
-        {CMD_RESTORE_TOC, "device file",
-         "restore TOC from a binary file", NULL,
-         "hdd1: toc.bak", NULL, 1},
+            {CMD_RESTORE_TOC, "device file",
+             "restore TOC from a binary file", NULL,
+             "hdd1: toc.bak", NULL, 1},
 #endif /* INCLUDE_RESTORE_TOC_CMD defined? */
 #if defined(INCLUDE_DIAG_CMD)
-        {CMD_DIAG, "device",
-         "scan PS2 HDD for partition errors", NULL,
-         "hdd1:", "192.168.0.10", 0},
+            {CMD_DIAG, "device",
+             "scan PS2 HDD for partition errors", NULL,
+             "hdd1:", "192.168.0.10", 0},
 #endif /* INCLUDE_DIAG_CMD defined? */
 #if defined(INCLUDE_MODIFY_CMD)
-        {CMD_MODIFY, "device game [new_name] [new_flags] [dma] [-hide/-unhide]",
-         "rename a game and/or change compatibility flags",
-         "Items in brackets [] are optional but at least one option must be used.\n"
-         "Flags syntax is `+#[+#[+#]]' or `0xNN', for example `+1', `+2+3', `0x00', `0x03', etc.\n"
-         "DMA syntax is `*u4` for UDMA4\n"
-         "-hide or -unhide will change the visibility of a game in HDDOSD/Browser 2.0",
-         "hdd1: DDS \"Digital Devil Saga\"",
-         "192.168.0.100 \"FF X-2\" +3", 1},
+            {CMD_MODIFY, "device game [new_name] [new_flags] [dma] [-hide/-unhide]",
+             "rename a game and/or change compatibility flags",
+             "Items in brackets [] are optional but at least one option must be used.\n"
+             "Flags syntax is `+#[+#[+#]]' or `0xNN', for example `+1', `+2+3', `0x00', `0x03', etc.\n"
+             "DMA syntax is `*u4` for UDMA4\n"
+             "-hide or -unhide will change the visibility of a game in HDDOSD/Browser 2.0",
+             "hdd1: DDS \"Digital Devil Saga\"",
+             "192.168.0.100 \"FF X-2\" +3", 1},
 #endif /* INCLUDE_MODIFY_CMD defined? */
 #if defined(INCLUDE_COPY_HDD_CMD)
-        {CMD_COPY_HDD, "source_device destination_device [flags]",
-         "copy file between two device",
-         "You need boot.elf and list.ico for installing the game. More info in Readme\n"
-         "Be careful all games will use one list.ico and boot.elf.\n"
-         "Copy games from one device to another. Flags is a sequence of `y' or `n'\n"
-         "characters, one for each game on the source device, given in the same order as\n"
-         "in hdl_toc command list. If no character given for a particular game (or flags\n"
-         "are missing) yes is assumed. " CMD_COPY_HDD " is contributed by JimmyZ.",
-         "hdd1: 192.168.0.100 # to copy all games",
-         "hdd1: hdd2: ynyn # to copy all games but 2nd and 4th", 1},
+            {CMD_COPY_HDD, "source_device destination_device [flags]",
+             "copy file between two device",
+             "You need boot.elf and list.ico for installing the game. More info in Readme\n"
+             "Be careful all games will use one list.ico and boot.elf.\n"
+             "Copy games from one device to another. Flags is a sequence of `y' or `n'\n"
+             "characters, one for each game on the source device, given in the same order as\n"
+             "in hdl_toc command list. If no character given for a particular game (or flags\n"
+             "are missing) yes is assumed. " CMD_COPY_HDD " is contributed by JimmyZ.",
+             "hdd1: 192.168.0.100 # to copy all games",
+             "hdd1: hdd2: ynyn # to copy all games but 2nd and 4th", 1},
 #endif /* INCLUDE_COPY_HDD_CMD defined? */
-        {CMD_MODIFY_HEADER, "device partition_name",
-         "inject attributes into partition header for using with HDD OSD or BB Navigator",
-         "system.cnf,\n"
-         "icon.sys,\n"
-         "list.ico,\n"
-         "del.ico,    if it is not present the list.ico will be used\n"
-         "boot.kelf,\n"
-         "boot.elf,   if boot.kelf not present, boot.elf will be parsed\n"
-         "boot.kirx,\n"
-         "logo.raw (logo.bak will be created).\n"
-         "Every file can be skipped. More info about using and restrictions in README.\n" CMD_MODIFY_HEADER " is contributed by AKuHAK.",
-         "hdd2: PP.POPS-00001",
-         "192.168.0.10 PP.HDL.Battlefield", 1},
-        {CMD_DUMP_HEADER, "device partition_name",
-         "dump all attributes from partition header",
-         "system.cnf,\n"
-         "icon.sys,\n"
-         "list.ico,\n"
-         "del.ico,\n"
-         "boot.kelf,\n"
-         "boot.kirx,\n"
-         "and if more, name HEADER_X, where X is file position in header.",
-         "hdd2: PP.POPS-00001",
-         "192.168.0.10 PP.HDL.Battlefield", 0},
-        {NULL, NULL,
-         NULL, NULL,
-         NULL, NULL, 0}
-    };
+            {CMD_MODIFY_HEADER, "device partition_name",
+             "inject attributes into partition header for using with HDD OSD or BB Navigator",
+             "system.cnf,\n"
+             "icon.sys,\n"
+             "list.ico,\n"
+             "del.ico,    if it is not present the list.ico will be used\n"
+             "boot.kelf,\n"
+             "boot.elf,   if boot.kelf not present, boot.elf will be parsed\n"
+             "boot.kirx,\n"
+             "logo.raw (logo.bak will be created).\n"
+             "Every file can be skipped. More info about using and restrictions in README.\n" CMD_MODIFY_HEADER " is contributed by AKuHAK.",
+             "hdd2: PP.POPS-00001",
+             "192.168.0.10 PP.HDL.Battlefield", 1},
+            {CMD_DUMP_HEADER, "device partition_name",
+             "dump all attributes from partition header",
+             "system.cnf,\n"
+             "icon.sys,\n"
+             "list.ico,\n"
+             "del.ico,\n"
+             "boot.kelf,\n"
+             "boot.kirx,\n"
+             "and if more, name HEADER_X, where X is file position in header.",
+             "hdd2: PP.POPS-00001",
+             "192.168.0.10 PP.HDL.Battlefield", 0},
+            {NULL, NULL,
+             NULL, NULL,
+             NULL, NULL, 0}};
     const char *app;
     if (strrchr(app_path, '/') != NULL)
         app = strrchr(app_path, '/') + 1;
@@ -2009,11 +2018,14 @@ int main(int argc, char *argv[])
 
         else if (caseless_compare(command_name, CMD_TOC)) { /* show TOC of a PlayStation 2 HDD */
             char *option = NULL;
-            if (argc < 3)
+            char *part_name = NULL;
+            if (argc < 3 || argc > 5)
                 show_usage_and_exit(argv[0], CMD_TOC);
-            if (argc == 4)
+            if (argc >= 4)
                 option = argv[3];
-            handle_result_and_exit(show_toc(config, argv[2], option), argv[2], NULL);
+            if (argc == 5)
+                part_name = argv[4];
+            handle_result_and_exit(show_toc(config, argv[2], option, part_name), argv[2], NULL);
         }
 
         else if (caseless_compare(command_name, CMD_HDL_TOC)) { /* show a TOC of installed games only */
