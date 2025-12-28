@@ -153,8 +153,8 @@ show_apa_slice(const apa_slice_t *slice)
 
     fprintf(stdout, "Total slice size: %uMB, used: %uMB, available: %uMB\n",
             (unsigned int)slice->size_in_mb,
-            (unsigned int)(slice->allocated_chunks * 128),
-            (unsigned int)(slice->free_chunks * 128));
+            (unsigned int)(slice->allocated_chunks * 8),
+            (unsigned int)(slice->free_chunks * 8));
 }
 
 
@@ -187,8 +187,8 @@ show_apa_slice2(const apa_slice_t *slice)
 
     fprintf(stdout, "Total slice size: %uMB, used: %uMB, available: %uMB\n",
             (unsigned int)slice->size_in_mb,
-            (unsigned int)(slice->allocated_chunks * 128),
-            (unsigned int)(slice->free_chunks * 128));
+            (unsigned int)(slice->allocated_chunks * 8),
+            (unsigned int)(slice->free_chunks * 8));
 }
 
 
@@ -241,8 +241,8 @@ show_slice_map(const apa_slice_t *slice)
 
     fprintf(stdout, "\nTotal slice size: %uMB, used: %uMB, available: %uMB\n",
             (unsigned int)slice->size_in_mb,
-            (unsigned int)(slice->allocated_chunks * 128),
-            (unsigned int)(slice->free_chunks * 128));
+            (unsigned int)(slice->allocated_chunks * 8),
+            (unsigned int)(slice->free_chunks * 8));
 }
 
 static void
@@ -462,11 +462,11 @@ show_hdl_toc(const dict_t *config,
                        game->name);
             }
             printf("total %uMB, used %uMB, available %uMB\n",
-                   (unsigned int)(glist->total_chunks * 128),
+                   (unsigned int)(glist->total_chunks * 8),
                    (unsigned int)((glist->total_chunks -
                                    glist->free_chunks) *
                                   128),
-                   (unsigned int)(glist->free_chunks * 128));
+                   (unsigned int)(glist->free_chunks * 8));
 
             hdl_glist_free(glist);
         }
@@ -1373,7 +1373,7 @@ copy_hdd(const dict_t *config,
 
     if (result == RET_OK && count > 0) {
         printf("%ludMB in %lu game(s) remaining...\n",
-               (long unsigned int)chunks_needed * 128, (long unsigned int)count);
+               (long unsigned int)chunks_needed * 8, (long unsigned int)count);
         for (i = 0; result == RET_OK && i < in_list->count; ++i)
             if (i >= flags_count || tolower(flags[i]) == 'y') { /* copy that game */
                 char in[1024];
