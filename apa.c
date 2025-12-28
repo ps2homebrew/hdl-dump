@@ -165,7 +165,7 @@ apa_setup_statistics(/*@special@*/ apa_slice_t *slice)
 
     char *map;
 
-    slice->total_chunks = slice->size_in_mb / 128;
+    slice->total_chunks = slice->size_in_mb / 8;
     map = osal_alloc(slice->total_chunks * sizeof(char));
     if (map != NULL) {
         u_int32_t i;
@@ -178,8 +178,8 @@ apa_setup_statistics(/*@special@*/ apa_slice_t *slice)
         slice->free_chunks = slice->total_chunks;
         for (i = 0; i < slice->part_count; ++i) {
             const ps2_partition_header_t *part = &slice->parts[i].header;
-            u_int32_t part_no = get_u32(&part->start) / ((128 _MB) / 512);
-            u_int32_t num_parts = get_u32(&part->length) / ((128 _MB) / 512);
+            u_int32_t part_no = get_u32(&part->start) / ((8 _MB) / 512);
+            u_int32_t num_parts = get_u32(&part->length) / ((8 _MB) / 512);
 
             /* "alloc" num_parts starting at part_no */
             while (num_parts) {
@@ -232,9 +232,9 @@ apa_slice_read(hio_t *hio,
 /*@uses toc->got_2nd_slice,toc->size_in_kb@*/
 /*@sets toc->slice[slice_index]@*/
 {
-    const u_int32_t EXACTLY_128MB = 128 * 1024 * 1024; /* KB */
-    const u_int32_t ALMOST_128MB = EXACTLY_128MB - 1;  /* KB */
-    const u_int32_t SLICE_2_OFFS = 0x10000000;         /* sectors */
+    const u_int32_t EXACTLY_8MB = 8 * 1024 * 1024; /* KB */
+    const u_int32_t ALMOST_8MB = EXACTLY_8MB - 1;  /* KB */
+    const u_int32_t SLICE_2_OFFS = 0x10000000;     /* sectors */
     apa_slice_t *slice = toc->slice + slice_index;
     int result;
     u_int32_t total_sectors;
@@ -246,12 +246,12 @@ apa_slice_read(hio_t *hio,
     /* calculate total number of sectors for the requested slice */
     if (toc->got_2nd_slice)
         if (slice_index == 0)
-            total_sectors = (toc->size_in_kb < ALMOST_128MB ?
+            total_sectors = (toc->size_in_kb < ALMOST_8MB ?
                                  toc->size_in_kb :
-                                 ALMOST_128MB) *
+                                 ALMOST_8MB) *
                             2; /* 1st */
         else
-            total_sectors = (toc->size_in_kb - EXACTLY_128MB) * 2; /* 2nd */
+            total_sectors = (toc->size_in_kb - EXACTLY_8MB) * 2; /* 2nd */
     else
         total_sectors = toc->size_in_kb * 2; /* the one and only */
 
@@ -301,7 +301,7 @@ apa_slice_read(hio_t *hio,
 
     if (!raw) {
         if (count == 0)
-            /* no partitions? __boot should always exists */
+            /* no partitions? __mbr should always exists */
             result = RET_BAD_APA;
 
         if (result == RET_OK) {
@@ -620,11 +620,11 @@ apa_allocate_space_in_slice(apa_slice_t *slice,
     if (size_in_mb == 0)
         return (RET_INVARIANT);
 
-    if (slice->free_chunks * 128 >= size_in_mb) {
+    if (slice->free_chunks * 8 >= size_in_mb) {
         u_int32_t max_part_size_in_entries =
             slice->total_chunks < 32 ? 1 : slice->total_chunks / 32;
-        u_int32_t max_part_size_in_mb = max_part_size_in_entries * 128;
-        u_int32_t estimated_entries = (size_in_mb + 127) / 128 + 1;
+        u_int32_t max_part_size_in_mb = max_part_size_in_entries * 8;
+        u_int32_t estimated_entries = (size_in_mb + 7) / 8 + 1;
         u_int32_t partitions_used = 0;
         ps2_partition_run_t *partitions =
             osal_alloc(estimated_entries * sizeof(ps2_partition_run_t));
@@ -640,18 +640,18 @@ apa_allocate_space_in_slice(apa_slice_t *slice,
             }
             for (i = 0; mb_remaining > 0 && i < slice->total_chunks; ++i)
                 if (map[i] == MAP_AVAIL) {
-                    partitions[partitions_used].sector = i * ((128 _MB) / 512);
-                    partitions[partitions_used].size_in_mb = 128;
+                    partitions[partitions_used].sector = i * ((8 _MB) / 512);
+                    partitions[partitions_used].size_in_mb = 8;
                     map[i] = MAP_ALLOC; /* "allocate" chunk */
                     ++partitions_used;
-                    mb_remaining = (mb_remaining > 128 ? mb_remaining - 128 : 0);
+                    mb_remaining = (mb_remaining > 8 ? mb_remaining - 8 : 0);
                 }
 
             optimize_partitions(partitions, &partitions_used,
                                 max_part_size_in_mb);
 
             /* calculate overhead (4M for main + 1M for each sub)
-         and allocate additional 128 M partition if necessary */
+         and allocate additional 8 M partition if necessary */
             allocated_mb = 0;
             overhead_mb = 3;
             for (i = 0; i < partitions_used; ++i) {
@@ -663,8 +663,8 @@ apa_allocate_space_in_slice(apa_slice_t *slice,
                 for (i = 0; i < slice->total_chunks; ++i)
                     if (map[i] == MAP_AVAIL) {
                         partitions[partitions_used].sector =
-                            i * ((128 _MB) / 512);
-                        partitions[partitions_used].size_in_mb = 128;
+                            i * ((8 _MB) / 512);
+                        partitions[partitions_used].size_in_mb = 8;
                         ++partitions_used;
                         optimize_partitions(partitions, &partitions_used,
                                             max_part_size_in_mb);
@@ -777,9 +777,9 @@ apa_delete_partition_from_slice(apa_slice_t *slice,
                     found = 1;
                     break;
                 }
-            if (found) {                                                             /* remove this partition */
-                u_int32_t part_no = get_u32(&slice->parts[i].header.start) / 262144; /* 262144 sectors == 128M */
-                u_int32_t num_parts = get_u32(&slice->parts[i].header.length) / 262144;
+            if (found) {                                                            /* remove this partition */
+                u_int32_t part_no = get_u32(&slice->parts[i].header.start) / 16384; /* 16384 sectors == 8M */
+                u_int32_t num_parts = get_u32(&slice->parts[i].header.length) / 16384;
 
                 memmove(slice->parts + i, slice->parts + i + 1,
                         sizeof(apa_partition_t) * (slice->part_count - i - 1));
@@ -925,8 +925,8 @@ apa_list_problems(const apa_slice_t *slice,
             ADD_PROBLEM(buffer, buffer_size, tmp, len);
         }
 
-        if ((get_u32(&part->length) % ((128 _MB) / 512)) != 0) {
-            len = sprintf(tmp, "%06lx00: size %06lx00 not multiple to 128MB;\n",
+        if ((get_u32(&part->length) % ((8 _MB) / 512)) != 0) {
+            len = sprintf(tmp, "%06lx00: size %06lx00 not multiple to 8MB;\n",
                           (unsigned long)(get_u32(&part->start) >> 8),
                           (unsigned long)(get_u32(&part->length) >> 8));
             ADD_PROBLEM(buffer, buffer_size, tmp, len);
@@ -1029,8 +1029,8 @@ apa_check_slice(const apa_slice_t *slice)
         else
             return (RET_BAD_APA); /* data behind end-of-slice */
 
-        if ((get_u32(&part->length) % ((128 _MB) / 512)) != 0)
-            return (RET_BAD_APA); /* partition size not multiple to 128MB */
+        if ((get_u32(&part->length) % ((8 _MB) / 512)) != 0)
+            return (RET_BAD_APA); /* partition size not multiple to 8MB */
 
         if ((get_u32(&part->start) % get_u32(&part->length)) != 0)
             return (RET_BAD_APA); /* partition start not multiple on partition size */

@@ -1243,10 +1243,11 @@ int hdl_read_game_alloc_table(hio_t *hio,
 {
     const apa_slice_t *slice = toc->slice + slice_index;
     const u_int32_t SLICE_2_OFFS = 0x10000000; /* sectors */
+    const u_int32_t HDL_HEADER_OFFS = 0x101000;
     unsigned char buffer[1024];
     u_int32_t len;
     u_int32_t sect = (get_u32(&slice->parts[partition_index].header.start) +
-                      0x00101000 / 512 + slice_index * SLICE_2_OFFS);
+                      HDL_HEADER_OFFS / 512 + slice_index * SLICE_2_OFFS);
     int result = hio->read(hio, sect, 2, buffer, &len);
     if (result == OSAL_OK) {
         if (get_u32(buffer) == 0xdeadfeed) { /* 0xdeadfeed magic found */
@@ -1279,6 +1280,7 @@ int hdl_modify_game(hio_t *hio,
 {
     apa_slice_t *slice = toc->slice + slice_index;
     const u_int32_t SLICE_2_OFFS = 0x10000000; /* sectors */
+    const u_int32_t HDL_HEADER_OFFS = 0x101000;
     apa_partition_t *part = NULL;
     u_int32_t i;
     u_int8_t hdl_hdr[1024];
@@ -1294,7 +1296,7 @@ int hdl_modify_game(hio_t *hio,
 
     /* BUG: hdl_modify_game wouldn't change part name in Sony HDD browser */
     sector = (get_u32(&part->header.start) +
-              0x00101000 / 512 + slice_index * SLICE_2_OFFS);
+              HDL_HEADER_OFFS / 512 + slice_index * SLICE_2_OFFS);
     result = hio->read(hio, sector, 2, hdl_hdr, &bytes);
     if (result == RET_OK) {
         char part_prefix[3];

@@ -211,9 +211,9 @@ svr_write(const udp_frame_t *uf,
 
     if (wr_dirty[start - wr_sector] == 0) { /* new chunk has been received */
         /* NOTE: the following memcpy can be skipped if nic.c is modified
-       *       to put incoming data in the proper place in the buffer;
-       *       the benefit is about 300-350kB/sec and it doesn't
-       *       worth the trouble */
+         *       to put incoming data in the proper place in the buffer;
+         *       the benefit is about 300-350kB/sec and it doesn't
+         *       worth the trouble */
         memcpy(wr_buf + (start - wr_sector) * 512, buf, count * 512);
         wr_dirty[start - wr_sector] = 1;
         if (count == 2)

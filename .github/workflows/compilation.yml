@@ -12,7 +12,7 @@ jobs:
         os: [macos-latest, ubuntu-latest]
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v6
 
     - name: Install Ubuntu version
       if: ${{ matrix.os == 'ubuntu-latest' && always() }}
@@ -29,7 +29,7 @@ jobs:
     - name: Create tar archive (keep executable bit)
       run: tar -zcvf hdl-dump-${{ env.SHA }}-${{matrix.os}}.tar.gz hdl_dump
 
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v6
       with:
         name: hdl-dump-${{ env.SHA }}-${{matrix.os}}
         path: |
@@ -40,7 +40,7 @@ jobs:
     container: dockcross/windows-static-x86:latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v6
 
     - name: Compile windows version with cross-compilator
       run: |
@@ -58,7 +58,7 @@ jobs:
     - name: Create tar archive
       run: tar -zcvf hdl-dump-${{ env.SHA }}-windows-latest.tar.gz rel
 
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v6
       with:
         name: hdl-dump-${{ env.SHA }}-windows-latest
         path: |
@@ -69,18 +69,18 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/master'
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v6
 
     - name: Get short SHA
       id: slug
       run: echo "SHA=$(echo ${GITHUB_SHA} | cut -c1-8)" >> $GITHUB_ENV
 
     - name: Download artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v6
 
     - name: Create pre-release
       if: github.ref == 'refs/heads/master'
-      uses: marvinpinto/action-automatic-releases@latest
+      uses: mathieucarbou/marvinpinto-action-automatic-releases@latest
       with:
         repo_token: "${{ secrets.GITHUB_TOKEN }}"
         prerelease: true
@@ -93,7 +93,7 @@ jobs:
 
     - name: Create Tagged Release Draft
       if: startsWith(github.ref, 'refs/tags/v')
-      uses: marvinpinto/action-automatic-releases@latest
+      uses: mathieucarbou/marvinpinto-action-automatic-releases@latest
       with:
         repo_token: "${{ secrets.GITHUB_TOKEN }}"
         prerelease: false

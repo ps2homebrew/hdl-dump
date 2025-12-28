@@ -1,6 +1,6 @@
-//PS2 built-in network interface card packet driver (under AFL license)
+// PS2 built-in network interface card packet driver (under AFL license)
 #include "nic.h"
-//#include "storage.h"
+// #include "storage.h"
 #include "stddef.h"
 
 #include <sysclib.h>
@@ -49,7 +49,7 @@ int nic_send(const void *pPacket, int size)
 int nic_send_wait(const void *pPacket, int size)
 {
     while (nic_send(pPacket, size) == 0) {
-    } //SMAPWaitTxEnd();
+    } // SMAPWaitTxEnd();
 
     return 1;
 }
