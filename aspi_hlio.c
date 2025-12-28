@@ -521,7 +521,7 @@ int aspi_scan_scsi_bus(scsi_devices_list_t **list)
 #endif
                         }
                     } /* LUN loop */
-                }     /* SCSI ID loop */
+                } /* SCSI ID loop */
             }
         } /* host adapters loop */
     }

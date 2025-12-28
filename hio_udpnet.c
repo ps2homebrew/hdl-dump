@@ -72,7 +72,7 @@ static int net_init = 0;
  * whereas Sleep is in miliseconds */
 #define delay(ms) Sleep(ms)
 #else
-#define delay(ms) usleep((ms)*1000)
+#define delay(ms) usleep((ms) * 1000)
 #endif
 
 

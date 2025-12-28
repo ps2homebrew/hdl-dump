@@ -507,7 +507,7 @@ dlg_refresh_hdd_info(HWND dlg)
                     dict_put(config_, CONFIG_LAST_IP, hdd);
                 }
             } /* games list loaded? */
-        }     /* hio_probe? */
+        } /* hio_probe? */
         else
             last_win_err = GetLastError(); /* preserve last windows error */
     } else

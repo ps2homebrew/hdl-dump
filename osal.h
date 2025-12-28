@@ -61,8 +61,7 @@ typedef struct
 
 #define OSAL_HANDLE_INIT \
     {                    \
-        -1               \
-    } /* file descriptor */
+        -1} /* file descriptor */
 #define OSAL_IS_OPENED(x) ((x).desc != -1)
 
 /* This needs to be at least 256 bytes -- see iin_gi_probe_path */

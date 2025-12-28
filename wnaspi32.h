@@ -40,8 +40,8 @@ extern "C" {
 #endif
 
 /******************************************************************************
-   *      %%% SCSI MISCELLANEOUS EQUATES %%%
-   ******************************************************************************/
+ *      %%% SCSI MISCELLANEOUS EQUATES %%%
+ ******************************************************************************/
 
 #define SENSE_LEN                 14   /* Default sense buffer length */
 #define SRB_DIR_SCSI              0x00 /* Direction determined by SCSI */
@@ -57,8 +57,8 @@ extern "C" {
 
 
 /******************************************************************************
-   *      %%% ASPI Command Definitions %%%
-   ******************************************************************************/
+ *      %%% ASPI Command Definitions %%%
+ ******************************************************************************/
 
 #define SC_HA_INQUIRY      0x00 /* Host adapter inquiry */
 #define SC_GET_DEV_TYPE    0x01 /* Get device type */
@@ -71,8 +71,8 @@ extern "C" {
 #define SC_GETSET_TIMEOUTS 0x08 /* Get/Set target timeouts */
 
 /******************************************************************************
-   *      %%% SRB Status %%%
-   ******************************************************************************/
+ *      %%% SRB Status %%%
+ ******************************************************************************/
 
 #define SS_PENDING    0x00 /* SRB being processed */
 #define SS_COMP       0x01 /* SRB completed without error */
@@ -100,8 +100,8 @@ extern "C" {
 #define SS_BAD_INSTALL            0xEB /* DLL or other components are installed wrong */
 
 /******************************************************************************
-   *      %%% Host Adapter Status %%%
-   ******************************************************************************/
+ *      %%% Host Adapter Status %%%
+ ******************************************************************************/
 
 #define HASTAT_OK                   0x00 /* Host adapter did not detect an error */
 #define HASTAT_SEL_TO               0x11 /* Selection Timeout */
@@ -117,8 +117,8 @@ extern "C" {
 #define HASTAT_REQUEST_SENSE_FAILED 0x10 /* The adapter failed in issuing */
 
 /******************************************************************************
-   *          %%% SRB - HOST ADAPTER INQUIRY - SC_HA_INQUIRY (0) %%%
-   ******************************************************************************/
+ *          %%% SRB - HOST ADAPTER INQUIRY - SC_HA_INQUIRY (0) %%%
+ ******************************************************************************/
 
 typedef struct              /* Offset */
 {                           /* HX/DEC */
@@ -136,8 +136,8 @@ typedef struct              /* Offset */
 } PACK SRB_HAInquiry, *PSRB_HAInquiry, FAR *LPSRB_HAInquiry;
 
 /******************************************************************************
-   *          %%% SRB - GET DEVICE TYPE - SC_GET_DEV_TYPE (1) %%%
-   ******************************************************************************/
+ *          %%% SRB - GET DEVICE TYPE - SC_GET_DEV_TYPE (1) %%%
+ ******************************************************************************/
 
 typedef struct           /* Offset */
 {                        /* HX/DEC */
@@ -153,8 +153,8 @@ typedef struct           /* Offset */
 } PACK SRB_GDEVBlock, *PSRB_GDEVBlock, FAR *LPSRB_GDEVBlock;
 
 /****************************************************************************
-   *                %%% PERIPHERAL DEVICE TYPE DEFINITIONS %%%
-   ****************************************************************************/
+ *                %%% PERIPHERAL DEVICE TYPE DEFINITIONS %%%
+ ****************************************************************************/
 
 #define DTYPE_DASD    0x00 /* Disk Device */
 #define DTYPE_SEQD    0x01 /* Tape Device */
@@ -172,8 +172,8 @@ typedef struct           /* Offset */
 #define DTYPE_UNKNOWN 0x1F /* Unknown or no device type */
 
 /******************************************************************************
-   *          %%% SRB - EXECUTE SCSI COMMAND - SC_EXEC_SCSI_CMD (2) %%%
-   ******************************************************************************/
+ *          %%% SRB - EXECUTE SCSI COMMAND - SC_EXEC_SCSI_CMD (2) %%%
+ ******************************************************************************/
 
 typedef struct                     /* Offset */
 {                                  /* HX/DEC */
@@ -198,8 +198,8 @@ typedef struct                     /* Offset */
 } PACK SRB_ExecSCSICmd, *PSRB_ExecSCSICmd, FAR *LPSRB_ExecSCSICmd;
 
 /****************************************************************************
-   *               %%% Commands for all Device Types %%%
-   ****************************************************************************/
+ *               %%% Commands for all Device Types %%%
+ ****************************************************************************/
 
 #define SCSI_CHANGE_DEF 0x40 /* Change Definition (Optional) */
 #define SCSI_COMPARE    0x39 /* Compare (O) */
@@ -219,8 +219,8 @@ typedef struct                     /* Offset */
 #define SCSI_WRITE_BUFF 0x3B /* Write Buffer (O) */
 
 /****************************************************************************
-   *            %%% Commands Unique to Direct Access Devices %%%
-   ****************************************************************************/
+ *            %%% Commands Unique to Direct Access Devices %%%
+ ****************************************************************************/
 
 #define SCSI_COMPARE    0x39 /* Compare (O) */
 #define SCSI_FORMAT     0x04 /* Format Unit (MANDATORY) */
@@ -253,8 +253,8 @@ typedef struct                     /* Offset */
 #define SCSI_WRITE_SAME 0x41 /* Write Same (O) */
 
 /******************************************************************************
-   *          %%% SRB - ABORT AN SRB - SC_ABORT_SRB (3) %%%
-   ******************************************************************************/
+ *          %%% SRB - ABORT AN SRB - SC_ABORT_SRB (3) %%%
+ ******************************************************************************/
 
 typedef struct             /* Offset */
 {                          /* HX/DEC */
@@ -267,8 +267,8 @@ typedef struct             /* Offset */
 } PACK SRB_Abort, *PSRB_Abort, FAR *LPSRB_Abort;
 
 /******************************************************************************
-   *          %%% SRB - BUS DEVICE RESET - SC_RESET_DEV (4) %%%
-   ******************************************************************************/
+ *          %%% SRB - BUS DEVICE RESET - SC_RESET_DEV (4) %%%
+ ******************************************************************************/
 
 typedef struct              /* Offset */
 {                           /* HX/DEC */
@@ -287,8 +287,8 @@ typedef struct              /* Offset */
 } PACK SRB_BusDeviceReset, *PSRB_BusDeviceReset, FAR *LPSRB_BusDeviceReset;
 
 /******************************************************************************
-   *          %%% SRB - GET DISK INFORMATION - SC_GET_DISK_INFO %%%
-   ******************************************************************************/
+ *          %%% SRB - GET DISK INFORMATION - SC_GET_DISK_INFO %%%
+ ******************************************************************************/
 
 typedef struct                /* Offset */
 {                             /* HX/DEC */
@@ -307,8 +307,8 @@ typedef struct                /* Offset */
 } PACK SRB_GetDiskInfo, *PSRB_GetDiskInfo, FAR *LPSRB_GetDiskInfo;
 
 /******************************************************************************
-   *          %%%  SRB - RESCAN SCSI BUS(ES) ON SCSIPORT %%%
-   ******************************************************************************/
+ *          %%%  SRB - RESCAN SCSI BUS(ES) ON SCSIPORT %%%
+ ******************************************************************************/
 
 typedef struct          /* Offset */
 {                       /* HX/DEC */
@@ -320,8 +320,8 @@ typedef struct          /* Offset */
 } PACK SRB_RescanPort, *PSRB_RescanPort, FAR *LPSRB_RescanPort;
 
 /******************************************************************************
-   *          %%% SRB - GET/SET TARGET TIMEOUTS %%%
-   ******************************************************************************/
+ *          %%% SRB - GET/SET TARGET TIMEOUTS %%%
+ ******************************************************************************/
 
 typedef struct          /* Offset */
 {                       /* HX/DEC */
@@ -336,8 +336,8 @@ typedef struct          /* Offset */
 } PACK SRB_GetSetTimeouts, *PSRB_GetSetTimeouts, FAR *LPSRB_GetSetTimeouts;
 
 /******************************************************************************
-   *          %%% ASPIBUFF - Structure For Controllng I/O Buffers %%%
-   ******************************************************************************/
+ *          %%% ASPIBUFF - Structure For Controllng I/O Buffers %%%
+ ******************************************************************************/
 
 typedef struct tag_ASPI32BUFF /* Offset */
 {                             /* HX/DEC */
@@ -348,8 +348,8 @@ typedef struct tag_ASPI32BUFF /* Offset */
 } PACK ASPI32BUFF, *PASPI32BUFF, FAR *LPASPI32BUFF;
 
 /******************************************************************************
-   *          %%% PROTOTYPES - User Callable ASPI for Win32 Functions %%%
-   ******************************************************************************/
+ *          %%% PROTOTYPES - User Callable ASPI for Win32 Functions %%%
+ ******************************************************************************/
 
 typedef void *LPSRB;
 
