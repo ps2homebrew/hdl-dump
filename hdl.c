@@ -1319,7 +1319,7 @@ int hdl_modify_game(hio_t *hio,
             char game_id[8 + 1 + 2 + 1];
 
             /* Get the game ID from the partition header so it can be preserved */
-            strncpy(game_id, part->header.id + 3, 8);
+            memcpy(game_id, part->header.id + 3, 8);
             game_id[8] = '.';
             memcpy(game_id + 9, part->header.id + 11, 2);
             game_id[11] = '\0';
