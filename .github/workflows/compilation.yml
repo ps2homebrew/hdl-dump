@@ -29,7 +29,7 @@ jobs:
     - name: Create tar archive (keep executable bit)
       run: tar -zcvf hdl-dump-${{ env.SHA }}-${{matrix.os}}.tar.gz hdl_dump
 
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
         name: hdl-dump-${{ env.SHA }}-${{matrix.os}}
         path: |
@@ -58,7 +58,7 @@ jobs:
     - name: Create tar archive
       run: tar -zcvf hdl-dump-${{ env.SHA }}-windows-latest.tar.gz rel
 
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
         name: hdl-dump-${{ env.SHA }}-windows-latest
         path: |
@@ -76,7 +76,7 @@ jobs:
       run: echo "SHA=$(echo ${GITHUB_SHA} | cut -c1-8)" >> $GITHUB_ENV
 
     - name: Download artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
 
     - name: Create pre-release
       if: github.ref == 'refs/heads/master'
