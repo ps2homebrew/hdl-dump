@@ -1316,12 +1316,13 @@ int hdl_modify_game(hio_t *hio,
             char part_id[PS2_PART_IDMAX + 1];
             int tmp_slice_index = 0;
             u_int32_t tmp_partition_index = 0;
-            char game_id[11];
+            char game_id[8 + 1 + 2 + 1];
 
             /* Get the game ID from the partition header so it can be preserved */
             strncpy(game_id, part->header.id + 3, 8);
             game_id[8] = '.';
             memcpy(game_id + 9, part->header.id + 11, 2);
+            game_id[11] = '\0';
 
             if (new_name == NULL)
                 hdl_pname(game_id, part->header.id + 15, part_prefix, part_id); /* "PP.XXXX-xxxx..GAME_NAME" */
