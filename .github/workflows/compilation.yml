@@ -76,7 +76,7 @@ jobs:
       run: echo "SHA=$(echo ${GITHUB_SHA} | cut -c1-8)" >> $GITHUB_ENV
 
     - name: Download artifacts
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v4.3.0
 
     - name: Create pre-release
       if: github.ref == 'refs/heads/master'
